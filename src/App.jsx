@@ -1207,16 +1207,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                         Reply
                       </button>
                     )}
-                    
-                    {/* Reply count - always visible when there are replies */}
-                    {msg.replyCount > 0 && (
-                      <button
-                        onClick={() => setOpenThread(msg)}
-                        className="text-xs text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1"
-                      >
-                        💬 {msg.replyCount} {msg.replyCount === 1 ? 'reply' : 'replies'}
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
@@ -1237,14 +1227,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                     </div>
                   ))}
                   
-                  {msg.replyCount > 3 && (
-                    <button
-                      onClick={() => setOpenThread(msg)}
-                      className="text-xs text-amber-400 hover:text-amber-300 transition-colors ml-8"
-                    >
-                      View all {msg.replyCount} replies →
-                    </button>
-                  )}
+                  <button
+                    onClick={() => setOpenThread(msg)}
+                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors ml-8"
+                  >
+                    View all {msg.replyCount} {msg.replyCount === 1 ? 'reply' : 'replies'} →
+                  </button>
                 </div>
               )}
             </div>
