@@ -1332,7 +1332,7 @@ const AuthenticatedApp = () => {
   const [isVerified, setIsVerified] = useState(false);
   const [sessionToken, setSessionToken] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const prevAddressRef = useRef(null);
+  const [lastCheckedAddress, setLastCheckedAddress] = useState(null);
   
   // Read GUARD token balance
   const { data: balance, isLoading: balanceLoading } = useReadContract({
@@ -1346,46 +1346,50 @@ const AuthenticatedApp = () => {
   const formattedBalance = formatTokenBalance(balance, TOKEN_CONFIG.decimals);
   const hasEnoughTokens = hasRequiredTokens(balance, TOKEN_CONFIG.decimals);
   
-  // Check for existing session on mount
+  // Check for existing session or handle wallet change
   useEffect(() => {
-    const checkExistingSession = async () => {
+    const handleSession = async () => {
+      // If no address, reset everything
+      if (!address) {
+        setCheckingSession(false);
+        return;
+      }
+      
+      // If wallet changed, clear old session
+      if (lastCheckedAddress && lastCheckedAddress !== address) {
+        setIsVerified(false);
+        setSessionToken(null);
+        localStorage.removeItem('commune_session');
+      }
+      
+      setLastCheckedAddress(address);
+      
+      // Check for existing valid session
       const storedToken = localStorage.getItem('commune_session');
-      if (storedToken && address) {
+      if (storedToken) {
         try {
           const response = await fetch(`${API_URL}/api/session`, {
             headers: { 'Authorization': `Bearer ${storedToken}` },
           });
           const data = await response.json();
+          
           if (data.valid && data.wallet?.toLowerCase() === address.toLowerCase()) {
             setSessionToken(storedToken);
             setIsVerified(true);
-          } else {
-            localStorage.removeItem('commune_session');
+            setCheckingSession(false);
+            return;
           }
         } catch (error) {
-          localStorage.removeItem('commune_session');
+          console.error('Session check failed:', error);
         }
+        // Invalid session - remove it
+        localStorage.removeItem('commune_session');
       }
+      
       setCheckingSession(false);
     };
     
-    if (address) {
-      checkExistingSession();
-    } else {
-      setCheckingSession(false);
-    }
-  }, [address]);
-  
-  // Reset verification only when wallet actually changes (not on first load)
-  useEffect(() => {
-    if (prevAddressRef.current && prevAddressRef.current !== address) {
-      // Wallet changed - reset everything
-      setIsVerified(false);
-      setSessionToken(null);
-      localStorage.removeItem('commune_session');
-      setCheckingSession(true);
-    }
-    prevAddressRef.current = address;
+    handleSession();
   }, [address]);
   
   // Not connected - show landing page
