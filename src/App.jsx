@@ -1113,6 +1113,18 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         }));
         break;
         
+      case 'reaction_updated':
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === data.messageId) {
+            return {
+              ...msg,
+              reactions: data.reactions,
+            };
+          }
+          return msg;
+        }));
+        break;
+        
       case 'online_users':
         setOnlineUsers(data.users || []);
         setOnlineCount(data.count || 0);
@@ -1313,6 +1325,28 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
   };
   
+  // Reaction picker state
+  const [showReactionPicker, setShowReactionPicker] = useState(null);
+  const reactionEmojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
+  
+  // Toggle reaction on a message
+  const toggleReaction = (messageId, emoji) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'reaction',
+        messageId,
+        emoji,
+      }));
+    }
+    setShowReactionPicker(null);
+  };
+  
+  // Check if current user has reacted with specific emoji
+  const hasReacted = (reactions, emoji) => {
+    if (!reactions || !reactions[emoji]) return false;
+    return reactions[emoji].some(w => w.toLowerCase() === walletAddress?.toLowerCase());
+  };
+  
   // Online count is now received via WebSocket
   const [onlineCount, setOnlineCount] = useState(0);
   
@@ -1444,7 +1478,55 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                         </button>
                       </>
                     )}
+                    
+                    {/* Reaction picker button */}
+                    {!msg.deleted && (
+                      <div className="relative ml-auto">
+                        <button
+                          onClick={() => setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id)}
+                          className="text-xs text-white/30 hover:text-amber-400 transition-all duration-200 opacity-0 group-hover:opacity-100 px-2"
+                        >
+                          +😀
+                        </button>
+                        
+                        {/* Emoji picker dropdown */}
+                        {showReactionPicker === msg.id && (
+                          <div className="absolute bottom-full right-0 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-2 flex gap-1 shadow-lg z-10">
+                            {reactionEmojis.map(emoji => (
+                              <button
+                                key={emoji}
+                                onClick={() => toggleReaction(msg.id, emoji)}
+                                className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors ${hasReacted(msg.reactions, emoji) ? 'bg-amber-400/20' : ''}`}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                  
+                  {/* Reactions display */}
+                  {msg.reactions && Object.keys(msg.reactions).length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {Object.entries(msg.reactions).map(([emoji, wallets]) => (
+                        <button
+                          key={emoji}
+                          onClick={() => toggleReaction(msg.id, emoji)}
+                          className={`flex items-center gap-1 px-2 py-1 rounded-lg text-xs transition-colors ${
+                            hasReacted(msg.reactions, emoji)
+                              ? 'bg-amber-400/20 border border-amber-400/30 text-amber-400'
+                              : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                          }`}
+                          title={wallets.map(w => truncateAddress(w)).join(', ')}
+                        >
+                          <span>{emoji}</span>
+                          <span>{wallets.length}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
               
