@@ -663,7 +663,14 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
+  const [exitDirection, setExitDirection] = useState({ x: 0, y: 0 });
   const previewRef = useRef(null);
+  const lastMousePos = useRef({ x: 0, y: 0 });
+  
+  // Track mouse position while inside
+  const handleMouseMove = (e) => {
+    lastMousePos.current = { x: e.clientX, y: e.clientY };
+  };
   
   // Load full thread
   useEffect(() => {
@@ -688,11 +695,30 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
     loadThread();
   }, [message.id, sessionToken]);
   
-  const handleClose = () => {
+  const handleClose = (e) => {
+    // Calculate exit direction based on mouse movement
+    const rect = previewRef.current?.getBoundingClientRect();
+    if (rect) {
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const mouseX = e.clientX;
+      const mouseY = e.clientY;
+      
+      // Normalize direction
+      const dx = mouseX - centerX;
+      const dy = mouseY - centerY;
+      const magnitude = Math.sqrt(dx * dx + dy * dy) || 1;
+      
+      setExitDirection({
+        x: (dx / magnitude) * 30, // 30px movement
+        y: (dy / magnitude) * 30,
+      });
+    }
+    
     setIsClosing(true);
     setTimeout(() => {
       onClose();
-    }, 200); // Match the fade-out duration
+    }, 250); // Match the fade-out duration
   };
   
   const sendReply = async () => {
@@ -727,13 +753,17 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
   return (
     <div
       ref={previewRef}
-      className={`fixed z-50 w-80 max-h-96 bg-[#1a1a25] border border-white/10 rounded-2xl shadow-2xl overflow-hidden transition-all duration-200 ${
-        isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
-      }`}
+      className="fixed z-50 w-80 max-h-96 bg-[#1a1a25] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
       style={{ 
         top: Math.max(80, Math.min(position.top - 50, window.innerHeight - 400)),
         left: Math.min(position.left + 20, window.innerWidth - 340),
+        opacity: isClosing ? 0 : 1,
+        transform: isClosing 
+          ? `translate(${exitDirection.x}px, ${exitDirection.y}px) scale(0.95)` 
+          : 'translate(0, 0) scale(1)',
+        transition: 'opacity 250ms ease-out, transform 250ms ease-out',
       }}
+      onMouseMove={handleMouseMove}
       onMouseLeave={handleClose}
     >
       {/* Header */}
