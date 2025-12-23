@@ -1327,6 +1327,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   // Reaction picker state
   const [showReactionPicker, setShowReactionPicker] = useState(null);
+  const [hoveredEmoji, setHoveredEmoji] = useState(null);
   const reactionEmojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
   // Toggle reaction on a message
@@ -1339,6 +1340,16 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       }));
     }
     setShowReactionPicker(null);
+    setHoveredEmoji(null);
+  };
+  
+  // Handle mouse leave from reaction picker - select the last hovered emoji
+  const handleReactionPickerLeave = (messageId) => {
+    if (hoveredEmoji) {
+      toggleReaction(messageId, hoveredEmoji);
+    } else {
+      setShowReactionPicker(null);
+    }
   };
   
   // Check if current user has reacted with specific emoji
@@ -1479,24 +1490,39 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                       </>
                     )}
                     
-                    {/* Reaction picker button */}
+                    {/* Reaction picker trigger */}
                     {!msg.deleted && (
-                      <div className="relative ml-auto">
-                        <button
-                          onClick={() => setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id)}
-                          className="text-xs text-white/30 hover:text-amber-400 transition-all duration-200 opacity-0 group-hover:opacity-100 px-2"
-                        >
+                      <div 
+                        className="relative"
+                        onMouseEnter={() => setShowReactionPicker(msg.id)}
+                        onMouseLeave={(e) => {
+                          // Find which emoji the mouse exited closest to
+                          if (showReactionPicker === msg.id && hoveredEmoji) {
+                            toggleReaction(msg.id, hoveredEmoji);
+                          }
+                          setShowReactionPicker(null);
+                          setHoveredEmoji(null);
+                        }}
+                      >
+                        <span className="text-xs text-white/30 hover:text-amber-400 transition-all duration-200 opacity-0 group-hover:opacity-100 px-2 cursor-pointer">
                           +😀
-                        </button>
+                        </span>
                         
-                        {/* Emoji picker dropdown */}
+                        {/* Emoji picker - vertical stack going up */}
                         {showReactionPicker === msg.id && (
-                          <div className="absolute bottom-full right-0 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-2 flex gap-1 shadow-lg z-10">
-                            {reactionEmojis.map(emoji => (
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-[#1a1a24] border border-white/10 rounded-2xl p-2 shadow-lg z-10 flex flex-col-reverse gap-1">
+                            {reactionEmojis.map((emoji, index) => (
                               <button
                                 key={emoji}
-                                onClick={() => toggleReaction(msg.id, emoji)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors ${hasReacted(msg.reactions, emoji) ? 'bg-amber-400/20' : ''}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleReaction(msg.id, emoji);
+                                }}
+                                onMouseEnter={() => setHoveredEmoji(emoji)}
+                                className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all duration-150 hover:bg-white/10 hover:scale-125 ${hasReacted(msg.reactions, emoji) ? 'bg-amber-400/20' : ''}`}
+                                style={{
+                                  animation: `fadeSlideUp 0.2s ease-out ${index * 0.03}s both`
+                                }}
                               >
                                 {emoji}
                               </button>
