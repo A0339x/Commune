@@ -1038,10 +1038,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     return () => clearInterval(interval);
   }, [sessionToken]);
   
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-  
   const sendMessage = async (replyTo = null) => {
     if (!newMessage.trim() || sending) return;
     
@@ -1068,6 +1064,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             replyCount: 0,
             recentReplies: [],
           }]);
+          // Scroll to bottom after sending
+          setTimeout(() => scrollToBottom(), 100);
         }
         setNewMessage('');
       }
