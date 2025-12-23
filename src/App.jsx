@@ -1011,7 +1011,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       });
       const data = await response.json();
       if (data.messages) {
-        setMessages(data.messages.map(msg => ({
+        const serverMessages = data.messages.map(msg => ({
           ...msg,
           user: truncateAddress(msg.wallet),
           avatar: '🛡️',
@@ -1022,7 +1022,16 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             avatar: '🛡️',
             timestamp: new Date(r.timestamp),
           })),
-        })));
+        }));
+        
+        // Merge: keep any local messages that aren't on the server yet
+        setMessages(prev => {
+          const serverIds = new Set(serverMessages.map(m => m.id));
+          const pendingMessages = prev.filter(m => m.pending && !serverIds.has(m.id));
+          return [...serverMessages, ...pendingMessages].sort((a, b) => 
+            new Date(a.timestamp) - new Date(b.timestamp)
+          );
+        });
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -1041,6 +1050,26 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const sendMessage = async (replyTo = null) => {
     if (!newMessage.trim() || sending) return;
     
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage = {
+      id: tempId,
+      content: newMessage,
+      wallet: walletAddress,
+      user: truncateAddress(walletAddress),
+      avatar: '🛡️',
+      timestamp: new Date(),
+      replyCount: 0,
+      recentReplies: [],
+      pending: true, // Mark as pending
+    };
+    
+    // Optimistically add message immediately
+    if (!replyTo) {
+      setMessages(prev => [...prev, tempMessage]);
+      setTimeout(() => scrollToBottom(), 100);
+    }
+    setNewMessage('');
+    
     setSending(true);
     try {
       const response = await fetch(`${API_URL}/api/messages`, {
@@ -1049,28 +1078,32 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionToken}`,
         },
-        body: JSON.stringify({ content: newMessage, replyTo }),
+        body: JSON.stringify({ content: tempMessage.content, replyTo }),
       });
       
       const data = await response.json();
       
       if (data.success && data.message) {
+        // Replace temp message with real one
         if (!replyTo) {
-          setMessages(prev => [...prev, {
-            ...data.message,
-            user: truncateAddress(data.message.wallet),
-            avatar: '🛡️',
-            timestamp: new Date(data.message.timestamp),
-            replyCount: 0,
-            recentReplies: [],
-          }]);
-          // Scroll to bottom after sending
-          setTimeout(() => scrollToBottom(), 100);
+          setMessages(prev => prev.map(m => 
+            m.id === tempId 
+              ? {
+                  ...data.message,
+                  user: truncateAddress(data.message.wallet),
+                  avatar: '🛡️',
+                  timestamp: new Date(data.message.timestamp),
+                  replyCount: 0,
+                  recentReplies: [],
+                }
+              : m
+          ));
         }
-        setNewMessage('');
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      // Remove the temp message on error
+      setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setSending(false);
     }
