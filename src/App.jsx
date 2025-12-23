@@ -662,6 +662,7 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
   const [threadReplies, setThreadReplies] = useState(replies || []);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
   const previewRef = useRef(null);
   
   // Load full thread
@@ -686,6 +687,13 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
     };
     loadThread();
   }, [message.id, sessionToken]);
+  
+  const handleClose = () => {
+    setIsClosing(true);
+    setTimeout(() => {
+      onClose();
+    }, 200); // Match the fade-out duration
+  };
   
   const sendReply = async () => {
     if (!replyText.trim() || sending) return;
@@ -719,9 +727,14 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
   return (
     <div
       ref={previewRef}
-      className="fixed z-50 w-80 max-h-96 bg-[#1a1a25] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
-      style={{ top: position.top, right: 24 }}
-      onMouseLeave={onClose}
+      className={`fixed z-50 w-80 max-h-96 bg-[#1a1a25] border border-white/10 rounded-2xl shadow-2xl overflow-hidden transition-all duration-200 ${
+        isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
+      }`}
+      style={{ 
+        top: Math.max(80, Math.min(position.top - 50, window.innerHeight - 400)),
+        left: Math.min(position.left + 20, window.innerWidth - 340),
+      }}
+      onMouseLeave={handleClose}
     >
       {/* Header */}
       <div className="p-3 border-b border-white/5 bg-white/5">
@@ -1046,7 +1059,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const handleMouseEnter = (msg, event) => {
     if (msg.replyCount > 0) {
       const rect = event.currentTarget.getBoundingClientRect();
-      setHoverPosition({ top: Math.max(100, rect.top) });
+      setHoverPosition({ 
+        top: rect.top,
+        left: rect.right, // Position to the right of the message
+      });
       
       hoverTimeoutRef.current = setTimeout(() => {
         setHoverThread(msg);
