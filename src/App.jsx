@@ -1002,7 +1002,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   };
   
   // Load messages from API
+  const [hasPendingMessage, setHasPendingMessage] = useState(false);
+  
   const loadMessages = async () => {
+    // Skip loading if we have a pending message (avoid flicker)
+    if (hasPendingMessage) return;
+    
     try {
       const response = await fetch(`${API_URL}/api/messages`, {
         headers: {
@@ -1011,7 +1016,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       });
       const data = await response.json();
       if (data.messages) {
-        const serverMessages = data.messages.map(msg => ({
+        setMessages(data.messages.map(msg => ({
           ...msg,
           user: truncateAddress(msg.wallet),
           avatar: '🛡️',
@@ -1022,16 +1027,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             avatar: '🛡️',
             timestamp: new Date(r.timestamp),
           })),
-        }));
-        
-        // Merge: keep any local messages that aren't on the server yet
-        setMessages(prev => {
-          const serverIds = new Set(serverMessages.map(m => m.id));
-          const pendingMessages = prev.filter(m => m.pending && !serverIds.has(m.id));
-          return [...serverMessages, ...pendingMessages].sort((a, b) => 
-            new Date(a.timestamp) - new Date(b.timestamp)
-          );
-        });
+        })));
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -1045,27 +1041,28 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     // Poll for new messages every 5 seconds
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
-  }, [sessionToken]);
+  }, [sessionToken, hasPendingMessage]);
   
   const sendMessage = async (replyTo = null) => {
     if (!newMessage.trim() || sending) return;
     
+    const messageContent = newMessage;
     const tempId = `temp-${Date.now()}`;
     const tempMessage = {
       id: tempId,
-      content: newMessage,
+      content: messageContent,
       wallet: walletAddress,
       user: truncateAddress(walletAddress),
       avatar: '🛡️',
       timestamp: new Date(),
       replyCount: 0,
       recentReplies: [],
-      pending: true, // Mark as pending
     };
     
     // Optimistically add message immediately
     if (!replyTo) {
       setMessages(prev => [...prev, tempMessage]);
+      setHasPendingMessage(true);
       setTimeout(() => scrollToBottom(), 100);
     }
     setNewMessage('');
@@ -1078,7 +1075,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionToken}`,
         },
-        body: JSON.stringify({ content: tempMessage.content, replyTo }),
+        body: JSON.stringify({ content: messageContent, replyTo }),
       });
       
       const data = await response.json();
@@ -1106,6 +1103,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setSending(false);
+      // Allow polling again after a short delay
+      setTimeout(() => setHasPendingMessage(false), 1000);
     }
   };
   
