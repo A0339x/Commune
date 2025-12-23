@@ -58,6 +58,12 @@ const Icons = {
       <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
     </svg>
   ),
+  User: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="5" />
+      <path d="M20 21a8 8 0 0 0-16 0" />
+    </svg>
+  ),
   Send: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m22 2-7 20-4-9-9-4Z" />
@@ -786,7 +792,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               <Avatar emoji={msg.avatar} size="sm" />
               <div className="flex-1">
                 <div className="flex items-baseline gap-2">
-                  <span className="font-medium text-sm">{msg.user}</span>
+                  <span className="font-medium text-sm">
+                    {msg.displayName || msg.user}
+                  </span>
+                  {msg.displayName && (
+                    <span className="text-xs text-white/20 font-mono">{msg.user}</span>
+                  )}
                   <span className="text-xs text-white/30">{formatTime(msg.timestamp)}</span>
                 </div>
                 <p className="text-white/80 text-sm mt-1 leading-relaxed">{msg.content || msg.message}</p>
@@ -1048,8 +1059,15 @@ const UserList = ({ sessionToken }) => {
             <div key={user.wallet} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
               <Avatar emoji={getAvatarEmoji(user.wallet)} size="sm" status="online" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate font-mono">{truncateAddress(user.wallet)}</p>
-                <p className="text-xs text-emerald-400">online</p>
+                <p className="text-sm font-medium truncate">
+                  {user.displayName || truncateAddress(user.wallet)}
+                </p>
+                {user.displayName && (
+                  <p className="text-xs text-white/30 font-mono truncate">{truncateAddress(user.wallet)}</p>
+                )}
+                {!user.displayName && (
+                  <p className="text-xs text-emerald-400">online</p>
+                )}
               </div>
             </div>
           ))
@@ -1065,6 +1083,65 @@ const UserList = ({ sessionToken }) => {
 const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [activeTab, setActiveTab] = useState('chat');
   const [showSettings, setShowSettings] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [nameError, setNameError] = useState('');
+  const [nameSuccess, setNameSuccess] = useState(false);
+  
+  // Fetch display name on mount
+  useEffect(() => {
+    const fetchDisplayName = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/displayname?wallet=${address}`);
+        const data = await response.json();
+        if (data.displayName) {
+          setDisplayName(data.displayName);
+          setNewDisplayName(data.displayName);
+        }
+      } catch (error) {
+        console.error('Failed to fetch display name:', error);
+      }
+    };
+    fetchDisplayName();
+  }, [address]);
+  
+  // Save display name
+  const saveDisplayName = async () => {
+    if (!newDisplayName.trim()) {
+      setNameError('Display name cannot be empty');
+      return;
+    }
+    
+    setSavingName(true);
+    setNameError('');
+    setNameSuccess(false);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/displayname`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ displayName: newDisplayName.trim() }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setDisplayName(data.displayName);
+        setNameSuccess(true);
+        setTimeout(() => setNameSuccess(false), 3000);
+      } else {
+        setNameError(data.error || 'Failed to save display name');
+      }
+    } catch (error) {
+      setNameError('Failed to save display name');
+    } finally {
+      setSavingName(false);
+    }
+  };
   
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
@@ -1167,6 +1244,38 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
             </div>
             
             <div className="space-y-4">
+              {/* Display Name */}
+              <div className="p-4 bg-white/5 rounded-xl">
+                <div className="flex items-center gap-3 mb-3">
+                  <Icons.User />
+                  <span className="font-medium">Display Name</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newDisplayName}
+                    onChange={(e) => setNewDisplayName(e.target.value)}
+                    placeholder="Enter display name..."
+                    maxLength={20}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+                  />
+                  <Button 
+                    size="sm" 
+                    onClick={saveDisplayName}
+                    disabled={savingName || newDisplayName === displayName}
+                  >
+                    {savingName ? <Spinner size="sm" /> : 'Save'}
+                  </Button>
+                </div>
+                {nameError && (
+                  <p className="text-red-400 text-xs mt-2">{nameError}</p>
+                )}
+                {nameSuccess && (
+                  <p className="text-emerald-400 text-xs mt-2">Display name saved!</p>
+                )}
+                <p className="text-white/30 text-xs mt-2">Max 20 characters. Letters, numbers, spaces, underscores, dashes only.</p>
+              </div>
+              
               <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
                 <div className="flex items-center gap-3">
                   <Icons.Mic />
