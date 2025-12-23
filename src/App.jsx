@@ -1196,15 +1196,19 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                   <p className="text-white/80 text-sm mt-1 leading-relaxed">{msg.content || msg.message}</p>
                   
                   {/* Reply Button & Thread Info */}
-                  <div className="flex items-center gap-3 mt-2">
-                    <button
-                      onClick={() => setOpenThread(msg)}
-                      className="text-xs text-white/30 hover:text-amber-400 transition-colors flex items-center gap-1"
-                    >
-                      <Icons.Reply />
-                      Reply
-                    </button>
+                  <div className="flex items-center gap-3 mt-2 h-5">
+                    {/* Reply button - only shows on hover when no replies */}
+                    {msg.replyCount === 0 && (
+                      <button
+                        onClick={() => setOpenThread(msg)}
+                        className="text-xs text-white/30 hover:text-amber-400 transition-all duration-200 flex items-center gap-1 opacity-0 group-hover:opacity-100"
+                      >
+                        <Icons.Reply />
+                        Reply
+                      </button>
+                    )}
                     
+                    {/* Reply count - always visible when there are replies */}
                     {msg.replyCount > 0 && (
                       <button
                         onClick={() => setOpenThread(msg)}
