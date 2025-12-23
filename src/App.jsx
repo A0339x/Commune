@@ -1002,12 +1002,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   };
   
   // Load messages from API
-  const pendingMessageRef = useRef(false);
-  
   const loadMessages = async () => {
-    // Skip loading if we have a pending message (avoid flicker)
-    if (pendingMessageRef.current) return;
-    
     try {
       const response = await fetch(`${API_URL}/api/messages`, {
         headers: {
@@ -1016,7 +1011,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       });
       const data = await response.json();
       if (data.messages) {
-        setMessages(data.messages.map(msg => ({
+        const serverMessages = data.messages.map(msg => ({
           ...msg,
           user: truncateAddress(msg.wallet),
           avatar: '🛡️',
@@ -1027,7 +1022,23 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             avatar: '🛡️',
             timestamp: new Date(r.timestamp),
           })),
-        })));
+        }));
+        
+        // Keep any temp messages that aren't on server yet
+        setMessages(prev => {
+          const serverIds = new Set(serverMessages.map(m => m.id));
+          const tempMessages = prev.filter(m => m.id.startsWith('temp-') && !serverIds.has(m.id));
+          
+          // Also check if temp message content matches any server message
+          const serverContents = new Set(serverMessages.map(m => m.content + m.wallet));
+          const stillPendingTemps = tempMessages.filter(m => 
+            !serverContents.has(m.content + m.wallet)
+          );
+          
+          return [...serverMessages, ...stillPendingTemps].sort((a, b) => 
+            new Date(a.timestamp) - new Date(b.timestamp)
+          );
+        });
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -1062,14 +1073,13 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     // Optimistically add message immediately
     if (!replyTo) {
       setMessages(prev => [...prev, tempMessage]);
-      pendingMessageRef.current = true;
       setTimeout(() => scrollToBottom(), 100);
     }
     setNewMessage('');
     
     setSending(true);
     try {
-      const response = await fetch(`${API_URL}/api/messages`, {
+      await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1077,36 +1087,14 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         },
         body: JSON.stringify({ content: messageContent, replyTo }),
       });
-      
-      const data = await response.json();
-      
-      if (data.success && data.message) {
-        // Replace temp message with real one
-        if (!replyTo) {
-          setMessages(prev => prev.map(m => 
-            m.id === tempId 
-              ? {
-                  ...data.message,
-                  user: truncateAddress(data.message.wallet),
-                  avatar: '🛡️',
-                  timestamp: new Date(data.message.timestamp),
-                  replyCount: 0,
-                  recentReplies: [],
-                }
-              : m
-          ));
-        }
-      }
+      // Don't need to do anything on success - loadMessages will pick it up
+      // and the merge logic will remove the temp message when server has it
     } catch (error) {
       console.error('Failed to send message:', error);
       // Remove the temp message on error
       setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setSending(false);
-      // Allow polling again after a delay to let server index the message
-      setTimeout(() => {
-        pendingMessageRef.current = false;
-      }, 2000);
     }
   };
   
