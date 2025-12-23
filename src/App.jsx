@@ -1177,8 +1177,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             <div 
               key={msg.id} 
               className="group"
-              onMouseEnter={(e) => handleMouseEnter(msg, e)}
-              onMouseLeave={handleMouseLeave}
             >
               {/* Main Message */}
               <div className="flex gap-3">
@@ -1229,6 +1227,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                   
                   <button
                     onClick={() => setOpenThread(msg)}
+                    onMouseEnter={(e) => handleMouseEnter(msg, e)}
+                    onMouseLeave={handleMouseLeave}
                     className="text-xs text-amber-400 hover:text-amber-300 transition-colors ml-8"
                   >
                     View all {msg.replyCount} {msg.replyCount === 1 ? 'reply' : 'replies'} →
