@@ -450,7 +450,7 @@ const LandingPage = () => {
                   <span className="text-emerald-400 font-medium">🔒 Safe & Secure:</span> We never ask for your private keys or seed phrase. 
                   The signature request is free and doesn't move any funds. All code is open source and available on{' '}
                   <a 
-                    href="https://github.com/user/commune-guard-community" 
+                    href="https://github.com/A0339x/Commune" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-amber-400 hover:text-amber-300 underline underline-offset-2"
