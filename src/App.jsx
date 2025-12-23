@@ -992,8 +992,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [openThread, setOpenThread] = useState(null);
   const [hoverThread, setHoverThread] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ top: 100 });
+  const [connected, setConnected] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState([]);
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
@@ -1001,25 +1005,114 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
-  // Load messages from API
-  const lastFetchedTimestamp = useRef(0);
+  // WebSocket URL
+  const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
   
-  const loadMessages = async (fullRefresh = false) => {
-    try {
-      // Build URL with optional "after" parameter for incremental fetch
-      let url = `${API_URL}/api/messages`;
-      if (!fullRefresh && lastFetchedTimestamp.current > 0) {
-        url += `?after=${lastFetchedTimestamp.current}`;
+  // Connect to WebSocket
+  const connectWebSocket = () => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    
+    const ws = new WebSocket(`${WS_URL}/api/ws?token=${sessionToken}`);
+    wsRef.current = ws;
+    
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setConnected(true);
+      // Load initial message history
+      loadMessageHistory();
+    };
+    
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        handleWebSocketMessage(data);
+      } catch (error) {
+        console.error('Failed to parse WebSocket message:', error);
       }
-      
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${sessionToken}`,
-        },
+    };
+    
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      setConnected(false);
+      // Reconnect after 3 seconds
+      reconnectTimeoutRef.current = setTimeout(() => {
+        connectWebSocket();
+      }, 3000);
+    };
+    
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+  };
+  
+  // Handle incoming WebSocket messages
+  const handleWebSocketMessage = (data) => {
+    switch (data.type) {
+      case 'new_message':
+        setMessages(prev => {
+          // Remove any temp message with same content from same wallet
+          const filtered = prev.filter(m => 
+            !(m.id?.startsWith('temp-') && 
+              m.content === data.message.content && 
+              m.wallet.toLowerCase() === data.message.wallet.toLowerCase())
+          );
+          return [...filtered, {
+            ...data.message,
+            user: truncateAddress(data.message.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(data.message.timestamp),
+            recentReplies: [],
+          }].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        });
+        break;
+        
+      case 'new_reply':
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === data.parentId) {
+            const newReplies = [...(msg.recentReplies || []), {
+              ...data.reply,
+              user: truncateAddress(data.reply.wallet),
+              avatar: '🛡️',
+              timestamp: new Date(data.reply.timestamp),
+            }].slice(-3);
+            return {
+              ...msg,
+              replyCount: (msg.replyCount || 0) + 1,
+              recentReplies: newReplies,
+            };
+          }
+          return msg;
+        }));
+        break;
+        
+      case 'online_users':
+        setOnlineUsers(data.users || []);
+        setOnlineCount(data.count || 0);
+        break;
+        
+      case 'user_joined':
+        setOnlineCount(data.onlineCount || 0);
+        break;
+        
+      case 'user_left':
+        setOnlineCount(data.onlineCount || 0);
+        break;
+        
+      case 'pong':
+        // Keep-alive response
+        break;
+    }
+  };
+  
+  // Load message history via HTTP (one-time on connect)
+  const loadMessageHistory = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/messages`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
       });
       const data = await response.json();
       if (data.messages) {
-        const serverMessages = data.messages.map(msg => ({
+        setMessages(data.messages.map(msg => ({
           ...msg,
           user: truncateAddress(msg.wallet),
           avatar: '🛡️',
@@ -1030,61 +1123,35 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             avatar: '🛡️',
             timestamp: new Date(r.timestamp),
           })),
-        }));
-        
-        // Update last fetched timestamp
-        if (serverMessages.length > 0) {
-          const maxTimestamp = Math.max(...serverMessages.map(m => 
-            typeof m.timestamp === 'number' ? m.timestamp : new Date(m.timestamp).getTime()
-          ));
-          if (maxTimestamp > lastFetchedTimestamp.current) {
-            lastFetchedTimestamp.current = maxTimestamp;
-          }
-        }
-        
-        // Merge with existing messages
-        setMessages(prev => {
-          // Filter out temp messages that now exist on server (match by content + wallet)
-          const tempMessages = prev.filter(m => m.id && m.id.startsWith('temp-'));
-          const existingReal = prev.filter(m => !m.id || !m.id.startsWith('temp-'));
-          
-          // Check if server has a message with same content from same wallet
-          const stillPendingTemps = tempMessages.filter(tempMsg => {
-            const matchFound = serverMessages.some(serverMsg => 
-              serverMsg.content === tempMsg.content && 
-              serverMsg.wallet.toLowerCase() === tempMsg.wallet.toLowerCase()
-            );
-            return !matchFound; // Keep temp if NO match found on server
-          });
-          
-          // If full refresh, replace all. If incremental, merge new ones.
-          let allMessages;
-          if (fullRefresh || lastFetchedTimestamp.current === 0) {
-            allMessages = [...serverMessages, ...stillPendingTemps];
-          } else {
-            // Merge: keep existing, add new ones (avoid duplicates by id)
-            const existingIds = new Set(existingReal.map(m => m.id));
-            const newMessages = serverMessages.filter(m => !existingIds.has(m.id));
-            allMessages = [...existingReal, ...newMessages, ...stillPendingTemps];
-          }
-          
-          return allMessages.sort((a, b) => 
-            new Date(a.timestamp) - new Date(b.timestamp)
-          );
-        });
+        })));
       }
     } catch (error) {
-      console.error('Failed to load messages:', error);
+      console.error('Failed to load message history:', error);
     } finally {
       setLoading(false);
     }
   };
   
+  // Connect on mount, disconnect on unmount
   useEffect(() => {
-    loadMessages(true); // Full refresh on first load
-    // Poll for new messages every 2 seconds
-    const interval = setInterval(loadMessages, 2000);
-    return () => clearInterval(interval);
+    connectWebSocket();
+    
+    // Keep-alive ping every 30 seconds
+    const pingInterval = setInterval(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+    
+    return () => {
+      clearInterval(pingInterval);
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
   }, [sessionToken]);
   
   const sendMessage = async (replyTo = null) => {
@@ -1110,24 +1177,31 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
     setNewMessage('');
     
-    setSending(true);
-    try {
-      await fetch(`${API_URL}/api/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify({ content: messageContent, replyTo }),
-      });
-      // Don't need to do anything on success - loadMessages will pick it up
-      // and the merge logic will remove the temp message when server has it
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      // Remove the temp message on error
-      setMessages(prev => prev.filter(m => m.id !== tempId));
-    } finally {
-      setSending(false);
+    // Send via WebSocket if connected, otherwise fallback to HTTP
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: replyTo ? 'reply' : 'message',
+        content: messageContent,
+        replyTo,
+      }));
+    } else {
+      // Fallback to HTTP
+      setSending(true);
+      try {
+        await fetch(`${API_URL}/api/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({ content: messageContent, replyTo }),
+        });
+      } catch (error) {
+        console.error('Failed to send message:', error);
+        setMessages(prev => prev.filter(m => m.id !== tempId));
+      } finally {
+        setSending(false);
+      }
     }
   };
   
@@ -1159,28 +1233,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
   };
   
-  // Fetch online user count
+  // Online count is now received via WebSocket
   const [onlineCount, setOnlineCount] = useState(0);
-  
-  const fetchOnlineCount = async () => {
-    try {
-      const response = await fetch(`${API_URL}/api/users`, {
-        headers: { 'Authorization': `Bearer ${sessionToken}` },
-      });
-      const data = await response.json();
-      if (data.count !== undefined) {
-        setOnlineCount(data.count);
-      }
-    } catch (error) {
-      // Silently fail
-    }
-  };
-  
-  useEffect(() => {
-    fetchOnlineCount();
-    const interval = setInterval(fetchOnlineCount, 10000);
-    return () => clearInterval(interval);
-  }, [sessionToken]);
   
   return (
     <div className="flex-1 flex flex-col h-full relative">
@@ -1207,9 +1261,9 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       {/* Chat Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="flex items-center gap-3">
-          <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
+          <div className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`} />
           <h2 className="font-semibold">GUARD Chat</h2>
-          <Badge>{onlineCount} online</Badge>
+          <Badge>{connected ? `${onlineCount} online` : 'Connecting...'}</Badge>
         </div>
       </div>
       
@@ -1296,11 +1350,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       
       {/* Input */}
       <div className={`p-4 border-t border-white/5 transition-all duration-300 ${openThread ? 'blur-sm opacity-50 pointer-events-none' : ''}`}>
-        {/* Slow Mode Notice */}
+        {/* Connection Status */}
         <div className="flex items-center gap-2 mb-3 px-2">
-          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
-          <p className="text-amber-400/70 text-xs">
-            Messages refresh every 2 seconds
+          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+          <p className={`text-xs ${connected ? 'text-emerald-400/70' : 'text-amber-400/70'}`}>
+            {connected ? 'Real-time connection active' : 'Connecting...'}
           </p>
         </div>
         
