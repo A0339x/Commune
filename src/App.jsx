@@ -1331,6 +1331,8 @@ const AuthenticatedApp = () => {
   const { address, isConnected } = useAccount();
   const [isVerified, setIsVerified] = useState(false);
   const [sessionToken, setSessionToken] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const prevAddressRef = useRef(null);
   
   // Read GUARD token balance
   const { data: balance, isLoading: balanceLoading } = useReadContract({
@@ -1364,20 +1366,43 @@ const AuthenticatedApp = () => {
           localStorage.removeItem('commune_session');
         }
       }
+      setCheckingSession(false);
     };
-    checkExistingSession();
+    
+    if (address) {
+      checkExistingSession();
+    } else {
+      setCheckingSession(false);
+    }
   }, [address]);
   
-  // Reset verification when wallet changes
+  // Reset verification only when wallet actually changes (not on first load)
   useEffect(() => {
-    setIsVerified(false);
-    setSessionToken(null);
-    localStorage.removeItem('commune_session');
+    if (prevAddressRef.current && prevAddressRef.current !== address) {
+      // Wallet changed - reset everything
+      setIsVerified(false);
+      setSessionToken(null);
+      localStorage.removeItem('commune_session');
+      setCheckingSession(true);
+    }
+    prevAddressRef.current = address;
   }, [address]);
   
   // Not connected - show landing page
   if (!isConnected) {
     return <LandingPage />;
+  }
+  
+  // Checking for existing session
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
+        <div className="text-center">
+          <Spinner size="lg" />
+          <p className="text-white/50 mt-4">Checking session...</p>
+        </div>
+      </div>
+    );
   }
   
   // Loading balance
