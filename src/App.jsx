@@ -994,6 +994,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [hoverPosition, setHoverPosition] = useState({ top: 100 });
   const [connected, setConnected] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState([]);
+  const [editingMessage, setEditingMessage] = useState(null);
+  const [editContent, setEditContent] = useState('');
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
@@ -1085,6 +1087,32 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         }));
         break;
         
+      case 'message_edited':
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === data.messageId) {
+            return {
+              ...msg,
+              content: data.content,
+              editedAt: data.editedAt,
+            };
+          }
+          return msg;
+        }));
+        break;
+        
+      case 'message_deleted':
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === data.messageId) {
+            return {
+              ...msg,
+              content: 'Message deleted',
+              deleted: true,
+            };
+          }
+          return msg;
+        }));
+        break;
+        
       case 'online_users':
         setOnlineUsers(data.users || []);
         setOnlineCount(data.count || 0);
@@ -1100,6 +1128,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         
       case 'pong':
         // Keep-alive response
+        break;
+        
+      case 'error':
+        console.error('WebSocket error:', data.message);
         break;
     }
   };
@@ -1205,6 +1237,54 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
   };
   
+  // Start editing a message
+  const startEditing = (msg) => {
+    setEditingMessage(msg.id);
+    setEditContent(msg.content);
+  };
+  
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditingMessage(null);
+    setEditContent('');
+  };
+  
+  // Save edited message
+  const saveEdit = () => {
+    if (!editContent.trim() || !editingMessage) return;
+    
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'edit',
+        messageId: editingMessage,
+        content: editContent.trim(),
+      }));
+    }
+    
+    cancelEditing();
+  };
+  
+  // Delete a message
+  const deleteMessage = (messageId) => {
+    if (!confirm('Delete this message?')) return;
+    
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'delete',
+        messageId,
+      }));
+    }
+  };
+  
+  // Check if user can edit/delete (own message, within 15 min)
+  const canModify = (msg) => {
+    if (msg.deleted) return false;
+    if (msg.wallet?.toLowerCase() !== walletAddress?.toLowerCase()) return false;
+    const fifteenMinutes = 15 * 60 * 1000;
+    const msgTime = typeof msg.timestamp === 'number' ? msg.timestamp : new Date(msg.timestamp).getTime();
+    return Date.now() - msgTime < fifteenMinutes;
+  };
+  
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -1297,13 +1377,47 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                       <span className="text-xs text-white/20 font-mono">{msg.user}</span>
                     )}
                     <span className="text-xs text-white/30">{formatTime(msg.timestamp)}</span>
+                    {msg.editedAt && !msg.deleted && (
+                      <span className="text-xs text-white/20">(edited)</span>
+                    )}
                   </div>
-                  <p className="text-white/80 text-sm mt-1 leading-relaxed">{msg.content || msg.message}</p>
                   
-                  {/* Reply Button & Thread Info */}
+                  {/* Message Content - Edit Mode or Display */}
+                  {editingMessage === msg.id ? (
+                    <div className="mt-1">
+                      <input
+                        type="text"
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && saveEdit()}
+                        className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+                        autoFocus
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={saveEdit}
+                          className="text-xs px-3 py-1 bg-amber-500 text-black rounded-lg font-medium"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={cancelEditing}
+                          className="text-xs px-3 py-1 bg-white/10 text-white/70 rounded-lg"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className={`text-sm mt-1 leading-relaxed ${msg.deleted ? 'text-white/40 italic' : 'text-white/80'}`}>
+                      {msg.content || msg.message}
+                    </p>
+                  )}
+                  
+                  {/* Reply Button & Edit/Delete */}
                   <div className="flex items-center gap-3 mt-2 h-5">
                     {/* Reply button - only shows on hover when no replies */}
-                    {msg.replyCount === 0 && (
+                    {msg.replyCount === 0 && !msg.deleted && (
                       <button
                         onClick={() => setOpenThread(msg)}
                         className="text-xs text-white/30 hover:text-amber-400 transition-all duration-200 flex items-center gap-1 opacity-0 group-hover:opacity-100"
@@ -1311,6 +1425,24 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                         <Icons.Reply />
                         Reply
                       </button>
+                    )}
+                    
+                    {/* Edit/Delete buttons - only for own messages within 15 min */}
+                    {canModify(msg) && editingMessage !== msg.id && (
+                      <>
+                        <button
+                          onClick={() => startEditing(msg)}
+                          className="text-xs text-white/30 hover:text-amber-400 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteMessage(msg.id)}
+                          className="text-xs text-white/30 hover:text-red-400 transition-all duration-200 opacity-0 group-hover:opacity-100"
+                        >
+                          Delete
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
