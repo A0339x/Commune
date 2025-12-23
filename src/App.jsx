@@ -1480,7 +1480,7 @@ const UserList = ({ sessionToken }) => {
   };
   
   return (
-    <div className="w-64 border-l border-white/5 p-4 hidden lg:block">
+    <div className="w-64 border-l border-white/5 p-4 hidden lg:block flex-shrink-0 overflow-y-auto">
       <h3 className="text-sm font-semibold text-white/50 mb-4 flex items-center gap-2">
         <Icons.Users />
         GUARD Holders Online
@@ -1585,9 +1585,9 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   };
   
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white flex flex-col">
+    <div className="h-screen bg-[#0a0a0f] text-white flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="border-b border-white/5 px-6 py-4">
+      <header className="border-b border-white/5 px-6 py-4 flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center font-bold text-[#0a0a0f]">
@@ -1622,9 +1622,9 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
       </header>
       
       {/* Main Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar Navigation */}
-        <nav className="w-16 sm:w-20 border-r border-white/5 p-3 flex flex-col items-center gap-2">
+        <nav className="w-16 sm:w-20 border-r border-white/5 p-3 flex flex-col items-center gap-2 flex-shrink-0">
           <button
             onClick={() => setActiveTab('chat')}
             className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
@@ -1661,7 +1661,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
         </nav>
         
         {/* Content Area */}
-        <div className="flex-1 flex">
+        <div className="flex-1 flex min-w-0 overflow-hidden">
           {activeTab === 'chat' && <ChatRoom walletAddress={address} sessionToken={sessionToken} />}
           {activeTab === 'video' && <VideoCall walletAddress={address} />}
         </div>
