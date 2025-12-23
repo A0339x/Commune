@@ -1002,11 +1002,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   };
   
   // Load messages from API
-  const [hasPendingMessage, setHasPendingMessage] = useState(false);
+  const pendingMessageRef = useRef(false);
   
   const loadMessages = async () => {
     // Skip loading if we have a pending message (avoid flicker)
-    if (hasPendingMessage) return;
+    if (pendingMessageRef.current) return;
     
     try {
       const response = await fetch(`${API_URL}/api/messages`, {
@@ -1041,7 +1041,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     // Poll for new messages every 5 seconds
     const interval = setInterval(loadMessages, 5000);
     return () => clearInterval(interval);
-  }, [sessionToken, hasPendingMessage]);
+  }, [sessionToken]);
   
   const sendMessage = async (replyTo = null) => {
     if (!newMessage.trim() || sending) return;
@@ -1062,7 +1062,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     // Optimistically add message immediately
     if (!replyTo) {
       setMessages(prev => [...prev, tempMessage]);
-      setHasPendingMessage(true);
+      pendingMessageRef.current = true;
       setTimeout(() => scrollToBottom(), 100);
     }
     setNewMessage('');
@@ -1103,8 +1103,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       setMessages(prev => prev.filter(m => m.id !== tempId));
     } finally {
       setSending(false);
-      // Allow polling again after a short delay
-      setTimeout(() => setHasPendingMessage(false), 1000);
+      // Allow polling again after a delay to let server index the message
+      setTimeout(() => {
+        pendingMessageRef.current = false;
+      }, 2000);
     }
   };
   
