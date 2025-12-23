@@ -1052,8 +1052,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   useEffect(() => {
     loadMessages();
-    // Poll for new messages every 5 seconds
-    const interval = setInterval(loadMessages, 5000);
+    // Poll for new messages every 2 seconds
+    const interval = setInterval(loadMessages, 2000);
     return () => clearInterval(interval);
   }, [sessionToken]);
   
@@ -1268,9 +1268,9 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       <div className={`p-4 border-t border-white/5 transition-all duration-300 ${openThread ? 'blur-sm opacity-50 pointer-events-none' : ''}`}>
         {/* Slow Mode Notice */}
         <div className="flex items-center gap-2 mb-3 px-2">
-          <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
-          <p className="text-red-400 text-xs">
-            Slow mode enabled — new messages appear every 5 seconds
+          <div className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+          <p className="text-amber-400/70 text-xs">
+            Messages refresh every 2 seconds
           </p>
         </div>
         
