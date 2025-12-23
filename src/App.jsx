@@ -64,6 +64,12 @@ const Icons = {
       <path d="M20 21a8 8 0 0 0-16 0" />
     </svg>
   ),
+  Reply: () => (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 17 4 12 9 7" />
+      <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+    </svg>
+  ),
   Send: () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="m22 2-7 20-4-9-9-4Z" />
@@ -650,6 +656,288 @@ const InsufficientTokensPage = ({ tokenBalance }) => {
 };
 
 // ============================================
+// THREAD PREVIEW COMPONENT (Hover Peek)
+// ============================================
+const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) => {
+  const [threadReplies, setThreadReplies] = useState(replies || []);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const previewRef = useRef(null);
+  
+  // Load full thread
+  useEffect(() => {
+    const loadThread = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/thread?messageId=${message.id}`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        const data = await response.json();
+        if (data.replies) {
+          setThreadReplies(data.replies.map(r => ({
+            ...r,
+            user: truncateAddress(r.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(r.timestamp),
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to load thread:', error);
+      }
+    };
+    loadThread();
+  }, [message.id, sessionToken]);
+  
+  const sendReply = async () => {
+    if (!replyText.trim() || sending) return;
+    setSending(true);
+    try {
+      const response = await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ content: replyText, replyTo: message.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setThreadReplies(prev => [...prev, {
+          ...data.message,
+          user: truncateAddress(data.message.wallet),
+          avatar: '🛡️',
+          timestamp: new Date(data.message.timestamp),
+        }]);
+        setReplyText('');
+      }
+    } catch (error) {
+      console.error('Failed to send reply:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+  
+  return (
+    <div
+      ref={previewRef}
+      className="fixed z-50 w-80 max-h-96 bg-[#1a1a25] border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
+      style={{ top: position.top, right: 24 }}
+      onMouseLeave={onClose}
+    >
+      {/* Header */}
+      <div className="p-3 border-b border-white/5 bg-white/5">
+        <div className="flex items-center gap-2">
+          <Avatar emoji={message.avatar || '🛡️'} size="sm" />
+          <div>
+            <p className="text-sm font-medium">{message.displayName || message.user}</p>
+            <p className="text-xs text-white/40 line-clamp-1">{message.content}</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Replies */}
+      <div className="max-h-56 overflow-y-auto p-3 space-y-3">
+        {threadReplies.length === 0 ? (
+          <p className="text-white/30 text-sm text-center py-4">No replies yet</p>
+        ) : (
+          threadReplies.map((reply) => (
+            <div key={reply.id} className="flex gap-2">
+              <Avatar emoji={reply.avatar || '🛡️'} size="xs" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-xs font-medium">{reply.displayName || reply.user}</span>
+                  <span className="text-xs text-white/20">{formatTime(reply.timestamp)}</span>
+                </div>
+                <p className="text-white/70 text-sm">{reply.content}</p>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+      
+      {/* Reply Input */}
+      <div className="p-3 border-t border-white/5">
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && sendReply()}
+            placeholder="Reply..."
+            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+          />
+          <button
+            onClick={sendReply}
+            disabled={!replyText.trim() || sending}
+            className="px-3 py-2 bg-amber-500 rounded-lg text-black text-sm font-medium disabled:opacity-50"
+          >
+            {sending ? '...' : '↩'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
+// THREAD MODAL (Full Thread View)
+// ============================================
+const ThreadModal = ({ message, sessionToken, onClose }) => {
+  const [threadReplies, setThreadReplies] = useState([]);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const repliesEndRef = useRef(null);
+  
+  // Load full thread
+  useEffect(() => {
+    const loadThread = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/thread?messageId=${message.id}`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        const data = await response.json();
+        if (data.replies) {
+          setThreadReplies(data.replies.map(r => ({
+            ...r,
+            user: truncateAddress(r.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(r.timestamp),
+          })));
+        }
+      } catch (error) {
+        console.error('Failed to load thread:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadThread();
+    
+    // Poll for new replies
+    const interval = setInterval(loadThread, 5000);
+    return () => clearInterval(interval);
+  }, [message.id, sessionToken]);
+  
+  useEffect(() => {
+    repliesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [threadReplies]);
+  
+  const sendReply = async () => {
+    if (!replyText.trim() || sending) return;
+    setSending(true);
+    try {
+      const response = await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ content: replyText, replyTo: message.id }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setThreadReplies(prev => [...prev, {
+          ...data.message,
+          user: truncateAddress(data.message.wallet),
+          avatar: '🛡️',
+          timestamp: new Date(data.message.timestamp),
+        }]);
+        setReplyText('');
+      }
+    } catch (error) {
+      console.error('Failed to send reply:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+  
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop - blurred chat visible behind */}
+      <div 
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      
+      {/* Thread Panel */}
+      <div className="relative z-10 w-full max-w-lg bg-[#12121a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
+        {/* Header */}
+        <div className="p-4 border-b border-white/5 flex items-center justify-between">
+          <h3 className="font-semibold">Thread</h3>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+          >
+            <Icons.X />
+          </button>
+        </div>
+        
+        {/* Original Message */}
+        <div className="p-4 bg-white/5 border-b border-white/5">
+          <div className="flex gap-3">
+            <Avatar emoji={message.avatar || '🛡️'} size="md" />
+            <div className="flex-1">
+              <div className="flex items-baseline gap-2">
+                <span className="font-medium">{message.displayName || message.user}</span>
+                {message.displayName && (
+                  <span className="text-xs text-white/20 font-mono">{message.user}</span>
+                )}
+                <span className="text-xs text-white/30">{formatTime(message.timestamp)}</span>
+              </div>
+              <p className="text-white/80 mt-1">{message.content}</p>
+            </div>
+          </div>
+        </div>
+        
+        {/* Replies */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Spinner />
+            </div>
+          ) : threadReplies.length === 0 ? (
+            <p className="text-white/30 text-sm text-center py-8">No replies yet. Be the first!</p>
+          ) : (
+            threadReplies.map((reply) => (
+              <div key={reply.id} className="flex gap-3">
+                <Avatar emoji={reply.avatar || '🛡️'} size="sm" />
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-medium">{reply.displayName || reply.user}</span>
+                    {reply.displayName && (
+                      <span className="text-xs text-white/20 font-mono">{reply.user}</span>
+                    )}
+                    <span className="text-xs text-white/30">{formatTime(reply.timestamp)}</span>
+                  </div>
+                  <p className="text-white/70 text-sm mt-1">{reply.content}</p>
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={repliesEndRef} />
+        </div>
+        
+        {/* Reply Input */}
+        <div className="p-4 border-t border-white/5">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendReply()}
+              placeholder="Reply to thread..."
+              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400/50"
+            />
+            <Button onClick={sendReply} disabled={!replyText.trim() || sending}>
+              {sending ? <Spinner size="sm" /> : <Icons.Send />}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================
 // CHAT COMPONENT
 // ============================================
 const ChatRoom = ({ walletAddress, sessionToken }) => {
@@ -658,7 +946,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [showEmojis, setShowEmojis] = useState(false);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [openThread, setOpenThread] = useState(null);
+  const [hoverThread, setHoverThread] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState({ top: 100 });
   const messagesEndRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
@@ -681,6 +973,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           user: truncateAddress(msg.wallet),
           avatar: '🛡️',
           timestamp: new Date(msg.timestamp),
+          recentReplies: (msg.recentReplies || []).map(r => ({
+            ...r,
+            user: truncateAddress(r.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(r.timestamp),
+          })),
         })));
       }
     } catch (error) {
@@ -701,7 +999,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     scrollToBottom();
   }, [messages]);
   
-  const sendMessage = async () => {
+  const sendMessage = async (replyTo = null) => {
     if (!newMessage.trim() || sending) return;
     
     setSending(true);
@@ -712,18 +1010,22 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${sessionToken}`,
         },
-        body: JSON.stringify({ content: newMessage }),
+        body: JSON.stringify({ content: newMessage, replyTo }),
       });
       
       const data = await response.json();
       
       if (data.success && data.message) {
-        setMessages(prev => [...prev, {
-          ...data.message,
-          user: truncateAddress(data.message.wallet),
-          avatar: '🛡️',
-          timestamp: new Date(data.message.timestamp),
-        }]);
+        if (!replyTo) {
+          setMessages(prev => [...prev, {
+            ...data.message,
+            user: truncateAddress(data.message.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(data.message.timestamp),
+            replyCount: 0,
+            recentReplies: [],
+          }]);
+        }
         setNewMessage('');
       }
     } catch (error) {
@@ -737,6 +1039,24 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
+    }
+  };
+  
+  // Handle hover for thread preview
+  const handleMouseEnter = (msg, event) => {
+    if (msg.replyCount > 0) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setHoverPosition({ top: Math.max(100, rect.top) });
+      
+      hoverTimeoutRef.current = setTimeout(() => {
+        setHoverThread(msg);
+      }, 500); // 500ms delay before showing preview
+    }
+  };
+  
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
     }
   };
   
@@ -764,7 +1084,27 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   }, [sessionToken]);
   
   return (
-    <div className="flex-1 flex flex-col h-full">
+    <div className="flex-1 flex flex-col h-full relative">
+      {/* Thread Modal */}
+      {openThread && (
+        <ThreadModal
+          message={openThread}
+          sessionToken={sessionToken}
+          onClose={() => setOpenThread(null)}
+        />
+      )}
+      
+      {/* Thread Preview on Hover */}
+      {hoverThread && !openThread && (
+        <ThreadPreview
+          message={hoverThread}
+          replies={hoverThread.recentReplies}
+          sessionToken={sessionToken}
+          onClose={() => setHoverThread(null)}
+          position={hoverPosition}
+        />
+      )}
+      
       {/* Chat Header */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
         <div className="flex items-center gap-3">
@@ -775,7 +1115,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       </div>
       
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className={`flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300 ${openThread ? 'blur-sm opacity-50' : ''}`}>
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Spinner />
@@ -788,20 +1128,75 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           </div>
         ) : (
           messages.map((msg) => (
-            <div key={msg.id} className="flex gap-3 group">
-              <Avatar emoji={msg.avatar} size="sm" />
-              <div className="flex-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="font-medium text-sm">
-                    {msg.displayName || msg.user}
-                  </span>
-                  {msg.displayName && (
-                    <span className="text-xs text-white/20 font-mono">{msg.user}</span>
-                  )}
-                  <span className="text-xs text-white/30">{formatTime(msg.timestamp)}</span>
+            <div 
+              key={msg.id} 
+              className="group"
+              onMouseEnter={(e) => handleMouseEnter(msg, e)}
+              onMouseLeave={handleMouseLeave}
+            >
+              {/* Main Message */}
+              <div className="flex gap-3">
+                <Avatar emoji={msg.avatar} size="sm" />
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-medium text-sm">
+                      {msg.displayName || msg.user}
+                    </span>
+                    {msg.displayName && (
+                      <span className="text-xs text-white/20 font-mono">{msg.user}</span>
+                    )}
+                    <span className="text-xs text-white/30">{formatTime(msg.timestamp)}</span>
+                  </div>
+                  <p className="text-white/80 text-sm mt-1 leading-relaxed">{msg.content || msg.message}</p>
+                  
+                  {/* Reply Button & Thread Info */}
+                  <div className="flex items-center gap-3 mt-2">
+                    <button
+                      onClick={() => setOpenThread(msg)}
+                      className="text-xs text-white/30 hover:text-amber-400 transition-colors flex items-center gap-1"
+                    >
+                      <Icons.Reply />
+                      Reply
+                    </button>
+                    
+                    {msg.replyCount > 0 && (
+                      <button
+                        onClick={() => setOpenThread(msg)}
+                        className="text-xs text-amber-400 hover:text-amber-300 transition-colors flex items-center gap-1"
+                      >
+                        💬 {msg.replyCount} {msg.replyCount === 1 ? 'reply' : 'replies'}
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <p className="text-white/80 text-sm mt-1 leading-relaxed">{msg.content || msg.message}</p>
               </div>
+              
+              {/* Recent Replies Preview (max 3) */}
+              {msg.recentReplies && msg.recentReplies.length > 0 && (
+                <div className="ml-10 mt-2 pl-4 border-l-2 border-white/10 space-y-2">
+                  {msg.recentReplies.slice(-3).map((reply) => (
+                    <div key={reply.id} className="flex gap-2 items-start">
+                      <Avatar emoji={reply.avatar || '🛡️'} size="xs" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-xs font-medium">{reply.displayName || reply.user}</span>
+                          <span className="text-xs text-white/20">{formatTime(reply.timestamp)}</span>
+                        </div>
+                        <p className="text-white/60 text-xs line-clamp-2">{reply.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {msg.replyCount > 3 && (
+                    <button
+                      onClick={() => setOpenThread(msg)}
+                      className="text-xs text-amber-400 hover:text-amber-300 transition-colors ml-8"
+                    >
+                      View all {msg.replyCount} replies →
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
           ))
         )}
@@ -809,7 +1204,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       </div>
       
       {/* Input */}
-      <div className="p-4 border-t border-white/5">
+      <div className={`p-4 border-t border-white/5 transition-all duration-300 ${openThread ? 'blur-sm opacity-50 pointer-events-none' : ''}`}>
         {/* Slow Mode Notice */}
         <div className="flex items-center gap-2 mb-3 px-2">
           <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
