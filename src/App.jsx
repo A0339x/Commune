@@ -1058,10 +1058,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   // Handle hover for thread preview
   const handleMouseEnter = (msg, event) => {
     if (msg.replyCount > 0) {
-      const rect = event.currentTarget.getBoundingClientRect();
+      // Use mouse position directly
       setHoverPosition({ 
-        top: rect.top,
-        left: rect.right, // Position to the right of the message
+        top: event.clientY,
+        left: event.clientX,
       });
       
       hoverTimeoutRef.current = setTimeout(() => {
