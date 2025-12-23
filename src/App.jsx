@@ -810,6 +810,14 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       
       {/* Input */}
       <div className="p-4 border-t border-white/5">
+        {/* Slow Mode Notice */}
+        <div className="flex items-center gap-2 mb-3 px-2">
+          <div className="w-2 h-2 bg-red-400 rounded-full animate-pulse" />
+          <p className="text-red-400 text-xs">
+            Slow mode enabled — new messages appear every 5 seconds
+          </p>
+        </div>
+        
         <div className="relative">
           <div className="flex items-center gap-2 bg-white/5 rounded-2xl border border-white/10 px-4 py-3 focus-within:border-amber-400/50 transition-colors">
             <button 
