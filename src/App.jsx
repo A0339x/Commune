@@ -1026,14 +1026,17 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         
         // Keep any temp messages that aren't on server yet
         setMessages(prev => {
-          const serverIds = new Set(serverMessages.map(m => m.id));
-          const tempMessages = prev.filter(m => m.id.startsWith('temp-') && !serverIds.has(m.id));
+          // Filter out temp messages that now exist on server (match by content + wallet)
+          const tempMessages = prev.filter(m => m.id.startsWith('temp-'));
           
-          // Also check if temp message content matches any server message
-          const serverContents = new Set(serverMessages.map(m => m.content + m.wallet));
-          const stillPendingTemps = tempMessages.filter(m => 
-            !serverContents.has(m.content + m.wallet)
-          );
+          // Check if server has a message with same content from same wallet
+          const stillPendingTemps = tempMessages.filter(tempMsg => {
+            const matchFound = serverMessages.some(serverMsg => 
+              serverMsg.content === tempMsg.content && 
+              serverMsg.wallet.toLowerCase() === tempMsg.wallet.toLowerCase()
+            );
+            return !matchFound; // Keep temp if NO match found on server
+          });
           
           return [...serverMessages, ...stillPendingTemps].sort((a, b) => 
             new Date(a.timestamp) - new Date(b.timestamp)
