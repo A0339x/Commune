@@ -12,6 +12,7 @@ import {
   TOKEN_CONFIG, 
   ERC20_ABI, 
   SIGN_MESSAGE_CONFIG,
+  API_URL,
   truncateAddress,
   formatTokenBalance,
   hasRequiredTokens,
@@ -499,7 +500,7 @@ const LandingPage = () => {
 // ============================================
 // SIGN MESSAGE VERIFICATION PAGE
 // ============================================
-const SignMessagePage = ({ onSuccess, tokenBalance }) => {
+const SignMessagePage = ({ onSuccess, tokenBalance, walletAddress }) => {
   const [nonce] = useState(generateNonce());
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState(null);
@@ -514,10 +515,23 @@ const SignMessagePage = ({ onSuccess, tokenBalance }) => {
       const message = SIGN_MESSAGE_CONFIG.getMessage(nonce);
       const signature = await signMessageAsync({ message });
       
-      // In production, you'd verify this signature on a backend
-      // For now, we just check that signing succeeded
-      if (signature) {
-        onSuccess(signature);
+      // Verify signature with the API and get session token
+      const response = await fetch(`${API_URL}/api/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          wallet: walletAddress,
+          signature,
+          message,
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.verified && data.token) {
+        onSuccess(data.token);
+      } else {
+        setError(data.message || 'Verification failed. Please try again.');
       }
     } catch (err) {
       console.error('Signing error:', err);
@@ -632,10 +646,12 @@ const InsufficientTokensPage = ({ tokenBalance }) => {
 // ============================================
 // CHAT COMPONENT
 // ============================================
-const ChatRoom = ({ walletAddress }) => {
-  const [messages, setMessages] = useState(MOCK_MESSAGES);
+const ChatRoom = ({ walletAddress, sessionToken }) => {
+  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
@@ -644,23 +660,71 @@ const ChatRoom = ({ walletAddress }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
   
+  // Load messages from API
+  const loadMessages = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/messages`, {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+      });
+      const data = await response.json();
+      if (data.messages) {
+        setMessages(data.messages.map(msg => ({
+          ...msg,
+          user: truncateAddress(msg.wallet),
+          avatar: '🛡️',
+          timestamp: new Date(msg.timestamp),
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
+    loadMessages();
+    // Poll for new messages every 5 seconds
+    const interval = setInterval(loadMessages, 5000);
+    return () => clearInterval(interval);
+  }, [sessionToken]);
+  
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
   
-  const sendMessage = () => {
-    if (!newMessage.trim()) return;
+  const sendMessage = async () => {
+    if (!newMessage.trim() || sending) return;
     
-    const message = {
-      id: Date.now(),
-      user: truncateAddress(walletAddress),
-      avatar: '🛡️',
-      message: newMessage,
-      timestamp: new Date(),
-    };
-    
-    setMessages(prev => [...prev, message]);
-    setNewMessage('');
+    setSending(true);
+    try {
+      const response = await fetch(`${API_URL}/api/messages`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ content: newMessage }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.message) {
+        setMessages(prev => [...prev, {
+          ...data.message,
+          user: truncateAddress(data.message.wallet),
+          avatar: '🛡️',
+          timestamp: new Date(data.message.timestamp),
+        }]);
+        setNewMessage('');
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    } finally {
+      setSending(false);
+    }
   };
   
   const handleKeyPress = (e) => {
@@ -683,18 +747,30 @@ const ChatRoom = ({ walletAddress }) => {
       
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {messages.map((msg) => (
-          <div key={msg.id} className="flex gap-3 group">
-            <Avatar emoji={msg.avatar} size="sm" />
-            <div className="flex-1">
-              <div className="flex items-baseline gap-2">
-                <span className="font-medium text-sm">{msg.user}</span>
-                <span className="text-xs text-white/30">{formatTime(msg.timestamp)}</span>
-              </div>
-              <p className="text-white/80 text-sm mt-1 leading-relaxed">{msg.message}</p>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <Spinner />
+            <span className="ml-2 text-white/50">Loading messages...</span>
           </div>
-        ))}
+        ) : messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-white/40">
+            <Icons.Chat />
+            <p className="mt-2">No messages yet. Be the first to say hello!</p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div key={msg.id} className="flex gap-3 group">
+              <Avatar emoji={msg.avatar} size="sm" />
+              <div className="flex-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-medium text-sm">{msg.user}</span>
+                  <span className="text-xs text-white/30">{formatTime(msg.timestamp)}</span>
+                </div>
+                <p className="text-white/80 text-sm mt-1 leading-relaxed">{msg.content || msg.message}</p>
+              </div>
+            </div>
+          ))
+        )}
         <div ref={messagesEndRef} />
       </div>
       
@@ -892,7 +968,7 @@ const UserList = () => {
 // ============================================
 // COMMUNITY DASHBOARD
 // ============================================
-const CommunityDashboard = ({ address, tokenBalance }) => {
+const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [activeTab, setActiveTab] = useState('chat');
   const [showSettings, setShowSettings] = useState(false);
   
@@ -974,7 +1050,7 @@ const CommunityDashboard = ({ address, tokenBalance }) => {
         
         {/* Content Area */}
         <div className="flex-1 flex">
-          {activeTab === 'chat' && <ChatRoom walletAddress={address} />}
+          {activeTab === 'chat' && <ChatRoom walletAddress={address} sessionToken={sessionToken} />}
           {activeTab === 'video' && <VideoCall walletAddress={address} />}
         </div>
         
@@ -1051,7 +1127,7 @@ const CommunityDashboard = ({ address, tokenBalance }) => {
 const AuthenticatedApp = () => {
   const { address, isConnected } = useAccount();
   const [isVerified, setIsVerified] = useState(false);
-  const [signature, setSignature] = useState(null);
+  const [sessionToken, setSessionToken] = useState(null);
   
   // Read GUARD token balance
   const { data: balance, isLoading: balanceLoading } = useReadContract({
@@ -1065,10 +1141,35 @@ const AuthenticatedApp = () => {
   const formattedBalance = formatTokenBalance(balance, TOKEN_CONFIG.decimals);
   const hasEnoughTokens = hasRequiredTokens(balance, TOKEN_CONFIG.decimals);
   
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      const storedToken = localStorage.getItem('commune_session');
+      if (storedToken && address) {
+        try {
+          const response = await fetch(`${API_URL}/api/session`, {
+            headers: { 'Authorization': `Bearer ${storedToken}` },
+          });
+          const data = await response.json();
+          if (data.valid && data.wallet?.toLowerCase() === address.toLowerCase()) {
+            setSessionToken(storedToken);
+            setIsVerified(true);
+          } else {
+            localStorage.removeItem('commune_session');
+          }
+        } catch (error) {
+          localStorage.removeItem('commune_session');
+        }
+      }
+    };
+    checkExistingSession();
+  }, [address]);
+  
   // Reset verification when wallet changes
   useEffect(() => {
     setIsVerified(false);
-    setSignature(null);
+    setSessionToken(null);
+    localStorage.removeItem('commune_session');
   }, [address]);
   
   // Not connected - show landing page
@@ -1098,8 +1199,10 @@ const AuthenticatedApp = () => {
     return (
       <SignMessagePage 
         tokenBalance={formattedBalance}
-        onSuccess={(sig) => {
-          setSignature(sig);
+        walletAddress={address}
+        onSuccess={(token) => {
+          setSessionToken(token);
+          localStorage.setItem('commune_session', token);
           setIsVerified(true);
         }}
       />
@@ -1107,7 +1210,7 @@ const AuthenticatedApp = () => {
   }
   
   // Fully authenticated - show dashboard
-  return <CommunityDashboard address={address} tokenBalance={formattedBalance} />;
+  return <CommunityDashboard address={address} tokenBalance={formattedBalance} sessionToken={sessionToken} />;
 };
 
 // ============================================

@@ -3,6 +3,12 @@ import { bsc } from 'wagmi/chains';
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 
 // ============================================
+// API CONFIGURATION
+// ============================================
+
+export const API_URL = 'https://commune-api.gregoryesman.workers.dev';
+
+// ============================================
 // CONFIGURATION
 // ============================================
 
