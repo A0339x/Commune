@@ -734,6 +734,29 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
   };
   
+  // Fetch online user count
+  const [onlineCount, setOnlineCount] = useState(0);
+  
+  const fetchOnlineCount = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/users`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      const data = await response.json();
+      if (data.count !== undefined) {
+        setOnlineCount(data.count);
+      }
+    } catch (error) {
+      // Silently fail
+    }
+  };
+  
+  useEffect(() => {
+    fetchOnlineCount();
+    const interval = setInterval(fetchOnlineCount, 10000);
+    return () => clearInterval(interval);
+  }, [sessionToken]);
+  
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Chat Header */}
@@ -741,7 +764,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         <div className="flex items-center gap-3">
           <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse" />
           <h2 className="font-semibold">GUARD Chat</h2>
-          <Badge>{MOCK_USERS.length} online</Badge>
+          <Badge>{onlineCount} online</Badge>
         </div>
       </div>
       
@@ -943,23 +966,94 @@ const VideoCall = ({ walletAddress }) => {
 // ============================================
 // USER LIST SIDEBAR
 // ============================================
-const UserList = () => {
+const UserList = ({ sessionToken }) => {
+  const [onlineUsers, setOnlineUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Fetch online users
+  const fetchOnlineUsers = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/users`, {
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+      });
+      const data = await response.json();
+      if (data.users) {
+        setOnlineUsers(data.users);
+      }
+    } catch (error) {
+      console.error('Failed to fetch online users:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Update presence (tell server we're online)
+  const updatePresence = async () => {
+    try {
+      await fetch(`${API_URL}/api/presence`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+      });
+    } catch (error) {
+      console.error('Failed to update presence:', error);
+    }
+  };
+  
+  useEffect(() => {
+    // Initial fetch
+    fetchOnlineUsers();
+    updatePresence();
+    
+    // Refresh online users every 10 seconds
+    const usersInterval = setInterval(fetchOnlineUsers, 10000);
+    
+    // Update our presence every 30 seconds
+    const presenceInterval = setInterval(updatePresence, 30000);
+    
+    return () => {
+      clearInterval(usersInterval);
+      clearInterval(presenceInterval);
+    };
+  }, [sessionToken]);
+  
+  // Generate avatar emoji based on wallet address
+  const getAvatarEmoji = (wallet) => {
+    const emojis = ['🛡️', '⚔️', '🏰', '👑', '💎', '🔥', '⭐', '🌟', '🎯', '🚀'];
+    const index = parseInt(wallet.slice(-2), 16) % emojis.length;
+    return emojis[index];
+  };
+  
   return (
     <div className="w-64 border-l border-white/5 p-4 hidden lg:block">
       <h3 className="text-sm font-semibold text-white/50 mb-4 flex items-center gap-2">
         <Icons.Users />
         GUARD Holders Online
+        <span className="ml-auto bg-emerald-500/20 text-emerald-400 text-xs px-2 py-0.5 rounded-full">
+          {onlineUsers.length}
+        </span>
       </h3>
       <div className="space-y-2">
-        {MOCK_USERS.map((user) => (
-          <div key={user.address} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
-            <Avatar emoji={user.avatar} size="sm" status={user.status} />
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{user.name}</p>
-              <p className="text-xs text-white/40 capitalize">{user.status}</p>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-4">
+            <Spinner size="sm" />
           </div>
-        ))}
+        ) : onlineUsers.length === 0 ? (
+          <p className="text-white/30 text-sm text-center py-4">No users online</p>
+        ) : (
+          onlineUsers.map((user) => (
+            <div key={user.wallet} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
+              <Avatar emoji={getAvatarEmoji(user.wallet)} size="sm" status="online" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate font-mono">{truncateAddress(user.wallet)}</p>
+                <p className="text-xs text-emerald-400">online</p>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
@@ -1055,7 +1149,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
         </div>
         
         {/* User List */}
-        {activeTab === 'chat' && <UserList />}
+        {activeTab === 'chat' && <UserList sessionToken={sessionToken} />}
       </div>
       
       {/* Settings Modal */}
