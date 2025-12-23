@@ -1002,9 +1002,17 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   };
   
   // Load messages from API
-  const loadMessages = async () => {
+  const lastFetchedTimestamp = useRef(0);
+  
+  const loadMessages = async (fullRefresh = false) => {
     try {
-      const response = await fetch(`${API_URL}/api/messages`, {
+      // Build URL with optional "after" parameter for incremental fetch
+      let url = `${API_URL}/api/messages`;
+      if (!fullRefresh && lastFetchedTimestamp.current > 0) {
+        url += `?after=${lastFetchedTimestamp.current}`;
+      }
+      
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${sessionToken}`,
         },
@@ -1024,10 +1032,21 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           })),
         }));
         
-        // Keep any temp messages that aren't on server yet
+        // Update last fetched timestamp
+        if (serverMessages.length > 0) {
+          const maxTimestamp = Math.max(...serverMessages.map(m => 
+            typeof m.timestamp === 'number' ? m.timestamp : new Date(m.timestamp).getTime()
+          ));
+          if (maxTimestamp > lastFetchedTimestamp.current) {
+            lastFetchedTimestamp.current = maxTimestamp;
+          }
+        }
+        
+        // Merge with existing messages
         setMessages(prev => {
           // Filter out temp messages that now exist on server (match by content + wallet)
-          const tempMessages = prev.filter(m => m.id.startsWith('temp-'));
+          const tempMessages = prev.filter(m => m.id && m.id.startsWith('temp-'));
+          const existingReal = prev.filter(m => !m.id || !m.id.startsWith('temp-'));
           
           // Check if server has a message with same content from same wallet
           const stillPendingTemps = tempMessages.filter(tempMsg => {
@@ -1038,7 +1057,18 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             return !matchFound; // Keep temp if NO match found on server
           });
           
-          return [...serverMessages, ...stillPendingTemps].sort((a, b) => 
+          // If full refresh, replace all. If incremental, merge new ones.
+          let allMessages;
+          if (fullRefresh || lastFetchedTimestamp.current === 0) {
+            allMessages = [...serverMessages, ...stillPendingTemps];
+          } else {
+            // Merge: keep existing, add new ones (avoid duplicates by id)
+            const existingIds = new Set(existingReal.map(m => m.id));
+            const newMessages = serverMessages.filter(m => !existingIds.has(m.id));
+            allMessages = [...existingReal, ...newMessages, ...stillPendingTemps];
+          }
+          
+          return allMessages.sort((a, b) => 
             new Date(a.timestamp) - new Date(b.timestamp)
           );
         });
@@ -1051,7 +1081,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   };
   
   useEffect(() => {
-    loadMessages();
+    loadMessages(true); // Full refresh on first load
     // Poll for new messages every 2 seconds
     const interval = setInterval(loadMessages, 2000);
     return () => clearInterval(interval);
