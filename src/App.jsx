@@ -2551,6 +2551,35 @@ const AuthenticatedApp = () => {
     handleSession();
   }, [address]);
   
+  // Periodic balance recheck to kick users who sold tokens
+  useEffect(() => {
+    if (!sessionToken || !isVerified) return;
+    
+    const revalidateBalance = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/revalidate`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        const data = await response.json();
+        
+        if (!data.valid) {
+          // User no longer has enough tokens - kick them out
+          console.log('Session invalidated:', data.reason);
+          setSessionToken(null);
+          setIsVerified(false);
+          localStorage.removeItem('commune_session');
+        }
+      } catch (error) {
+        console.error('Balance revalidation failed:', error);
+      }
+    };
+    
+    // Check every 5 minutes
+    const interval = setInterval(revalidateBalance, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, [sessionToken, isVerified]);
+  
   // Not connected - show landing page
   if (!isConnected) {
     return <LandingPage />;
