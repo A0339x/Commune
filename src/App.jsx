@@ -2273,6 +2273,12 @@ const AdminPanel = ({ sessionToken }) => {
   const [banReason, setBanReason] = useState('');
   const [filterUser, setFilterUser] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedUsers, setSelectedUsers] = useState(new Set());
+  const [selectedMessages, setSelectedMessages] = useState(new Set());
+  const [nukeModal, setNukeModal] = useState(null);
+  const [bulkBanModal, setBulkBanModal] = useState(false);
+  const [bulkBanReason, setBulkBanReason] = useState('');
+  const [processing, setProcessing] = useState(false);
   
   // Load users
   const loadUsers = async () => {
@@ -2331,6 +2337,133 @@ const AdminPanel = ({ sessionToken }) => {
     acc[wallet] = (acc[wallet] || 0) + 1;
     return acc;
   }, {});
+  
+  // Toggle user selection
+  const toggleUserSelection = (wallet) => {
+    setSelectedUsers(prev => {
+      const next = new Set(prev);
+      if (next.has(wallet)) {
+        next.delete(wallet);
+      } else {
+        next.add(wallet);
+      }
+      return next;
+    });
+  };
+  
+  // Toggle message selection
+  const toggleMessageSelection = (id) => {
+    setSelectedMessages(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+  
+  // Select all visible messages
+  const selectAllMessages = () => {
+    const visibleIds = filteredMessages.filter(m => !m.deleted).map(m => m.id);
+    setSelectedMessages(new Set(visibleIds));
+  };
+  
+  // Select all users
+  const selectAllUsers = () => {
+    const allWallets = users.filter(u => !u.isBanned).map(u => u.wallet);
+    setSelectedUsers(new Set(allWallets));
+  };
+  
+  // Clear selections
+  const clearSelections = () => {
+    setSelectedUsers(new Set());
+    setSelectedMessages(new Set());
+  };
+  
+  // Bulk delete messages
+  const handleBulkDelete = async () => {
+    if (selectedMessages.size === 0) return;
+    if (!confirm(`Delete ${selectedMessages.size} messages?`)) return;
+    
+    setProcessing(true);
+    try {
+      for (const messageId of selectedMessages) {
+        await fetch(`${API_URL}/api/admin/delete-message`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}` 
+          },
+          body: JSON.stringify({ messageId }),
+        });
+      }
+      setSelectedMessages(new Set());
+      loadMessages();
+    } catch (error) {
+      console.error('Bulk delete failed:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+  
+  // Bulk ban users
+  const handleBulkBan = async () => {
+    if (selectedUsers.size === 0) return;
+    
+    setProcessing(true);
+    try {
+      for (const wallet of selectedUsers) {
+        await fetch(`${API_URL}/api/admin/ban`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}` 
+          },
+          body: JSON.stringify({ wallet, reason: bulkBanReason || 'Bulk ban' }),
+        });
+      }
+      setSelectedUsers(new Set());
+      setBulkBanModal(false);
+      setBulkBanReason('');
+      loadUsers();
+    } catch (error) {
+      console.error('Bulk ban failed:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
+  
+  // Nuke user (delete all their messages)
+  const handleNuke = async () => {
+    if (!nukeModal) return;
+    
+    setProcessing(true);
+    try {
+      const userMessages = messages.filter(m => 
+        m.wallet?.toLowerCase() === nukeModal.wallet?.toLowerCase() && !m.deleted
+      );
+      
+      for (const msg of userMessages) {
+        await fetch(`${API_URL}/api/admin/delete-message`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}` 
+          },
+          body: JSON.stringify({ messageId: msg.id }),
+        });
+      }
+      
+      setNukeModal(null);
+      loadMessages();
+    } catch (error) {
+      console.error('Nuke failed:', error);
+    } finally {
+      setProcessing(false);
+    }
+  };
   
   // Mute user
   const handleMute = async () => {
@@ -2454,57 +2587,109 @@ const AdminPanel = ({ sessionToken }) => {
       
       {/* Users Section */}
       {activeSection === 'users' && (
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {users.map(user => (
-            <div 
-              key={user.wallet}
-              className={`p-4 rounded-xl border ${
-                user.isBanned 
-                  ? 'bg-red-500/10 border-red-500/30' 
-                  : user.isMuted 
-                    ? 'bg-yellow-500/10 border-yellow-500/30' 
-                    : 'bg-white/5 border-white/10'
-              }`}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Bulk Actions Bar */}
+          <div className="flex items-center gap-3 mb-4 p-3 bg-white/5 rounded-xl">
+            <button
+              onClick={selectAllUsers}
+              className="text-xs text-white/60 hover:text-white transition-colors"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">{user.displayName || truncateAddress(user.wallet)}</p>
-                  <p className="text-xs text-white/40 font-mono">{user.wallet}</p>
-                  <p className="text-xs text-white/30 mt-1">
-                    {userMessageCounts[user.wallet?.toLowerCase()] || 0} messages
-                    {userMessageCounts[user.wallet?.toLowerCase()] > 0 && (
-                      <button
-                        onClick={() => { setFilterUser(user.wallet); setActiveSection('messages'); }}
-                        className="ml-2 text-amber-400 hover:underline"
-                      >
-                        View →
-                      </button>
-                    )}
-                  </p>
-                  {user.isBanned && (
-                    <p className="text-xs text-red-400 mt-1">🚫 Banned: {user.banReason}</p>
-                  )}
-                  {user.isMuted && !user.isBanned && (
-                    <p className="text-xs text-yellow-400 mt-1">🔇 Muted: {user.muteReason}</p>
-                  )}
-                </div>
-                <div className="flex gap-2">
+              Select All
+            </button>
+            <button
+              onClick={clearSelections}
+              className="text-xs text-white/60 hover:text-white transition-colors"
+            >
+              Clear
+            </button>
+            <div className="flex-1" />
+            {selectedUsers.size > 0 && (
+              <>
+                <span className="text-xs text-amber-400">{selectedUsers.size} selected</span>
+                <button
+                  onClick={() => setBulkBanModal(true)}
+                  disabled={processing}
+                  className="px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                >
+                  {processing ? 'Processing...' : `Ban Selected (${selectedUsers.size})`}
+                </button>
+              </>
+            )}
+          </div>
+          
+          {/* Users List */}
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {users.map(user => (
+              <div 
+                key={user.wallet}
+                className={`p-4 rounded-xl border ${
+                  selectedUsers.has(user.wallet) 
+                    ? 'bg-amber-400/10 border-amber-400/30'
+                    : user.isBanned 
+                      ? 'bg-red-500/10 border-red-500/30' 
+                      : user.isMuted 
+                        ? 'bg-yellow-500/10 border-yellow-500/30' 
+                        : 'bg-white/5 border-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  {/* Checkbox */}
                   {!user.isBanned && (
-                    <>
-                      <button
-                        onClick={() => setMuteModal(user)}
-                        className="px-3 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors"
-                      >
-                        Mute
-                      </button>
-                      <button
-                        onClick={() => setBanModal(user)}
-                        className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                      >
-                        Ban
-                      </button>
-                    </>
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.has(user.wallet)}
+                      onChange={() => toggleUserSelection(user.wallet)}
+                      className="w-4 h-4 rounded bg-white/10 border-white/20 text-amber-400 focus:ring-amber-400/50"
+                    />
                   )}
+                  
+                  <div className="flex-1">
+                    <p className="font-medium">{user.displayName || truncateAddress(user.wallet)}</p>
+                    <p className="text-xs text-white/40 font-mono">{user.wallet}</p>
+                    <p className="text-xs text-white/30 mt-1">
+                      {userMessageCounts[user.wallet?.toLowerCase()] || 0} messages
+                      {userMessageCounts[user.wallet?.toLowerCase()] > 0 && (
+                        <>
+                          <button
+                            onClick={() => { setFilterUser(user.wallet); setActiveSection('messages'); }}
+                            className="ml-2 text-amber-400 hover:underline"
+                          >
+                            View →
+                          </button>
+                          <button
+                            onClick={() => setNukeModal(user)}
+                            className="ml-2 text-red-400 hover:underline"
+                          >
+                            Nuke 💣
+                          </button>
+                        </>
+                      )}
+                    </p>
+                    {user.isBanned && (
+                      <p className="text-xs text-red-400 mt-1">🚫 Banned: {user.banReason}</p>
+                    )}
+                    {user.isMuted && !user.isBanned && (
+                      <p className="text-xs text-yellow-400 mt-1">🔇 Muted: {user.muteReason}</p>
+                    )}
+                  </div>
+                  
+                  <div className="flex gap-2">
+                    {!user.isBanned && (
+                      <>
+                        <button
+                          onClick={() => setMuteModal(user)}
+                          className="px-3 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors"
+                        >
+                          Mute
+                        </button>
+                        <button
+                          onClick={() => setBanModal(user)}
+                          className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                        >
+                          Ban
+                        </button>
+                      </>
+                    )}
                   {user.isBanned && (
                     <button
                       onClick={() => handleUnban(user.wallet)}
@@ -2521,11 +2706,41 @@ const AdminPanel = ({ sessionToken }) => {
             <p className="text-white/40 text-center py-8">No users found</p>
           )}
         </div>
+        </div>
       )}
       
       {/* Messages Section */}
       {activeSection === 'messages' && (
         <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Bulk Actions Bar */}
+          <div className="flex items-center gap-3 mb-4 p-3 bg-white/5 rounded-xl">
+            <button
+              onClick={selectAllMessages}
+              className="text-xs text-white/60 hover:text-white transition-colors"
+            >
+              Select All Visible
+            </button>
+            <button
+              onClick={() => setSelectedMessages(new Set())}
+              className="text-xs text-white/60 hover:text-white transition-colors"
+            >
+              Clear
+            </button>
+            <div className="flex-1" />
+            {selectedMessages.size > 0 && (
+              <>
+                <span className="text-xs text-amber-400">{selectedMessages.size} selected</span>
+                <button
+                  onClick={handleBulkDelete}
+                  disabled={processing}
+                  className="px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
+                >
+                  {processing ? 'Deleting...' : `Delete Selected (${selectedMessages.size})`}
+                </button>
+              </>
+            )}
+          </div>
+          
           {/* Filters */}
           <div className="flex flex-wrap gap-3 mb-4">
             {/* User Filter Dropdown */}
@@ -2582,12 +2797,24 @@ const AdminPanel = ({ sessionToken }) => {
               <div 
                 key={msg.id}
                 className={`p-4 rounded-xl border ${
-                  msg.deleted 
-                    ? 'bg-red-500/10 border-red-500/30' 
-                    : 'bg-white/5 border-white/10'
+                  selectedMessages.has(msg.id)
+                    ? 'bg-amber-400/10 border-amber-400/30'
+                    : msg.deleted 
+                      ? 'bg-red-500/10 border-red-500/30' 
+                      : 'bg-white/5 border-white/10'
                 }`}
               >
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-3">
+                  {/* Checkbox */}
+                  {!msg.deleted && (
+                    <input
+                      type="checkbox"
+                      checked={selectedMessages.has(msg.id)}
+                      onChange={() => toggleMessageSelection(msg.id)}
+                      className="w-4 h-4 mt-1 rounded bg-white/10 border-white/20 text-amber-400 focus:ring-amber-400/50"
+                    />
+                  )}
+                  
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 mb-1">
                       <button 
@@ -2721,6 +2948,75 @@ const AdminPanel = ({ sessionToken }) => {
                   className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium"
                 >
                   Ban User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Nuke Modal */}
+      {nukeModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <div className="bg-[#151520] border border-white/10 rounded-2xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold mb-4 text-red-400">💣 Nuke User</h3>
+            <p className="text-sm text-white/60 mb-2">
+              User: {nukeModal.displayName || truncateAddress(nukeModal.wallet)}
+            </p>
+            <p className="text-sm text-red-400/70 mb-4">
+              This will delete ALL {userMessageCounts[nukeModal.wallet?.toLowerCase()] || 0} messages from this user. This cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setNukeModal(null)}
+                className="flex-1 px-4 py-2 bg-white/10 rounded-lg text-sm"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleNuke}
+                disabled={processing}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+              >
+                {processing ? 'Nuking...' : '💣 Nuke All Messages'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Bulk Ban Modal */}
+      {bulkBanModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <div className="bg-[#151520] border border-white/10 rounded-2xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold mb-4 text-red-400">Bulk Ban Users</h3>
+            <p className="text-sm text-white/60 mb-4">
+              Banning {selectedUsers.size} users. This will remove them from the community.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Reason (applies to all)</label>
+                <input
+                  type="text"
+                  value={bulkBanReason}
+                  onChange={(e) => setBulkBanReason(e.target.value)}
+                  placeholder="Enter reason..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => { setBulkBanModal(false); setBulkBanReason(''); }}
+                  className="flex-1 px-4 py-2 bg-white/10 rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBulkBan}
+                  disabled={processing}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+                >
+                  {processing ? 'Banning...' : `Ban ${selectedUsers.size} Users`}
                 </button>
               </div>
             </div>
