@@ -689,7 +689,7 @@ const InsufficientTokensPage = ({ tokenBalance }) => {
 // ============================================
 // THREAD PREVIEW COMPONENT (Hover Peek)
 // ============================================
-const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) => {
+const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRef, walletAddress }) => {
   const [threadReplies, setThreadReplies] = useState(replies || []);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -755,29 +755,61 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
   const sendReply = async () => {
     if (!replyText.trim() || sending) return;
     setSending(true);
-    try {
-      const response = await fetch(`${API_URL}/api/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify({ content: replyText, replyTo: message.id }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setThreadReplies(prev => [...prev, {
-          ...data.message,
-          user: truncateAddress(data.message.wallet),
-          avatar: '🛡️',
-          timestamp: new Date(data.message.timestamp),
-        }]);
-        setReplyText('');
+    
+    const content = replyText.trim();
+    const tempId = `temp-preview-${Date.now()}`;
+    
+    // Optimistically add reply
+    const tempReply = {
+      id: tempId,
+      wallet: walletAddress,
+      content: content,
+      user: truncateAddress(walletAddress),
+      avatar: '🛡️',
+      timestamp: new Date(),
+    };
+    setThreadReplies(prev => [...prev, tempReply]);
+    setReplyText('');
+    
+    // Send via WebSocket
+    if (wsRef?.current?.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({
+          type: 'reply',
+          content: content,
+          replyTo: message.id,
+        }));
+      } catch (error) {
+        console.error('Failed to send reply via WebSocket:', error);
+        // Remove temp on failure
+        setThreadReplies(prev => prev.filter(r => r.id !== tempId));
       }
-    } catch (error) {
-      console.error('Failed to send reply:', error);
-    } finally {
-      setSending(false);
+    } else {
+      // Fallback to HTTP
+      try {
+        const response = await fetch(`${API_URL}/api/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({ content: content, replyTo: message.id }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          setThreadReplies(prev => prev.filter(r => r.id !== tempId).concat({
+            ...data.message,
+            user: truncateAddress(data.message.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(data.message.timestamp),
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to send reply:', error);
+        setThreadReplies(prev => prev.filter(r => r.id !== tempId));
+      }
+    }
+    setSending(false);
     }
   };
   
@@ -2086,6 +2118,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           sessionToken={sessionToken}
           onClose={() => setHoverThread(null)}
           position={hoverPosition}
+          wsRef={wsRef}
+          walletAddress={walletAddress}
         />
       )}
       
