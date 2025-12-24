@@ -1497,6 +1497,38 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         setTypingUsers(prev => prev.filter(u => u.wallet.toLowerCase() !== data.wallet.toLowerCase()));
         break;
         
+      case 'displayname_changed':
+        // Update display name in all messages from this user
+        setMessages(prev => prev.map(msg => {
+          if (msg.wallet?.toLowerCase() === data.wallet?.toLowerCase()) {
+            return {
+              ...msg,
+              displayName: data.displayName,
+              recentReplies: (msg.recentReplies || []).map(r => 
+                r.wallet?.toLowerCase() === data.wallet?.toLowerCase()
+                  ? { ...r, displayName: data.displayName }
+                  : r
+              ),
+            };
+          }
+          // Also update replies in other messages
+          return {
+            ...msg,
+            recentReplies: (msg.recentReplies || []).map(r => 
+              r.wallet?.toLowerCase() === data.wallet?.toLowerCase()
+                ? { ...r, displayName: data.displayName }
+                : r
+            ),
+          };
+        }));
+        // Update online users list
+        setOnlineUsers(prev => prev.map(u => 
+          u.wallet?.toLowerCase() === data.wallet?.toLowerCase()
+            ? { ...u, displayName: data.displayName }
+            : u
+        ));
+        break;
+        
       case 'online_users':
         setOnlineUsers(data.users || []);
         setOnlineCount(data.count || 0);
@@ -4079,6 +4111,11 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                     type="text"
                     value={newDisplayName}
                     onChange={(e) => setNewDisplayName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' && newDisplayName !== displayName) {
+                        saveDisplayName();
+                      }
+                    }}
                     placeholder="Enter display name..."
                     maxLength={20}
                     className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
