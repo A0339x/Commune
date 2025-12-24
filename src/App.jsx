@@ -2019,110 +2019,80 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           </div>
         )}
         
-        {/* Announcement Banner */}
-        {announcementVisible && announcement && (
-          <div 
-            className={`mb-3 p-4 rounded-xl border animate-pulse ${
-              announcement.type === 'urgent' 
-                ? 'bg-red-500/20 border-red-500/50 text-red-200' 
-                : announcement.type === 'warning'
-                  ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
-                  : announcement.type === 'success'
-                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
-                    : 'bg-blue-500/20 border-blue-500/50 text-blue-200'
-            }`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">
-                  {announcement.type === 'urgent' ? '🚨' : 
-                   announcement.type === 'warning' ? '⚠️' : 
-                   announcement.type === 'success' ? '✅' : '📢'}
-                </span>
-                <p className="text-sm font-medium">{announcement.message}</p>
-              </div>
-              <button 
-                onClick={() => setAnnouncementVisible(false)}
-                className="text-white/50 hover:text-white transition-colors"
-              >
-                ✕
-              </button>
-            </div>
-          </div>
-        )}
-        
-        {/* Warning Banner with Pulse Effect */}
-        {activeWarning && (
-          <div 
-            className={`mb-3 relative overflow-hidden rounded-xl ${warningPulse ? 'animate-warning-pulse' : ''}`}
-          >
-            {/* Warping background effect */}
-            <div 
-              className={`absolute inset-0 bg-gradient-to-r from-red-500/30 via-orange-500/30 to-red-500/30 ${
-                warningPulse ? 'animate-gradient-x' : ''
-              }`}
-              style={{
-                backgroundSize: '200% 100%',
-              }}
-            />
+        {/* Connection Status / Warning / Announcement / Sound Toggle */}
+        <div className="flex items-center justify-between mb-3 px-2">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            {/* Status dot */}
+            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+              activeWarning 
+                ? 'bg-red-400 animate-pulse' 
+                : announcementVisible && announcement
+                  ? announcement.type === 'urgent' 
+                    ? 'bg-red-400 animate-pulse'
+                    : announcement.type === 'warning'
+                      ? 'bg-yellow-400 animate-pulse'
+                      : announcement.type === 'success'
+                        ? 'bg-emerald-400 animate-pulse'
+                        : 'bg-blue-400 animate-pulse'
+                  : connected 
+                    ? 'bg-emerald-400' 
+                    : 'bg-amber-400 animate-pulse'
+            }`} />
             
-            {/* Glow effect */}
-            <div 
-              className={`absolute inset-0 ${warningPulse ? 'animate-pulse' : ''}`}
-              style={{
-                boxShadow: warningPulse ? '0 0 30px rgba(239, 68, 68, 0.5), inset 0 0 30px rgba(239, 68, 68, 0.1)' : 'none',
-              }}
-            />
-            
-            <div className="relative p-4 border-2 border-red-500/70 rounded-xl bg-red-500/10 backdrop-blur-sm">
-              <div className="flex items-start gap-3">
-                <span className={`text-2xl ${warningPulse ? 'animate-bounce' : ''}`}>⚠️</span>
-                <div className="flex-1">
-                  <p className="text-red-300 font-bold text-sm mb-1">Warning from Moderator</p>
-                  <p className="text-white/90 text-sm">{activeWarning.message}</p>
-                </div>
+            {/* Warning inline */}
+            {activeWarning ? (
+              <div className="flex items-center gap-2 flex-1 min-w-0 text-red-400">
+                <span className={`text-sm flex-shrink-0 ${warningPulse ? 'animate-bounce' : ''}`}>⚠️</span>
+                <p className="text-xs font-medium truncate flex-1">{activeWarning.message}</p>
                 <button 
                   onClick={acknowledgeWarning}
-                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                  className={`px-2 py-1 rounded text-xs font-bold transition-all flex-shrink-0 ${
                     warningPulse 
                       ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
                       : 'bg-red-500/50 text-white/70 hover:bg-red-500'
                   }`}
                 >
-                  ✓ I Understand
+                  ✓ OK
                 </button>
               </div>
-            </div>
-          </div>
-        )}
-        
-        {/* Connection Status & Sound Toggle */}
-        <div className="flex items-center justify-between mb-3 px-2">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${
-              activeWarning 
-                ? 'bg-red-400 animate-pulse' 
-                : connected 
-                  ? 'bg-emerald-400' 
-                  : 'bg-amber-400 animate-pulse'
-            }`} />
-            <p className={`text-xs ${
-              activeWarning 
-                ? 'text-red-400 font-bold' 
-                : connected 
+            ) : announcementVisible && announcement ? (
+              <div className={`flex items-center gap-2 flex-1 min-w-0 ${
+                announcement.type === 'urgent' 
+                  ? 'text-red-400' 
+                  : announcement.type === 'warning'
+                    ? 'text-yellow-400'
+                    : announcement.type === 'success'
+                      ? 'text-emerald-400'
+                      : 'text-blue-400'
+              }`}>
+                <span className="text-sm flex-shrink-0">
+                  {announcement.type === 'urgent' ? '🚨' : 
+                   announcement.type === 'warning' ? '⚠️' : 
+                   announcement.type === 'success' ? '✅' : '📢'}
+                </span>
+                <p className="text-xs font-medium truncate">{announcement.message}</p>
+                <button 
+                  onClick={() => setAnnouncementVisible(false)}
+                  className="text-white/30 hover:text-white/60 transition-colors flex-shrink-0 ml-1"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <p className={`text-xs ${
+                connected 
                   ? 'text-emerald-400/70' 
                   : 'text-amber-400/70'
-            }`}>
-              {activeWarning 
-                ? '⚠️ Please acknowledge the warning above' 
-                : connected 
+              }`}>
+                {connected 
                   ? 'Real-time connection active' 
                   : 'Connecting...'}
-            </p>
+              </p>
+            )}
           </div>
           <button
             onClick={() => setSoundEnabled(!soundEnabled)}
-            className={`text-xs px-2 py-1 rounded-lg transition-colors ${soundEnabled ? 'text-white/50 hover:text-white/70' : 'text-white/30'}`}
+            className={`text-xs px-2 py-1 rounded-lg transition-colors flex-shrink-0 ${soundEnabled ? 'text-white/50 hover:text-white/70' : 'text-white/30'}`}
             title={soundEnabled ? 'Sound on' : 'Sound off'}
           >
             {soundEnabled ? '🔔' : '🔕'}
