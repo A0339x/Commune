@@ -810,7 +810,6 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
       }
     }
     setSending(false);
-    }
   };
   
   return (
