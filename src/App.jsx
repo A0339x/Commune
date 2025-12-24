@@ -1001,16 +1001,61 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [gifResults, setGifResults] = useState([]);
   const [gifLoading, setGifLoading] = useState(false);
   const [trendingGifs, setTrendingGifs] = useState([]);
+  const [typingUsers, setTypingUsers] = useState([]);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [selectedMentions, setSelectedMentions] = useState([]);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const gifSearchTimeoutRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
+  const isTypingRef = useRef(false);
+  const inputRef = useRef(null);
+  const notificationSoundRef = useRef(null);
+  const mentionSoundRef = useRef(null);
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
   // Tenor API Key - replace with your key
   const TENOR_API_KEY = 'YOUR_TENOR_API_KEY';
+  
+  // Initialize notification sounds
+  useEffect(() => {
+    // Create audio elements for notifications
+    notificationSoundRef.current = new Audio('data:audio/wav;base64,UklGRl9vT19teleEAGZtdCAQAAAAAQABAEARAABAAQACABAAZGF0YU' + 'A'.repeat(100));
+    notificationSoundRef.current.volume = 0.3;
+    mentionSoundRef.current = new Audio('data:audio/wav;base64,UklGRl9vT19teleEAGZtdCAQAAAAAQABAEARAABAAQACABAAZGF0YU' + 'A'.repeat(100));
+    mentionSoundRef.current.volume = 0.5;
+  }, []);
+  
+  // Play notification sound
+  const playNotificationSound = (isMention = false) => {
+    if (!soundEnabled) return;
+    try {
+      // Use Web Audio API for a simple beep
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const oscillator = audioContext.createOscillator();
+      const gainNode = audioContext.createGain();
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioContext.destination);
+      
+      oscillator.frequency.value = isMention ? 880 : 660; // Higher pitch for mentions
+      oscillator.type = 'sine';
+      
+      gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+      
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    } catch (e) {
+      // Audio not supported
+    }
+  };
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1060,6 +1105,20 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const handleWebSocketMessage = (data) => {
     switch (data.type) {
       case 'new_message':
+        // Check if this message mentions us
+        const isMentioned = data.message.mentions?.some(
+          m => m.toLowerCase() === walletAddress?.toLowerCase()
+        );
+        const isOwnMessage = data.message.wallet?.toLowerCase() === walletAddress?.toLowerCase();
+        
+        // Play sound for new messages (not our own)
+        if (!isOwnMessage) {
+          playNotificationSound(isMentioned);
+        }
+        
+        // Clear typing indicator for this user
+        setTypingUsers(prev => prev.filter(u => u.wallet.toLowerCase() !== data.message.wallet.toLowerCase()));
+        
         setMessages(prev => {
           // Remove any temp message with same content from same wallet
           const filtered = prev.filter(m => 
@@ -1094,6 +1153,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           }
           return msg;
         }));
+        // Play sound for replies (not our own)
+        if (data.reply.wallet?.toLowerCase() !== walletAddress?.toLowerCase()) {
+          playNotificationSound(false);
+        }
         break;
         
       case 'message_edited':
@@ -1134,6 +1197,24 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         }));
         break;
         
+      case 'user_typing':
+        setTypingUsers(prev => {
+          // Add user if not already in list
+          if (!prev.some(u => u.wallet.toLowerCase() === data.wallet.toLowerCase())) {
+            return [...prev, { wallet: data.wallet, displayName: data.displayName }];
+          }
+          return prev;
+        });
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+          setTypingUsers(prev => prev.filter(u => u.wallet.toLowerCase() !== data.wallet.toLowerCase()));
+        }, 3000);
+        break;
+        
+      case 'user_stop_typing':
+        setTypingUsers(prev => prev.filter(u => u.wallet.toLowerCase() !== data.wallet.toLowerCase()));
+        break;
+        
       case 'online_users':
         setOnlineUsers(data.users || []);
         setOnlineCount(data.count || 0);
@@ -1145,6 +1226,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         
       case 'user_left':
         setOnlineCount(data.onlineCount || 0);
+        setTypingUsers(prev => prev.filter(u => u.wallet.toLowerCase() !== data.wallet?.toLowerCase()));
         break;
         
       case 'pong':
@@ -1230,12 +1312,22 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
     setNewMessage('');
     
+    // Stop typing indicator
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'stop_typing' }));
+    }
+    isTypingRef.current = false;
+    
+    // Extract mentioned wallets from selectedMentions
+    const mentions = selectedMentions.map(m => m.wallet);
+    
     // Send via WebSocket if connected, otherwise fallback to HTTP
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: replyTo ? 'reply' : 'message',
         content: messageContent,
         replyTo,
+        mentions,
       }));
     } else {
       // Fallback to HTTP
@@ -1247,7 +1339,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${sessionToken}`,
           },
-          body: JSON.stringify({ content: messageContent, replyTo }),
+          body: JSON.stringify({ content: messageContent, replyTo, mentions }),
         });
       } catch (error) {
         console.error('Failed to send message:', error);
@@ -1255,6 +1347,89 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       } finally {
         setSending(false);
       }
+    }
+    
+    // Clear mentions
+    setSelectedMentions([]);
+  };
+  
+  // Handle typing indicator
+  const handleTyping = () => {
+    if (!isTypingRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'typing' }));
+      isTypingRef.current = true;
+    }
+    
+    // Clear existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    
+    // Stop typing after 2 seconds of no input
+    typingTimeoutRef.current = setTimeout(() => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'stop_typing' }));
+      }
+      isTypingRef.current = false;
+    }, 2000);
+  };
+  
+  // Handle input change with mention detection
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setNewMessage(value);
+    handleTyping();
+    
+    // Check for @ mention trigger
+    const lastAtIndex = value.lastIndexOf('@');
+    if (lastAtIndex !== -1) {
+      const textAfterAt = value.slice(lastAtIndex + 1);
+      // Show mentions if @ is at end or followed by text without space
+      if (!textAfterAt.includes(' ')) {
+        setShowMentions(true);
+        setMentionSearch(textAfterAt.toLowerCase());
+        setMentionIndex(0);
+      } else {
+        setShowMentions(false);
+      }
+    } else {
+      setShowMentions(false);
+    }
+  };
+  
+  // Filter online users for mention dropdown
+  const filteredMentionUsers = onlineUsers.filter(user => {
+    const name = (user.displayName || truncateAddress(user.wallet)).toLowerCase();
+    return name.includes(mentionSearch);
+  });
+  
+  // Select a mention
+  const selectMention = (user) => {
+    const lastAtIndex = newMessage.lastIndexOf('@');
+    const beforeAt = newMessage.slice(0, lastAtIndex);
+    const mentionText = user.displayName || truncateAddress(user.wallet);
+    
+    setNewMessage(beforeAt + '@' + mentionText + ' ');
+    setSelectedMentions(prev => [...prev, user]);
+    setShowMentions(false);
+    inputRef.current?.focus();
+  };
+  
+  // Handle mention keyboard navigation
+  const handleMentionKeyDown = (e) => {
+    if (!showMentions || filteredMentionUsers.length === 0) return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setMentionIndex(prev => (prev + 1) % filteredMentionUsers.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setMentionIndex(prev => (prev - 1 + filteredMentionUsers.length) % filteredMentionUsers.length);
+    } else if (e.key === 'Enter' && showMentions) {
+      e.preventDefault();
+      selectMention(filteredMentionUsers[mentionIndex]);
+    } else if (e.key === 'Escape') {
+      setShowMentions(false);
     }
   };
   
@@ -1332,6 +1507,40 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     if (hoverTimeoutRef.current) {
       clearTimeout(hoverTimeoutRef.current);
     }
+  };
+  
+  // Render message content with highlighted mentions
+  const renderMessageContent = (content, mentions = []) => {
+    if (!content) return null;
+    
+    // Check if current user is mentioned
+    const isMentioned = mentions?.some(m => m.toLowerCase() === walletAddress?.toLowerCase());
+    
+    // Simple regex to find @mentions
+    const mentionRegex = /@(\S+)/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = mentionRegex.exec(content)) !== null) {
+      // Add text before mention
+      if (match.index > lastIndex) {
+        parts.push(content.slice(lastIndex, match.index));
+      }
+      // Add highlighted mention
+      parts.push(
+        <span key={match.index} className="text-amber-400 font-medium">
+          {match[0]}
+        </span>
+      );
+      lastIndex = match.index + match[0].length;
+    }
+    // Add remaining text
+    if (lastIndex < content.length) {
+      parts.push(content.slice(lastIndex));
+    }
+    
+    return parts.length > 0 ? parts : content;
   };
   
   // Reaction picker state
@@ -1541,8 +1750,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                       loading="lazy"
                     />
                   ) : (
-                    <p className={`text-sm mt-1 leading-relaxed ${msg.deleted ? 'text-white/40 italic' : 'text-white/80'}`}>
-                      {msg.content || msg.message}
+                    <p className={`text-sm mt-1 leading-relaxed ${msg.deleted ? 'text-white/40 italic' : 'text-white/80'} ${msg.mentions?.some(m => m.toLowerCase() === walletAddress?.toLowerCase()) ? 'bg-amber-400/10 -mx-2 px-2 py-1 rounded-lg border-l-2 border-amber-400' : ''}`}>
+                      {renderMessageContent(msg.content || msg.message, msg.mentions)}
                     </p>
                   )}
                   
@@ -1662,12 +1871,40 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       
       {/* Input */}
       <div className={`p-4 border-t border-white/5 transition-all duration-300 ${openThread ? 'blur-sm opacity-50 pointer-events-none' : ''}`}>
-        {/* Connection Status */}
-        <div className="flex items-center gap-2 mb-3 px-2">
-          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-          <p className={`text-xs ${connected ? 'text-emerald-400/70' : 'text-amber-400/70'}`}>
-            {connected ? 'Real-time connection active' : 'Connecting...'}
-          </p>
+        {/* Typing Indicator */}
+        {typingUsers.length > 0 && (
+          <div className="flex items-center gap-2 mb-2 px-2">
+            <div className="flex gap-1">
+              <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1.5 h-1.5 bg-white/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            </div>
+            <p className="text-xs text-white/40">
+              {typingUsers.length === 1 
+                ? `${typingUsers[0].displayName || truncateAddress(typingUsers[0].wallet)} is typing...`
+                : typingUsers.length === 2
+                  ? `${typingUsers[0].displayName || truncateAddress(typingUsers[0].wallet)} and ${typingUsers[1].displayName || truncateAddress(typingUsers[1].wallet)} are typing...`
+                  : `${typingUsers.length} people are typing...`
+              }
+            </p>
+          </div>
+        )}
+        
+        {/* Connection Status & Sound Toggle */}
+        <div className="flex items-center justify-between mb-3 px-2">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+            <p className={`text-xs ${connected ? 'text-emerald-400/70' : 'text-amber-400/70'}`}>
+              {connected ? 'Real-time connection active' : 'Connecting...'}
+            </p>
+          </div>
+          <button
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`text-xs px-2 py-1 rounded-lg transition-colors ${soundEnabled ? 'text-white/50 hover:text-white/70' : 'text-white/30'}`}
+            title={soundEnabled ? 'Sound on' : 'Sound off'}
+          >
+            {soundEnabled ? '🔔' : '🔕'}
+          </button>
         </div>
         
         <div className="relative">
@@ -1679,11 +1916,18 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               <span className="text-xs font-bold">GIF</span>
             </button>
             <input
+              ref={inputRef}
               type="text"
               value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
+              onChange={handleInputChange}
+              onKeyDown={(e) => {
+                handleMentionKeyDown(e);
+                if (e.key === 'Enter' && !e.shiftKey && !showMentions) {
+                  e.preventDefault();
+                  sendMessage();
+                }
+              }}
+              placeholder="Type a message... (use @ to mention)"
               className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none text-sm"
             />
             <button 
@@ -1694,6 +1938,29 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               <Icons.Send />
             </button>
           </div>
+          
+          {/* Mentions Dropdown */}
+          {showMentions && filteredMentionUsers.length > 0 && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#151520] border border-white/10 rounded-xl p-2 max-h-48 overflow-y-auto">
+              {filteredMentionUsers.map((user, index) => (
+                <button
+                  key={user.wallet}
+                  onClick={() => selectMention(user)}
+                  className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors ${
+                    index === mentionIndex ? 'bg-amber-400/20' : 'hover:bg-white/5'
+                  }`}
+                >
+                  <Avatar emoji="🛡️" size="xs" />
+                  <div className="text-left">
+                    <p className="text-sm font-medium">{user.displayName || truncateAddress(user.wallet)}</p>
+                    {user.displayName && (
+                      <p className="text-xs text-white/30 font-mono">{truncateAddress(user.wallet)}</p>
+                    )}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
           
           {/* GIF Picker */}
           {showGifPicker && (
