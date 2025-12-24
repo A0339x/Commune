@@ -1042,6 +1042,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [warningPulse, setWarningPulse] = useState(false);
   const [announcement, setAnnouncement] = useState(null);
   const [announcementVisible, setAnnouncementVisible] = useState(false);
+  const [pendingMessages, setPendingMessages] = useState([]); // Messages waiting for server confirmation
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
@@ -1052,6 +1053,9 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const inputRef = useRef(null);
   const notificationSoundRef = useRef(null);
   const mentionSoundRef = useRef(null);
+  const lastMessageTimestampRef = useRef(0); // Track last received message timestamp
+  const retryQueueRef = useRef([]); // Queue for failed messages to retry
+  const retryTimeoutRef = useRef(null);
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
@@ -1191,8 +1195,25 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       console.log('WebSocket connected');
       setConnected(true);
       lastPongRef.current = Date.now();
-      // Load initial message history
-      loadMessageHistory();
+      
+      // If we have previous messages, do incremental fetch; otherwise full load
+      const isReconnect = lastMessageTimestampRef.current > 0;
+      loadMessageHistory(isReconnect);
+      
+      // Process retry queue
+      if (retryQueueRef.current.length > 0) {
+        console.log(`Processing ${retryQueueRef.current.length} queued messages`);
+        const queue = [...retryQueueRef.current];
+        retryQueueRef.current = [];
+        queue.forEach(msg => {
+          try {
+            ws.send(JSON.stringify(msg));
+          } catch (e) {
+            console.error('Failed to send queued message:', e);
+            retryQueueRef.current.push(msg);
+          }
+        });
+      }
     };
     
     ws.onmessage = (event) => {
@@ -1230,6 +1251,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const handleWebSocketMessage = (data) => {
     switch (data.type) {
       case 'new_message':
+        // Update last message timestamp
+        if (data.message.timestamp > lastMessageTimestampRef.current) {
+          lastMessageTimestampRef.current = data.message.timestamp;
+        }
+        
         // Check if this message mentions us
         const isMentioned = data.message.mentions?.some(
           m => m.toLowerCase() === walletAddress?.toLowerCase()
@@ -1243,6 +1269,13 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         
         // Clear typing indicator for this user
         setTypingUsers(prev => prev.filter(u => u.wallet.toLowerCase() !== data.message.wallet.toLowerCase()));
+        
+        // If this is our own message, remove from pending and update temp message
+        if (isOwnMessage) {
+          setPendingMessages(prev => prev.filter(p => 
+            !(p.content === data.message.content && p.status === 'sending')
+          ));
+        }
         
         setMessages(prev => {
           // Remove any temp message with same content from same wallet
@@ -1385,15 +1418,21 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
   };
   
-  // Load message history via HTTP (one-time on connect)
-  const loadMessageHistory = async () => {
+  // Load message history via HTTP
+  // If incremental=true, only fetch messages after lastMessageTimestampRef
+  const loadMessageHistory = async (incremental = false) => {
     try {
-      const response = await fetch(`${API_URL}/api/messages`, {
+      const afterParam = incremental && lastMessageTimestampRef.current > 0 
+        ? `?after=${lastMessageTimestampRef.current}` 
+        : '';
+      
+      const response = await fetch(`${API_URL}/api/messages${afterParam}`, {
         headers: { 'Authorization': `Bearer ${sessionToken}` },
       });
       const data = await response.json();
-      if (data.messages) {
-        setMessages(data.messages.map(msg => ({
+      
+      if (data.messages && data.messages.length > 0) {
+        const newMessages = data.messages.map(msg => ({
           ...msg,
           user: truncateAddress(msg.wallet),
           avatar: '🛡️',
@@ -1404,11 +1443,33 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             avatar: '🛡️',
             timestamp: new Date(r.timestamp),
           })),
-        })));
-        // Scroll to bottom after messages load
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
-        }, 100);
+        }));
+        
+        // Update lastMessageTimestamp
+        const maxTimestamp = Math.max(...data.messages.map(m => m.timestamp));
+        if (maxTimestamp > lastMessageTimestampRef.current) {
+          lastMessageTimestampRef.current = maxTimestamp;
+        }
+        
+        if (incremental) {
+          // Merge new messages, avoiding duplicates
+          setMessages(prev => {
+            const existingIds = new Set(prev.map(m => m.id));
+            const uniqueNew = newMessages.filter(m => !existingIds.has(m.id));
+            if (uniqueNew.length === 0) return prev;
+            return [...prev, ...uniqueNew].sort((a, b) => 
+              new Date(a.timestamp) - new Date(b.timestamp)
+            );
+          });
+          console.log(`Fetched ${newMessages.length} missed messages`);
+        } else {
+          // Full load - replace all
+          setMessages(newMessages);
+          // Scroll to bottom after messages load
+          setTimeout(() => {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+          }, 100);
+        }
       }
     } catch (error) {
       console.error('Failed to load message history:', error);
@@ -1421,20 +1482,20 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   useEffect(() => {
     connectWebSocket();
     
-    // Keep-alive ping every 15 seconds (more frequent)
+    // Keep-alive ping every 10 seconds (more aggressive)
     const pingInterval = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'ping' }));
       }
-    }, 15000);
+    }, 10000);
     
-    // Check connection health every 20 seconds
-    // If no pong received in 45 seconds, force reconnect
+    // Check connection health every 10 seconds
+    // If no pong received in 25 seconds, force reconnect
     connectionCheckRef.current = setInterval(() => {
       const timeSinceLastPong = Date.now() - lastPongRef.current;
       
-      if (timeSinceLastPong > 45000) {
-        console.log('Connection stale (no pong in 45s), forcing reconnect...');
+      if (timeSinceLastPong > 25000) {
+        console.log('Connection stale (no pong in 25s), forcing reconnect...');
         setConnected(false);
         if (wsRef.current) {
           try {
@@ -1449,7 +1510,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         setConnected(false);
         connectWebSocket();
       }
-    }, 20000);
+    }, 10000);
     
     // Also check on visibility change (when user comes back to tab)
     const handleVisibilityChange = () => {
@@ -1462,6 +1523,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         } else {
           // Send a ping to verify connection is actually alive
           wsRef.current.send(JSON.stringify({ type: 'ping' }));
+          // Also fetch any missed messages
+          loadMessageHistory(true);
         }
       }
     };
@@ -1495,18 +1558,18 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const sendMessage = async (replyTo = null) => {
     if (!newMessage.trim() || sending) return;
     
-    // Check connection first
-    if (wsRef.current?.readyState !== WebSocket.OPEN) {
-      console.log('WebSocket not connected, attempting reconnect...');
-      setConnected(false);
-      connectWebSocket();
-      // Show error to user
-      alert('Connection lost. Reconnecting... Please try again.');
-      return;
-    }
-    
     const messageContent = newMessage;
     const tempId = `temp-${Date.now()}`;
+    const sendTime = Date.now();
+    
+    const messagePayload = {
+      type: replyTo ? 'reply' : 'message',
+      content: messageContent,
+      replyTo,
+      mentions: selectedMentions.map(m => m.wallet),
+      tempId, // Include for tracking
+    };
+    
     const tempMessage = {
       id: tempId,
       content: messageContent,
@@ -1516,6 +1579,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       timestamp: new Date(),
       replyCount: 0,
       recentReplies: [],
+      sendStatus: 'sending', // 'sending' | 'sent' | 'failed'
     };
     
     // Optimistically add message immediately
@@ -1525,34 +1589,96 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
     setNewMessage('');
     
+    // Add to pending
+    setPendingMessages(prev => [...prev, { content: messageContent, status: 'sending', tempId, sendTime }]);
+    
     // Stop typing indicator
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: 'stop_typing' }));
     }
     isTypingRef.current = false;
     
-    // Extract mentioned wallets from selectedMentions
-    const mentions = selectedMentions.map(m => m.wallet);
-    
-    // Send via WebSocket
-    try {
-      wsRef.current.send(JSON.stringify({
-        type: replyTo ? 'reply' : 'message',
-        content: messageContent,
-        replyTo,
-        mentions,
-      }));
-    } catch (error) {
-      console.error('Failed to send message via WebSocket:', error);
-      // Remove temp message on failure
-      setMessages(prev => prev.filter(m => m.id !== tempId));
+    // Try to send via WebSocket
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify(messagePayload));
+      } catch (error) {
+        console.error('Failed to send message via WebSocket:', error);
+        // Add to retry queue
+        retryQueueRef.current.push(messagePayload);
+        // Update message status to failed
+        setMessages(prev => prev.map(m => 
+          m.id === tempId ? { ...m, sendStatus: 'failed' } : m
+        ));
+        setPendingMessages(prev => prev.map(p => 
+          p.tempId === tempId ? { ...p, status: 'failed' } : p
+        ));
+        // Try to reconnect
+        setConnected(false);
+        connectWebSocket();
+      }
+    } else {
+      // Not connected - queue for retry
+      console.log('WebSocket not connected, queuing message for retry');
+      retryQueueRef.current.push(messagePayload);
+      // Update message status
+      setMessages(prev => prev.map(m => 
+        m.id === tempId ? { ...m, sendStatus: 'queued' } : m
+      ));
+      setPendingMessages(prev => prev.map(p => 
+        p.tempId === tempId ? { ...p, status: 'queued' } : p
+      ));
       // Try to reconnect
       setConnected(false);
       connectWebSocket();
     }
     
+    // Set a timeout to mark as failed if no confirmation
+    setTimeout(() => {
+      setPendingMessages(prev => {
+        const pending = prev.find(p => p.tempId === tempId && p.status === 'sending');
+        if (pending) {
+          // Still pending after 10 seconds - mark as potentially failed
+          setMessages(msgs => msgs.map(m => 
+            m.id === tempId && m.sendStatus === 'sending' 
+              ? { ...m, sendStatus: 'slow' } 
+              : m
+          ));
+        }
+        return prev;
+      });
+    }, 10000);
+    
     // Clear selected mentions
     setSelectedMentions([]);
+  };
+  
+  // Retry a failed message
+  const retryMessage = (tempId) => {
+    setMessages(prev => {
+      const msg = prev.find(m => m.id === tempId);
+      if (msg && (msg.sendStatus === 'failed' || msg.sendStatus === 'queued')) {
+        const messagePayload = {
+          type: 'message',
+          content: msg.content,
+          mentions: msg.mentions || [],
+          tempId,
+        };
+        
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          try {
+            wsRef.current.send(JSON.stringify(messagePayload));
+            return prev.map(m => m.id === tempId ? { ...m, sendStatus: 'sending' } : m);
+          } catch (e) {
+            retryQueueRef.current.push(messagePayload);
+          }
+        } else {
+          retryQueueRef.current.push(messagePayload);
+          connectWebSocket();
+        }
+      }
+      return prev;
+    });
   };
   
   // Handle typing indicator
@@ -1899,7 +2025,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           messages.map((msg) => (
             <div 
               key={msg.id} 
-              className="group"
+              className={`group ${msg.sendStatus === 'failed' || msg.sendStatus === 'queued' ? 'opacity-60' : ''}`}
             >
               {/* Main Message */}
               <div className="flex gap-3">
@@ -1915,6 +2041,29 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                     <span className="text-xs text-white/30">{formatTime(msg.timestamp)}</span>
                     {msg.editedAt && !msg.deleted && (
                       <span className="text-xs text-white/20">(edited)</span>
+                    )}
+                    {/* Send Status */}
+                    {msg.sendStatus === 'sending' && (
+                      <span className="text-xs text-white/40">sending...</span>
+                    )}
+                    {msg.sendStatus === 'slow' && (
+                      <span className="text-xs text-yellow-400/70">slow connection...</span>
+                    )}
+                    {msg.sendStatus === 'queued' && (
+                      <button 
+                        onClick={() => retryMessage(msg.id)}
+                        className="text-xs text-amber-400 hover:text-amber-300"
+                      >
+                        queued - tap to retry
+                      </button>
+                    )}
+                    {msg.sendStatus === 'failed' && (
+                      <button 
+                        onClick={() => retryMessage(msg.id)}
+                        className="text-xs text-red-400 hover:text-red-300"
+                      >
+                        failed - tap to retry
+                      </button>
                     )}
                   </div>
                   
@@ -2512,6 +2661,7 @@ const UserList = ({ sessionToken }) => {
 const AdminPanel = ({ sessionToken }) => {
   const [users, setUsers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('users');
   const [muteModal, setMuteModal] = useState(null);
@@ -2627,10 +2777,23 @@ const AdminPanel = ({ sessionToken }) => {
     }
   };
   
+  // Load audit logs
+  const loadAuditLogs = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/audit`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      const data = await response.json();
+      setAuditLogs(data.logs || []);
+    } catch (error) {
+      console.error('Failed to load audit logs:', error);
+    }
+  };
+  
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      await Promise.all([loadUsers(), loadMessages()]);
+      await Promise.all([loadUsers(), loadMessages(), loadAuditLogs()]);
       setLoading(false);
     };
     load();
@@ -2913,6 +3076,16 @@ const AdminPanel = ({ sessionToken }) => {
           }`}
         >
           📢 Communicate
+        </button>
+        <button
+          onClick={() => { setActiveSection('audit'); loadAuditLogs(); }}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeSection === 'audit' 
+              ? 'bg-amber-400 text-black' 
+              : 'bg-white/5 text-white/60 hover:bg-white/10'
+          }`}
+        >
+          📋 Audit Log
         </button>
       </div>
       
@@ -3324,6 +3497,83 @@ const AdminPanel = ({ sessionToken }) => {
               <li>• <strong>Urgent announcements</strong> stay until manually dismissed</li>
               <li>• Users receive both visual and audio notifications</li>
             </ul>
+          </div>
+        </div>
+      )}
+      
+      {/* Audit Log Section */}
+      {activeSection === 'audit' && (
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm text-white/60">
+              Showing last {auditLogs.length} admin actions
+            </p>
+            <button
+              onClick={loadAuditLogs}
+              className="px-3 py-1.5 text-xs bg-white/10 rounded-lg hover:bg-white/20 transition-colors"
+            >
+              Refresh
+            </button>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {auditLogs.map(log => (
+              <div 
+                key={log.id}
+                className={`p-4 rounded-xl border ${
+                  log.action === 'ban' ? 'bg-red-500/10 border-red-500/30' :
+                  log.action === 'unban' ? 'bg-green-500/10 border-green-500/30' :
+                  log.action === 'mute' ? 'bg-yellow-500/10 border-yellow-500/30' :
+                  log.action === 'warn' ? 'bg-orange-500/10 border-orange-500/30' :
+                  log.action === 'announce' ? 'bg-blue-500/10 border-blue-500/30' :
+                  log.action === 'delete_message' ? 'bg-purple-500/10 border-purple-500/30' :
+                  'bg-white/5 border-white/10'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-lg">
+                        {log.action === 'ban' ? '🚫' :
+                         log.action === 'unban' ? '✅' :
+                         log.action === 'mute' ? '🔇' :
+                         log.action === 'warn' ? '⚠️' :
+                         log.action === 'announce' ? '📢' :
+                         log.action === 'delete_message' ? '🗑️' : '📋'}
+                      </span>
+                      <span className="font-medium text-sm capitalize">{log.action.replace('_', ' ')}</span>
+                      <span className="text-xs text-white/30">
+                        {new Date(log.timestamp).toLocaleString()}
+                      </span>
+                    </div>
+                    <div className="text-xs text-white/60 space-y-1">
+                      <p>By: <span className="font-mono text-white/40">{truncateAddress(log.adminWallet)}</span></p>
+                      {log.details.targetWallet && (
+                        <p>Target: <span className="font-mono text-white/40">{truncateAddress(log.details.targetWallet)}</span></p>
+                      )}
+                      {log.details.reason && (
+                        <p>Reason: <span className="text-white/50">{log.details.reason}</span></p>
+                      )}
+                      {log.details.message && (
+                        <p>Message: <span className="text-white/50">{log.details.message.substring(0, 100)}{log.details.message.length > 100 ? '...' : ''}</span></p>
+                      )}
+                      {log.details.duration && (
+                        <p>Duration: <span className="text-white/50">{log.details.duration} minutes</span></p>
+                      )}
+                      {log.details.type && (
+                        <p>Type: <span className="text-white/50 capitalize">{log.details.type}</span></p>
+                      )}
+                      {log.details.messageContent && (
+                        <p>Content: <span className="text-white/50">{log.details.messageContent}</span></p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {auditLogs.length === 0 && (
+              <p className="text-white/40 text-center py-8">No audit logs yet</p>
+            )}
           </div>
         </div>
       )}
