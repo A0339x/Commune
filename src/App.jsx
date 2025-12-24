@@ -1020,8 +1020,26 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
-  // Tenor API Key - replace with your key
-  const TENOR_API_KEY = 'YOUR_TENOR_API_KEY';
+  // Tenor API Key - fetched from server
+  const [tenorApiKey, setTenorApiKey] = useState('');
+  
+  // Fetch Tenor API key on mount
+  useEffect(() => {
+    const fetchTenorKey = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/tenor-key`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        const data = await response.json();
+        if (data.key) {
+          setTenorApiKey(data.key);
+        }
+      } catch (error) {
+        console.error('Failed to fetch Tenor API key:', error);
+      }
+    };
+    fetchTenorKey();
+  }, [sessionToken]);
   
   // Initialize notification sounds
   useEffect(() => {
@@ -1580,7 +1598,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const fetchTrendingGifs = async () => {
     try {
       const response = await fetch(
-        `https://tenor.googleapis.com/v2/featured?key=${TENOR_API_KEY}&limit=20&media_filter=gif,tinygif`
+        `https://tenor.googleapis.com/v2/featured?key=${tenorApiKey}&limit=20&media_filter=gif,tinygif`
       );
       const data = await response.json();
       setTrendingGifs(data.results || []);
@@ -1598,7 +1616,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     setGifLoading(true);
     try {
       const response = await fetch(
-        `https://tenor.googleapis.com/v2/search?key=${TENOR_API_KEY}&q=${encodeURIComponent(query)}&limit=20&media_filter=gif,tinygif`
+        `https://tenor.googleapis.com/v2/search?key=${tenorApiKey}&q=${encodeURIComponent(query)}&limit=20&media_filter=gif,tinygif`
       );
       const data = await response.json();
       setGifResults(data.results || []);
