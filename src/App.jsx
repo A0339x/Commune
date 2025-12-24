@@ -696,12 +696,18 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
   const [isClosing, setIsClosing] = useState(false);
   const [exitDirection, setExitDirection] = useState({ x: 0, y: 0 });
   const previewRef = useRef(null);
+  const repliesEndRef = useRef(null);
   const lastMousePos = useRef({ x: 0, y: 0 });
   
   // Track mouse position while inside
   const handleMouseMove = (e) => {
     lastMousePos.current = { x: e.clientX, y: e.clientY };
   };
+  
+  // Scroll to bottom when replies load or change
+  useEffect(() => {
+    repliesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+  }, [threadReplies]);
   
   // Load full thread
   useEffect(() => {
@@ -857,6 +863,7 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
             </div>
           ))
         )}
+        <div ref={repliesEndRef} />
       </div>
       
       {/* Reply Input */}
