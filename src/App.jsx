@@ -996,12 +996,21 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [onlineUsers, setOnlineUsers] = useState([]);
   const [editingMessage, setEditingMessage] = useState(null);
   const [editContent, setEditContent] = useState('');
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearch, setGifSearch] = useState('');
+  const [gifResults, setGifResults] = useState([]);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [trendingGifs, setTrendingGifs] = useState([]);
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  const gifSearchTimeoutRef = useRef(null);
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
+  
+  // Tenor API Key - replace with your key
+  const TENOR_API_KEY = 'AIzaSyCum6LDRSyPsjJt-FQTNcO4SC5MWhY9FoA';
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1358,6 +1367,77 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     return reactions[emoji].some(w => w.toLowerCase() === walletAddress?.toLowerCase());
   };
   
+  // GIF Functions
+  const fetchTrendingGifs = async () => {
+    try {
+      const response = await fetch(
+        `https://tenor.googleapis.com/v2/featured?key=${TENOR_API_KEY}&limit=20&media_filter=gif,tinygif`
+      );
+      const data = await response.json();
+      setTrendingGifs(data.results || []);
+    } catch (error) {
+      console.error('Failed to fetch trending GIFs:', error);
+    }
+  };
+  
+  const searchGifs = async (query) => {
+    if (!query.trim()) {
+      setGifResults([]);
+      return;
+    }
+    
+    setGifLoading(true);
+    try {
+      const response = await fetch(
+        `https://tenor.googleapis.com/v2/search?key=${TENOR_API_KEY}&q=${encodeURIComponent(query)}&limit=20&media_filter=gif,tinygif`
+      );
+      const data = await response.json();
+      setGifResults(data.results || []);
+    } catch (error) {
+      console.error('Failed to search GIFs:', error);
+    } finally {
+      setGifLoading(false);
+    }
+  };
+  
+  // Debounced GIF search
+  const handleGifSearchChange = (value) => {
+    setGifSearch(value);
+    
+    if (gifSearchTimeoutRef.current) {
+      clearTimeout(gifSearchTimeoutRef.current);
+    }
+    
+    gifSearchTimeoutRef.current = setTimeout(() => {
+      searchGifs(value);
+    }, 300);
+  };
+  
+  // Send GIF message
+  const sendGif = (gif) => {
+    const gifUrl = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+    if (!gifUrl) return;
+    
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'message',
+        content: gifUrl,
+        isGif: true,
+      }));
+    }
+    
+    setShowGifPicker(false);
+    setGifSearch('');
+    setGifResults([]);
+  };
+  
+  // Load trending GIFs when picker opens
+  useEffect(() => {
+    if (showGifPicker && trendingGifs.length === 0) {
+      fetchTrendingGifs();
+    }
+  }, [showGifPicker]);
+  
   // Online count is now received via WebSocket
   const [onlineCount, setOnlineCount] = useState(0);
   
@@ -1453,6 +1533,13 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                         </button>
                       </div>
                     </div>
+                  ) : msg.isGif ? (
+                    <img 
+                      src={msg.content} 
+                      alt="GIF" 
+                      className="mt-1 max-w-xs rounded-lg"
+                      loading="lazy"
+                    />
                   ) : (
                     <p className={`text-sm mt-1 leading-relaxed ${msg.deleted ? 'text-white/40 italic' : 'text-white/80'}`}>
                       {msg.content || msg.message}
@@ -1473,7 +1560,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                     )}
                     
                     {/* Edit/Delete buttons - only for own messages within 15 min */}
-                    {canModify(msg) && editingMessage !== msg.id && (
+                    {canModify(msg) && editingMessage !== msg.id && !msg.isGif && (
                       <>
                         <button
                           onClick={() => startEditing(msg)}
@@ -1591,6 +1678,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             >
               <Icons.Smile />
             </button>
+            <button 
+              className="text-white/40 hover:text-white/70 transition-colors"
+              onClick={() => setShowGifPicker(!showGifPicker)}
+            >
+              <span className="text-xs font-bold">GIF</span>
+            </button>
             <input
               type="text"
               value={newMessage}
@@ -1600,7 +1693,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none text-sm"
             />
             <button 
-              onClick={sendMessage}
+              onClick={() => sendMessage()}
               disabled={!newMessage.trim()}
               className="text-amber-400 hover:text-amber-300 transition-colors disabled:text-white/20 disabled:cursor-not-allowed"
             >
@@ -1623,6 +1716,56 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                   {emoji}
                 </button>
               ))}
+            </div>
+          )}
+          
+          {/* GIF Picker */}
+          {showGifPicker && (
+            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#151520] border border-white/10 rounded-xl p-3 max-h-80 overflow-hidden flex flex-col">
+              {/* Search */}
+              <input
+                type="text"
+                value={gifSearch}
+                onChange={(e) => handleGifSearchChange(e.target.value)}
+                placeholder="Search GIFs..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-amber-400/50 mb-3"
+                autoFocus
+              />
+              
+              {/* Results */}
+              <div className="flex-1 overflow-y-auto">
+                {gifLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Spinner size="sm" />
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-2">
+                    {(gifSearch ? gifResults : trendingGifs).map((gif) => (
+                      <button
+                        key={gif.id}
+                        onClick={() => sendGif(gif)}
+                        className="relative aspect-square rounded-lg overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all"
+                      >
+                        <img
+                          src={gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url}
+                          alt={gif.content_description || 'GIF'}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                {!gifLoading && gifSearch && gifResults.length === 0 && (
+                  <p className="text-white/40 text-center py-4 text-sm">No GIFs found</p>
+                )}
+              </div>
+              
+              {/* Tenor attribution */}
+              <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
+                <span className="text-xs text-white/30">Powered by Tenor</span>
+              </div>
             </div>
           )}
         </div>
