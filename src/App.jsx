@@ -1010,7 +1010,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
   // Tenor API Key - replace with your key
-  const TENOR_API_KEY = 'AIzaSyCum6LDRSyPsjJt-FQTNcO4SC5MWhY9FoA';
+  const TENOR_API_KEY = 'YOUR_TENOR_API_KEY';
   
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -1673,12 +1673,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         <div className="relative">
           <div className="flex items-center gap-2 bg-white/5 rounded-2xl border border-white/10 px-4 py-3 focus-within:border-amber-400/50 transition-colors">
             <button 
-              className="text-white/40 hover:text-white/70 transition-colors relative"
-              onClick={() => setShowEmojis(!showEmojis)}
-            >
-              <Icons.Smile />
-            </button>
-            <button 
               className="text-white/40 hover:text-white/70 transition-colors"
               onClick={() => setShowGifPicker(!showGifPicker)}
             >
@@ -1700,24 +1694,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               <Icons.Send />
             </button>
           </div>
-          
-          {/* Emoji Picker */}
-          {showEmojis && (
-            <div className="absolute bottom-full left-0 mb-2 bg-[#151520] border border-white/10 rounded-xl p-3 flex gap-2">
-              {emojis.map((emoji) => (
-                <button
-                  key={emoji}
-                  className="w-8 h-8 hover:bg-white/10 rounded-lg transition-colors text-lg"
-                  onClick={() => {
-                    setNewMessage(prev => prev + emoji);
-                    setShowEmojis(false);
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-          )}
           
           {/* GIF Picker */}
           {showGifPicker && (
