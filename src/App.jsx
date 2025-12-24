@@ -496,6 +496,31 @@ const LandingPage = () => {
           from { opacity: 0; transform: translateY(20px); }
           to { opacity: 1; transform: translateY(0); }
         }
+        @keyframes gradient-x {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        @keyframes warning-pulse {
+          0%, 100% { 
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+          }
+          50% { 
+            transform: scale(1.01);
+            box-shadow: 0 0 20px 5px rgba(239, 68, 68, 0.3);
+          }
+        }
+        @keyframes warp {
+          0%, 100% { 
+            filter: hue-rotate(0deg) brightness(1);
+          }
+          25% { 
+            filter: hue-rotate(-10deg) brightness(1.1);
+          }
+          75% { 
+            filter: hue-rotate(10deg) brightness(1.1);
+          }
+        }
         .animate-fade-in {
           animation: fade-in 0.6s ease-out forwards;
           opacity: 0;
@@ -503,6 +528,12 @@ const LandingPage = () => {
         .animate-fade-in-up {
           animation: fade-in-up 0.6s ease-out forwards;
           opacity: 0;
+        }
+        .animate-gradient-x {
+          animation: gradient-x 2s ease infinite;
+        }
+        .animate-warning-pulse {
+          animation: warning-pulse 1s ease-in-out infinite, warp 2s ease-in-out infinite;
         }
       `}</style>
     </div>
@@ -1007,6 +1038,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [mentionIndex, setMentionIndex] = useState(0);
   const [selectedMentions, setSelectedMentions] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [activeWarning, setActiveWarning] = useState(null);
+  const [warningPulse, setWarningPulse] = useState(false);
+  const [announcement, setAnnouncement] = useState(null);
+  const [announcementVisible, setAnnouncementVisible] = useState(false);
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
@@ -1022,6 +1057,58 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   // Tenor API Key - fetched from server
   const [tenorApiKey, setTenorApiKey] = useState('');
+  
+  // Fetch warnings on mount
+  useEffect(() => {
+    const fetchWarnings = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/warnings`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+        const data = await response.json();
+        if (data.warnings && data.warnings.length > 0) {
+          // Show the most recent unacknowledged warning
+          setActiveWarning(data.warnings[0]);
+          triggerWarningPulse();
+        }
+      } catch (error) {
+        console.error('Failed to fetch warnings:', error);
+      }
+    };
+    fetchWarnings();
+  }, [sessionToken]);
+  
+  // Trigger warning pulse animation
+  const triggerWarningPulse = () => {
+    setWarningPulse(true);
+    // Pulse 5 times
+    let pulseCount = 0;
+    const pulseInterval = setInterval(() => {
+      pulseCount++;
+      if (pulseCount >= 10) {
+        clearInterval(pulseInterval);
+      }
+    }, 500);
+  };
+  
+  // Acknowledge warning
+  const acknowledgeWarning = async () => {
+    if (!activeWarning) return;
+    try {
+      await fetch(`${API_URL}/api/warnings/ack`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ warningId: activeWarning.id }),
+      });
+      setActiveWarning(null);
+      setWarningPulse(false);
+    } catch (error) {
+      console.error('Failed to acknowledge warning:', error);
+    }
+  };
   
   // Fetch Tenor API key on mount
   useEffect(() => {
@@ -1253,6 +1340,26 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         
       case 'error':
         console.error('WebSocket error:', data.message);
+        break;
+        
+      case 'warning':
+        // Received a warning from admin
+        setActiveWarning(data.warning);
+        triggerWarningPulse();
+        // Play alert sound
+        if (soundEnabled) {
+          playNotificationSound(true);
+        }
+        break;
+        
+      case 'announcement':
+        // Received an announcement
+        setAnnouncement(data.announcement);
+        setAnnouncementVisible(true);
+        // Auto-hide after 30 seconds for non-urgent
+        if (data.announcement.type !== 'urgent') {
+          setTimeout(() => setAnnouncementVisible(false), 30000);
+        }
         break;
     }
   };
@@ -1912,12 +2019,105 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           </div>
         )}
         
+        {/* Announcement Banner */}
+        {announcementVisible && announcement && (
+          <div 
+            className={`mb-3 p-4 rounded-xl border animate-pulse ${
+              announcement.type === 'urgent' 
+                ? 'bg-red-500/20 border-red-500/50 text-red-200' 
+                : announcement.type === 'warning'
+                  ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
+                  : announcement.type === 'success'
+                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
+                    : 'bg-blue-500/20 border-blue-500/50 text-blue-200'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">
+                  {announcement.type === 'urgent' ? '🚨' : 
+                   announcement.type === 'warning' ? '⚠️' : 
+                   announcement.type === 'success' ? '✅' : '📢'}
+                </span>
+                <p className="text-sm font-medium">{announcement.message}</p>
+              </div>
+              <button 
+                onClick={() => setAnnouncementVisible(false)}
+                className="text-white/50 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Warning Banner with Pulse Effect */}
+        {activeWarning && (
+          <div 
+            className={`mb-3 relative overflow-hidden rounded-xl ${warningPulse ? 'animate-warning-pulse' : ''}`}
+          >
+            {/* Warping background effect */}
+            <div 
+              className={`absolute inset-0 bg-gradient-to-r from-red-500/30 via-orange-500/30 to-red-500/30 ${
+                warningPulse ? 'animate-gradient-x' : ''
+              }`}
+              style={{
+                backgroundSize: '200% 100%',
+              }}
+            />
+            
+            {/* Glow effect */}
+            <div 
+              className={`absolute inset-0 ${warningPulse ? 'animate-pulse' : ''}`}
+              style={{
+                boxShadow: warningPulse ? '0 0 30px rgba(239, 68, 68, 0.5), inset 0 0 30px rgba(239, 68, 68, 0.1)' : 'none',
+              }}
+            />
+            
+            <div className="relative p-4 border-2 border-red-500/70 rounded-xl bg-red-500/10 backdrop-blur-sm">
+              <div className="flex items-start gap-3">
+                <span className={`text-2xl ${warningPulse ? 'animate-bounce' : ''}`}>⚠️</span>
+                <div className="flex-1">
+                  <p className="text-red-300 font-bold text-sm mb-1">Warning from Moderator</p>
+                  <p className="text-white/90 text-sm">{activeWarning.message}</p>
+                </div>
+                <button 
+                  onClick={acknowledgeWarning}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                    warningPulse 
+                      ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse' 
+                      : 'bg-red-500/50 text-white/70 hover:bg-red-500'
+                  }`}
+                >
+                  ✓ I Understand
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Connection Status & Sound Toggle */}
         <div className="flex items-center justify-between mb-3 px-2">
           <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
-            <p className={`text-xs ${connected ? 'text-emerald-400/70' : 'text-amber-400/70'}`}>
-              {connected ? 'Real-time connection active' : 'Connecting...'}
+            <div className={`w-2 h-2 rounded-full ${
+              activeWarning 
+                ? 'bg-red-400 animate-pulse' 
+                : connected 
+                  ? 'bg-emerald-400' 
+                  : 'bg-amber-400 animate-pulse'
+            }`} />
+            <p className={`text-xs ${
+              activeWarning 
+                ? 'text-red-400 font-bold' 
+                : connected 
+                  ? 'text-emerald-400/70' 
+                  : 'text-amber-400/70'
+            }`}>
+              {activeWarning 
+                ? '⚠️ Please acknowledge the warning above' 
+                : connected 
+                  ? 'Real-time connection active' 
+                  : 'Connecting...'}
             </p>
           </div>
           <button
@@ -1930,7 +2130,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         </div>
         
         <div className="relative">
-          <div className="flex items-center gap-2 bg-white/5 rounded-2xl border border-white/10 px-4 py-3 focus-within:border-amber-400/50 transition-colors">
+          <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${
+            activeWarning 
+              ? 'bg-red-500/5 border-red-500/30 focus-within:border-red-400/50' 
+              : 'bg-white/5 border-white/10 focus-within:border-amber-400/50'
+          }`}>
             <button 
               className="text-white/40 hover:text-white/70 transition-colors"
               onClick={() => setShowGifPicker(!showGifPicker)}
@@ -1949,12 +2153,13 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                   sendMessage();
                 }
               }}
-              placeholder="Type a message... (use @ to mention)"
+              placeholder={activeWarning ? "Acknowledge warning to continue..." : "Type a message... (use @ to mention)"}
               className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none text-sm"
+              disabled={!!activeWarning}
             />
             <button 
               onClick={() => sendMessage()}
-              disabled={!newMessage.trim()}
+              disabled={!newMessage.trim() || !!activeWarning}
               className="text-amber-400 hover:text-amber-300 transition-colors disabled:text-white/20 disabled:cursor-not-allowed"
             >
               <Icons.Send />
@@ -2279,6 +2484,71 @@ const AdminPanel = ({ sessionToken }) => {
   const [bulkBanModal, setBulkBanModal] = useState(false);
   const [bulkBanReason, setBulkBanReason] = useState('');
   const [processing, setProcessing] = useState(false);
+  const [warningTarget, setWarningTarget] = useState('');
+  const [warningMessage, setWarningMessage] = useState('');
+  const [announcementMessage, setAnnouncementMessage] = useState('');
+  const [announcementType, setAnnouncementType] = useState('info');
+  const [sendingWarning, setSendingWarning] = useState(false);
+  const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
+  
+  // Send warning to user
+  const handleSendWarning = async () => {
+    if (!warningTarget || !warningMessage) return;
+    
+    setSendingWarning(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/warn`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ 
+          wallet: warningTarget, 
+          message: warningMessage,
+        }),
+      });
+      
+      if (response.ok) {
+        setWarningTarget('');
+        setWarningMessage('');
+        alert('Warning sent successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to send warning:', error);
+    } finally {
+      setSendingWarning(false);
+    }
+  };
+  
+  // Send announcement to all users
+  const handleSendAnnouncement = async () => {
+    if (!announcementMessage) return;
+    
+    setSendingAnnouncement(true);
+    try {
+      const response = await fetch(`${API_URL}/api/admin/announce`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ 
+          message: announcementMessage, 
+          type: announcementType,
+        }),
+      });
+      
+      if (response.ok) {
+        setAnnouncementMessage('');
+        alert('Announcement sent successfully!');
+      }
+    } catch (error) {
+      console.error('Failed to send announcement:', error);
+    } finally {
+      setSendingAnnouncement(false);
+    }
+  };
   
   // Load users
   const loadUsers = async () => {
@@ -2562,7 +2832,7 @@ const AdminPanel = ({ sessionToken }) => {
       </h1>
       
       {/* Section Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         <button
           onClick={() => setActiveSection('users')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
@@ -2582,6 +2852,16 @@ const AdminPanel = ({ sessionToken }) => {
           }`}
         >
           Messages ({messages.length})
+        </button>
+        <button
+          onClick={() => setActiveSection('communicate')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeSection === 'communicate' 
+              ? 'bg-amber-400 text-black' 
+              : 'bg-white/5 text-white/60 hover:bg-white/10'
+          }`}
+        >
+          📢 Communicate
         </button>
       </div>
       
@@ -2863,6 +3143,153 @@ const AdminPanel = ({ sessionToken }) => {
             {filteredMessages.length === 0 && (
               <p className="text-white/40 text-center py-8">No messages found</p>
             )}
+          </div>
+        </div>
+      )}
+      
+      {/* Communicate Section */}
+      {activeSection === 'communicate' && (
+        <div className="flex-1 overflow-y-auto space-y-6">
+          {/* Send Warning to User */}
+          <div className="p-6 bg-red-500/10 border border-red-500/30 rounded-xl">
+            <h3 className="text-lg font-bold text-red-400 mb-4 flex items-center gap-2">
+              ⚠️ Send Warning to User
+            </h3>
+            <p className="text-sm text-white/60 mb-4">
+              Warnings appear as attention-grabbing banners that block the user from chatting until acknowledged.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Select User</label>
+                <select
+                  value={warningTarget}
+                  onChange={(e) => setWarningTarget(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-400/50"
+                >
+                  <option value="">Choose a user...</option>
+                  {messageUsers.map(user => (
+                    <option key={user.wallet} value={user.wallet}>
+                      {user.displayName || truncateAddress(user.wallet)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Warning Message</label>
+                <textarea
+                  value={warningMessage}
+                  onChange={(e) => setWarningMessage(e.target.value)}
+                  placeholder="Enter your warning message..."
+                  rows={3}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-400/50 resize-none"
+                />
+              </div>
+              
+              <button
+                onClick={handleSendWarning}
+                disabled={!warningTarget || !warningMessage || sendingWarning}
+                className="w-full px-4 py-3 bg-red-500 text-white rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-red-600 transition-colors"
+              >
+                {sendingWarning ? 'Sending...' : '⚠️ Send Warning'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Send Announcement */}
+          <div className="p-6 bg-blue-500/10 border border-blue-500/30 rounded-xl">
+            <h3 className="text-lg font-bold text-blue-400 mb-4 flex items-center gap-2">
+              📢 Send Announcement
+            </h3>
+            <p className="text-sm text-white/60 mb-4">
+              Announcements appear as banners to all users currently in the chat.
+            </p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Announcement Type</label>
+                <div className="flex gap-2 flex-wrap">
+                  {[
+                    { value: 'info', label: '📢 Info', color: 'blue' },
+                    { value: 'success', label: '✅ Success', color: 'emerald' },
+                    { value: 'warning', label: '⚠️ Warning', color: 'yellow' },
+                    { value: 'urgent', label: '🚨 Urgent', color: 'red' },
+                  ].map(type => (
+                    <button
+                      key={type.value}
+                      onClick={() => setAnnouncementType(type.value)}
+                      className={`px-3 py-2 rounded-lg text-sm transition-colors ${
+                        announcementType === type.value 
+                          ? `bg-${type.color}-500/30 border border-${type.color}-500/50 text-${type.color}-300`
+                          : 'bg-white/5 border border-white/10 text-white/60 hover:bg-white/10'
+                      }`}
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Message</label>
+                <textarea
+                  value={announcementMessage}
+                  onChange={(e) => setAnnouncementMessage(e.target.value)}
+                  placeholder="Enter your announcement..."
+                  rows={3}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400/50 resize-none"
+                />
+              </div>
+              
+              {/* Preview */}
+              {announcementMessage && (
+                <div>
+                  <label className="text-sm text-white/60 block mb-1">Preview</label>
+                  <div 
+                    className={`p-4 rounded-xl border ${
+                      announcementType === 'urgent' 
+                        ? 'bg-red-500/20 border-red-500/50 text-red-200' 
+                        : announcementType === 'warning'
+                          ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
+                          : announcementType === 'success'
+                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
+                            : 'bg-blue-500/20 border-blue-500/50 text-blue-200'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {announcementType === 'urgent' ? '🚨' : 
+                         announcementType === 'warning' ? '⚠️' : 
+                         announcementType === 'success' ? '✅' : '📢'}
+                      </span>
+                      <p className="text-sm font-medium">{announcementMessage}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <button
+                onClick={handleSendAnnouncement}
+                disabled={!announcementMessage || sendingAnnouncement}
+                className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors"
+              >
+                {sendingAnnouncement ? 'Sending...' : '📢 Send to All Users'}
+              </button>
+            </div>
+          </div>
+          
+          {/* Admin Notes */}
+          <div className="p-6 bg-white/5 border border-white/10 rounded-xl">
+            <h3 className="text-lg font-bold text-white/80 mb-4 flex items-center gap-2">
+              📝 Communication Tips
+            </h3>
+            <ul className="text-sm text-white/60 space-y-2">
+              <li>• <strong>Warnings</strong> block users from chatting until they acknowledge</li>
+              <li>• <strong>Info announcements</strong> auto-dismiss after 30 seconds</li>
+              <li>• <strong>Urgent announcements</strong> stay until manually dismissed</li>
+              <li>• Users receive both visual and audio notifications</li>
+            </ul>
           </div>
         </div>
       )}
