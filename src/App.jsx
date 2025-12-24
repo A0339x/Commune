@@ -2533,12 +2533,15 @@ const AdminPanel = ({ sessionToken }) => {
   const [announcementType, setAnnouncementType] = useState('info');
   const [sendingWarning, setSendingWarning] = useState(false);
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
+  const [warningSent, setWarningSent] = useState(false);
+  const [announcementSent, setAnnouncementSent] = useState(false);
   
   // Send warning to user
   const handleSendWarning = async () => {
     if (!warningTarget || !warningMessage) return;
     
     setSendingWarning(true);
+    setWarningSent(false);
     try {
       const response = await fetch(`${API_URL}/api/admin/warn`, {
         method: 'POST',
@@ -2555,7 +2558,9 @@ const AdminPanel = ({ sessionToken }) => {
       if (response.ok) {
         setWarningTarget('');
         setWarningMessage('');
-        alert('Warning sent successfully!');
+        setWarningSent(true);
+        // Reset after 2 seconds
+        setTimeout(() => setWarningSent(false), 2000);
       }
     } catch (error) {
       console.error('Failed to send warning:', error);
@@ -2569,6 +2574,7 @@ const AdminPanel = ({ sessionToken }) => {
     if (!announcementMessage) return;
     
     setSendingAnnouncement(true);
+    setAnnouncementSent(false);
     try {
       const response = await fetch(`${API_URL}/api/admin/announce`, {
         method: 'POST',
@@ -2584,7 +2590,9 @@ const AdminPanel = ({ sessionToken }) => {
       
       if (response.ok) {
         setAnnouncementMessage('');
-        alert('Announcement sent successfully!');
+        setAnnouncementSent(true);
+        // Reset after 2 seconds
+        setTimeout(() => setAnnouncementSent(false), 2000);
       }
     } catch (error) {
       console.error('Failed to send announcement:', error);
@@ -3234,10 +3242,14 @@ const AdminPanel = ({ sessionToken }) => {
               
               <button
                 onClick={handleSendWarning}
-                disabled={!warningTarget || !warningMessage || sendingWarning}
-                className="w-full px-4 py-3 bg-red-500 text-white rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-red-600 transition-colors"
+                disabled={!warningTarget || !warningMessage || sendingWarning || warningSent}
+                className={`w-full px-4 py-3 rounded-lg text-sm font-bold transition-all ${
+                  warningSent 
+                    ? 'bg-emerald-500 text-white animate-pulse' 
+                    : 'bg-red-500 text-white disabled:opacity-50 hover:bg-red-600'
+                }`}
               >
-                {sendingWarning ? 'Sending...' : '⚠️ Send Warning'}
+                {warningSent ? '✓ Warning Sent!' : sendingWarning ? 'Sending...' : '⚠️ Send Warning'}
               </button>
             </div>
           </div>
@@ -3289,10 +3301,14 @@ const AdminPanel = ({ sessionToken }) => {
               
               <button
                 onClick={handleSendAnnouncement}
-                disabled={!announcementMessage || sendingAnnouncement}
-                className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg text-sm font-bold disabled:opacity-50 hover:bg-blue-600 transition-colors"
+                disabled={!announcementMessage || sendingAnnouncement || announcementSent}
+                className={`w-full px-4 py-3 rounded-lg text-sm font-bold transition-all ${
+                  announcementSent 
+                    ? 'bg-emerald-500 text-white animate-pulse' 
+                    : 'bg-blue-500 text-white disabled:opacity-50 hover:bg-blue-600'
+                }`}
               >
-                {sendingAnnouncement ? 'Sending...' : '📢 Send to All Users'}
+                {announcementSent ? '✓ Announcement Sent!' : sendingAnnouncement ? 'Sending...' : '📢 Send to All Users'}
               </button>
             </div>
           </div>
