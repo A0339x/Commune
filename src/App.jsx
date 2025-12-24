@@ -2259,6 +2259,372 @@ const UserList = ({ sessionToken }) => {
 };
 
 // ============================================
+// ADMIN PANEL
+// ============================================
+const AdminPanel = ({ sessionToken }) => {
+  const [users, setUsers] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeSection, setActiveSection] = useState('users');
+  const [muteModal, setMuteModal] = useState(null);
+  const [banModal, setBanModal] = useState(null);
+  const [muteDuration, setMuteDuration] = useState(30);
+  const [muteReason, setMuteReason] = useState('');
+  const [banReason, setBanReason] = useState('');
+  
+  // Load users
+  const loadUsers = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/users`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      const data = await response.json();
+      setUsers(data.users || []);
+    } catch (error) {
+      console.error('Failed to load users:', error);
+    }
+  };
+  
+  // Load messages with original content
+  const loadMessages = async () => {
+    try {
+      const response = await fetch(`${API_URL}/api/admin/messages`, {
+        headers: { 'Authorization': `Bearer ${sessionToken}` },
+      });
+      const data = await response.json();
+      setMessages(data.messages || []);
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    }
+  };
+  
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      await Promise.all([loadUsers(), loadMessages()]);
+      setLoading(false);
+    };
+    load();
+  }, [sessionToken]);
+  
+  // Mute user
+  const handleMute = async () => {
+    if (!muteModal) return;
+    try {
+      await fetch(`${API_URL}/api/admin/mute`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ 
+          wallet: muteModal.wallet, 
+          duration: muteDuration,
+          reason: muteReason || 'No reason provided',
+        }),
+      });
+      setMuteModal(null);
+      setMuteReason('');
+      loadUsers();
+    } catch (error) {
+      console.error('Failed to mute user:', error);
+    }
+  };
+  
+  // Ban user
+  const handleBan = async () => {
+    if (!banModal) return;
+    try {
+      await fetch(`${API_URL}/api/admin/ban`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ 
+          wallet: banModal.wallet, 
+          reason: banReason || 'No reason provided',
+        }),
+      });
+      setBanModal(null);
+      setBanReason('');
+      loadUsers();
+    } catch (error) {
+      console.error('Failed to ban user:', error);
+    }
+  };
+  
+  // Unban user
+  const handleUnban = async (wallet) => {
+    try {
+      await fetch(`${API_URL}/api/admin/unban`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ wallet }),
+      });
+      loadUsers();
+    } catch (error) {
+      console.error('Failed to unban user:', error);
+    }
+  };
+  
+  // Delete message
+  const handleDeleteMessage = async (messageId) => {
+    if (!confirm('Delete this message?')) return;
+    try {
+      await fetch(`${API_URL}/api/admin/delete-message`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ messageId }),
+      });
+      loadMessages();
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
+  };
+  
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex-1 flex flex-col p-6 overflow-hidden">
+      <h1 className="text-2xl font-bold mb-6 flex items-center gap-3">
+        🛡️ Admin Panel
+      </h1>
+      
+      {/* Section Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveSection('users')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeSection === 'users' 
+              ? 'bg-amber-400 text-black' 
+              : 'bg-white/5 text-white/60 hover:bg-white/10'
+          }`}
+        >
+          Users ({users.length})
+        </button>
+        <button
+          onClick={() => setActiveSection('messages')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            activeSection === 'messages' 
+              ? 'bg-amber-400 text-black' 
+              : 'bg-white/5 text-white/60 hover:bg-white/10'
+          }`}
+        >
+          Messages ({messages.length})
+        </button>
+      </div>
+      
+      {/* Users Section */}
+      {activeSection === 'users' && (
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {users.map(user => (
+            <div 
+              key={user.wallet}
+              className={`p-4 rounded-xl border ${
+                user.isBanned 
+                  ? 'bg-red-500/10 border-red-500/30' 
+                  : user.isMuted 
+                    ? 'bg-yellow-500/10 border-yellow-500/30' 
+                    : 'bg-white/5 border-white/10'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{user.displayName || truncateAddress(user.wallet)}</p>
+                  <p className="text-xs text-white/40 font-mono">{user.wallet}</p>
+                  {user.isBanned && (
+                    <p className="text-xs text-red-400 mt-1">🚫 Banned: {user.banReason}</p>
+                  )}
+                  {user.isMuted && !user.isBanned && (
+                    <p className="text-xs text-yellow-400 mt-1">🔇 Muted: {user.muteReason}</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  {!user.isBanned && (
+                    <>
+                      <button
+                        onClick={() => setMuteModal(user)}
+                        className="px-3 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors"
+                      >
+                        Mute
+                      </button>
+                      <button
+                        onClick={() => setBanModal(user)}
+                        className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                      >
+                        Ban
+                      </button>
+                    </>
+                  )}
+                  {user.isBanned && (
+                    <button
+                      onClick={() => handleUnban(user.wallet)}
+                      className="px-3 py-1 text-xs bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
+                    >
+                      Unban
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          {users.length === 0 && (
+            <p className="text-white/40 text-center py-8">No users found</p>
+          )}
+        </div>
+      )}
+      
+      {/* Messages Section */}
+      {activeSection === 'messages' && (
+        <div className="flex-1 overflow-y-auto space-y-2">
+          {messages.slice().reverse().map(msg => (
+            <div 
+              key={msg.id}
+              className={`p-4 rounded-xl border ${
+                msg.deleted 
+                  ? 'bg-red-500/10 border-red-500/30' 
+                  : 'bg-white/5 border-white/10'
+              }`}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 mb-1">
+                    <span className="font-medium text-sm">{msg.displayName || truncateAddress(msg.wallet)}</span>
+                    <span className="text-xs text-white/30">{new Date(msg.timestamp).toLocaleString()}</span>
+                    {msg.deleted && <span className="text-xs text-red-400">DELETED</span>}
+                    {msg.adminDeleted && <span className="text-xs text-red-400">(by admin)</span>}
+                  </div>
+                  {msg.isGif ? (
+                    <img src={msg.deleted ? '' : msg.content} alt="GIF" className="max-w-xs rounded-lg" />
+                  ) : (
+                    <p className="text-sm text-white/70">
+                      {msg.deleted ? (
+                        <>
+                          <span className="line-through text-red-400/50">{msg.originalContent}</span>
+                        </>
+                      ) : msg.content}
+                    </p>
+                  )}
+                </div>
+                {!msg.deleted && (
+                  <button
+                    onClick={() => handleDeleteMessage(msg.id)}
+                    className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex-shrink-0"
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      
+      {/* Mute Modal */}
+      {muteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <div className="bg-[#151520] border border-white/10 rounded-2xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold mb-4">Mute User</h3>
+            <p className="text-sm text-white/60 mb-4">
+              Muting: {muteModal.displayName || truncateAddress(muteModal.wallet)}
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Duration (minutes)</label>
+                <input
+                  type="number"
+                  value={muteDuration}
+                  onChange={(e) => setMuteDuration(parseInt(e.target.value) || 30)}
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Reason</label>
+                <input
+                  type="text"
+                  value={muteReason}
+                  onChange={(e) => setMuteReason(e.target.value)}
+                  placeholder="Enter reason..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setMuteModal(null)}
+                  className="flex-1 px-4 py-2 bg-white/10 rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleMute}
+                  className="flex-1 px-4 py-2 bg-yellow-500 text-black rounded-lg text-sm font-medium"
+                >
+                  Mute User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Ban Modal */}
+      {banModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <div className="bg-[#151520] border border-white/10 rounded-2xl p-6 max-w-md w-full">
+            <h3 className="text-lg font-bold mb-4 text-red-400">Ban User</h3>
+            <p className="text-sm text-white/60 mb-4">
+              Banning: {banModal.displayName || truncateAddress(banModal.wallet)}
+            </p>
+            <p className="text-xs text-red-400/70 mb-4">
+              This will permanently remove the user until unbanned.
+            </p>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm text-white/60 block mb-1">Reason</label>
+                <input
+                  type="text"
+                  value={banReason}
+                  onChange={(e) => setBanReason(e.target.value)}
+                  placeholder="Enter reason..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setBanModal(null)}
+                  className="flex-1 px-4 py-2 bg-white/10 rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleBan}
+                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg text-sm font-medium"
+                >
+                  Ban User
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================
 // COMMUNITY DASHBOARD
 // ============================================
 const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
@@ -2269,6 +2635,24 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [savingName, setSavingName] = useState(false);
   const [nameError, setNameError] = useState('');
   const [nameSuccess, setNameSuccess] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Check if user is admin
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/admin/check`, {
+          headers: { 'Authorization': `Bearer ${sessionToken}` },
+        });
+
+        const data = await response.json();
+        setIsAdmin(data.isAdmin || false);
+      } catch (error) {
+        console.error('Failed to check admin status:', error);
+      }
+    };
+    checkAdmin();
+  }, [sessionToken]);
   
   // Fetch display name on mount
   useEffect(() => {
@@ -2386,6 +2770,21 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
             <Icons.Video />
           </button>
           
+          {/* Admin Tab - Only show for admins */}
+          {isAdmin && (
+            <button
+              onClick={() => setActiveTab('admin')}
+              className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                activeTab === 'admin' 
+                  ? 'bg-red-400/20 text-red-400 border border-red-400/30' 
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+              title="Admin Panel"
+            >
+              🛡️
+            </button>
+          )}
+          
           <div className="flex-1" />
           
           <ConnectButton.Custom>
@@ -2404,6 +2803,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
         <div className="flex-1 flex min-w-0 overflow-hidden">
           {activeTab === 'chat' && <ChatRoom walletAddress={address} sessionToken={sessionToken} />}
           {activeTab === 'video' && <VideoCall walletAddress={address} />}
+          {activeTab === 'admin' && isAdmin && <AdminPanel sessionToken={sessionToken} />}
         </div>
         
         {/* User List */}
