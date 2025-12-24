@@ -25,22 +25,6 @@ import {
 const queryClient = new QueryClient();
 
 // ============================================
-// MOCK DATA
-// ============================================
-const MOCK_MESSAGES = [
-  { id: 1, user: 'alice.eth', avatar: '🌸', message: 'Hey everyone! Excited to be here.', timestamp: new Date(Date.now() - 3600000) },
-  { id: 2, user: 'cryptoking.eth', avatar: '👑', message: 'Welcome! Great to have you.', timestamp: new Date(Date.now() - 3500000) },
-  { id: 3, user: 'defi_dev.eth', avatar: '🔧', message: 'Anyone working on anything cool?', timestamp: new Date(Date.now() - 3400000) },
-];
-
-const MOCK_USERS = [
-  { address: '0x1234...5678', name: 'alice.eth', avatar: '🌸', status: 'online' },
-  { address: '0x2345...6789', name: 'cryptoking.eth', avatar: '👑', status: 'online' },
-  { address: '0x3456...7890', name: 'defi_dev.eth', avatar: '🔧', status: 'away' },
-  { address: '0x4567...8901', name: 'nft_collector.eth', avatar: '🎨', status: 'online' },
-];
-
-// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 const formatTime = (date) => {
@@ -898,7 +882,44 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [editingReplyId, setEditingReplyId] = useState(null);
+  const [editReplyContent, setEditReplyContent] = useState('');
   const repliesEndRef = useRef(null);
+  
+  // Edit a reply
+  const saveReplyEdit = (replyId) => {
+    if (!editReplyContent.trim()) return;
+    
+    if (wsRef?.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'edit_reply',
+        replyId,
+        content: editReplyContent.trim(),
+      }));
+      // Optimistically update
+      setThreadReplies(prev => prev.map(r => 
+        r.id === replyId ? { ...r, content: editReplyContent.trim(), editedAt: Date.now() } : r
+      ));
+    }
+    setEditingReplyId(null);
+    setEditReplyContent('');
+  };
+  
+  // Delete a reply
+  const deleteReply = (replyId) => {
+    if (!confirm('Delete this reply?')) return;
+    
+    if (wsRef?.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'delete_reply',
+        replyId,
+      }));
+      // Optimistically update
+      setThreadReplies(prev => prev.map(r => 
+        r.id === replyId ? { ...r, content: 'Message deleted', deleted: true } : r
+      ));
+    }
+  };
   
   // Register callback for receiving new replies via WebSocket
   useEffect(() => {
@@ -1080,21 +1101,65 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
           ) : threadReplies.length === 0 ? (
             <p className="text-white/30 text-sm text-center py-8">No replies yet. Be the first!</p>
           ) : (
-            threadReplies.map((reply) => (
-              <div key={reply.id} className="flex gap-3">
-                <Avatar emoji={reply.avatar || '🛡️'} size="sm" />
-                <div className="flex-1">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-sm font-medium">{reply.displayName || reply.user}</span>
-                    {reply.displayName && (
-                      <span className="text-xs text-white/20 font-mono">{reply.user}</span>
+            threadReplies.map((reply) => {
+              const canModifyReply = !reply.deleted && 
+                reply.wallet?.toLowerCase() === walletAddress?.toLowerCase() &&
+                Date.now() - (typeof reply.timestamp === 'number' ? reply.timestamp : new Date(reply.timestamp).getTime()) < 15 * 60 * 1000;
+              
+              return (
+                <div key={reply.id} className="flex gap-3 group">
+                  <Avatar emoji={reply.avatar || '🛡️'} size="sm" />
+                  <div className="flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-sm font-medium">{reply.displayName || reply.user}</span>
+                      {reply.displayName && (
+                        <span className="text-xs text-white/20 font-mono">{reply.user}</span>
+                      )}
+                      <span className="text-xs text-white/30">{formatTime(reply.timestamp)}</span>
+                      {reply.editedAt && !reply.deleted && (
+                        <span className="text-xs text-white/20">(edited)</span>
+                      )}
+                    </div>
+                    {editingReplyId === reply.id ? (
+                      <div className="mt-1">
+                        <input
+                          type="text"
+                          value={editReplyContent}
+                          onChange={(e) => setEditReplyContent(e.target.value)}
+                          onKeyPress={(e) => e.key === 'Enter' && saveReplyEdit(reply.id)}
+                          className="w-full bg-white/10 border border-white/20 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+                          autoFocus
+                        />
+                        <div className="flex gap-2 mt-2">
+                          <button onClick={() => saveReplyEdit(reply.id)} className="text-xs px-3 py-1 bg-amber-500 text-black rounded-lg font-medium">Save</button>
+                          <button onClick={() => { setEditingReplyId(null); setEditReplyContent(''); }} className="text-xs px-3 py-1 bg-white/10 text-white/70 rounded-lg">Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className={`text-sm mt-1 ${reply.deleted ? 'text-white/40 italic' : 'text-white/70'}`}>
+                        {reply.deleted ? 'Message deleted' : reply.content}
+                      </p>
                     )}
-                    <span className="text-xs text-white/30">{formatTime(reply.timestamp)}</span>
+                    {canModifyReply && editingReplyId !== reply.id && (
+                      <div className="flex gap-3 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => { setEditingReplyId(reply.id); setEditReplyContent(reply.content); }}
+                          className="text-xs text-white/30 hover:text-amber-400"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => deleteReply(reply.id)}
+                          className="text-xs text-white/30 hover:text-red-400"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <p className="text-white/70 text-sm mt-1">{reply.content}</p>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
           <div ref={repliesEndRef} />
         </div>
@@ -1461,6 +1526,40 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               ...msg,
               content: 'Message deleted',
               deleted: true,
+            };
+          }
+          return msg;
+        }));
+        break;
+        
+      case 'reply_edited':
+        // Update reply in the parent message's recentReplies
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === data.parentId) {
+            return {
+              ...msg,
+              recentReplies: (msg.recentReplies || []).map(r => 
+                r.id === data.replyId 
+                  ? { ...r, content: data.content, editedAt: data.editedAt }
+                  : r
+              ),
+            };
+          }
+          return msg;
+        }));
+        break;
+        
+      case 'reply_deleted':
+        // Update reply in the parent message's recentReplies
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === data.parentId) {
+            return {
+              ...msg,
+              recentReplies: (msg.recentReplies || []).map(r => 
+                r.id === data.replyId 
+                  ? { ...r, content: 'Message deleted', deleted: true }
+                  : r
+              ),
             };
           }
           return msg;
@@ -1939,6 +2038,17 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         messageId: editingMessage,
         content: editContent.trim(),
       }));
+      // Optimistically update
+      setMessages(prev => prev.map(m => 
+        m.id === editingMessage 
+          ? { ...m, content: editContent.trim(), editedAt: Date.now() }
+          : m
+      ));
+    } else {
+      // Show error toast or reconnect
+      console.error('Cannot edit - connection lost');
+      setConnected(false);
+      connectWebSocket();
     }
     
     cancelEditing();
@@ -1953,6 +2063,17 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         type: 'delete',
         messageId,
       }));
+      // Optimistically update
+      setMessages(prev => prev.map(m => 
+        m.id === messageId 
+          ? { ...m, content: 'Message deleted', deleted: true }
+          : m
+      ));
+    } else {
+      // Show error and reconnect
+      console.error('Cannot delete - connection lost');
+      setConnected(false);
+      connectWebSocket();
     }
   };
   
@@ -3178,7 +3299,7 @@ const AdminPanel = ({ sessionToken }) => {
   const handleDeleteMessage = async (messageId) => {
     if (!confirm('Delete this message?')) return;
     try {
-      await fetch(`${API_URL}/api/admin/delete-message`, {
+      const response = await fetch(`${API_URL}/api/admin/delete-message`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -3186,7 +3307,14 @@ const AdminPanel = ({ sessionToken }) => {
         },
         body: JSON.stringify({ messageId }),
       });
-      loadMessages();
+      if (response.ok) {
+        // Update local state instead of full reload
+        setMessages(prev => prev.map(m => 
+          m.id === messageId 
+            ? { ...m, deleted: true, content: 'Message deleted', adminDeleted: true }
+            : m
+        ));
+      }
     } catch (error) {
       console.error('Failed to delete message:', error);
     }
