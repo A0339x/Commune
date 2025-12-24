@@ -2271,6 +2271,8 @@ const AdminPanel = ({ sessionToken }) => {
   const [muteDuration, setMuteDuration] = useState(30);
   const [muteReason, setMuteReason] = useState('');
   const [banReason, setBanReason] = useState('');
+  const [filterUser, setFilterUser] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Load users
   const loadUsers = async () => {
@@ -2306,6 +2308,29 @@ const AdminPanel = ({ sessionToken }) => {
     };
     load();
   }, [sessionToken]);
+  
+  // Filter messages by user and search query
+  const filteredMessages = messages.filter(msg => {
+    const matchesUser = !filterUser || msg.wallet?.toLowerCase() === filterUser.toLowerCase();
+    const matchesSearch = !searchQuery || 
+      (msg.content?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (msg.originalContent?.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (msg.displayName?.toLowerCase().includes(searchQuery.toLowerCase()));
+    return matchesUser && matchesSearch;
+  });
+  
+  // Get unique users from messages for filter dropdown
+  const messageUsers = [...new Map(messages.map(m => [m.wallet?.toLowerCase(), {
+    wallet: m.wallet,
+    displayName: m.displayName,
+  }])).values()];
+  
+  // Get message count per user
+  const userMessageCounts = messages.reduce((acc, msg) => {
+    const wallet = msg.wallet?.toLowerCase();
+    acc[wallet] = (acc[wallet] || 0) + 1;
+    return acc;
+  }, {});
   
   // Mute user
   const handleMute = async () => {
@@ -2445,6 +2470,17 @@ const AdminPanel = ({ sessionToken }) => {
                 <div>
                   <p className="font-medium">{user.displayName || truncateAddress(user.wallet)}</p>
                   <p className="text-xs text-white/40 font-mono">{user.wallet}</p>
+                  <p className="text-xs text-white/30 mt-1">
+                    {userMessageCounts[user.wallet?.toLowerCase()] || 0} messages
+                    {userMessageCounts[user.wallet?.toLowerCase()] > 0 && (
+                      <button
+                        onClick={() => { setFilterUser(user.wallet); setActiveSection('messages'); }}
+                        className="ml-2 text-amber-400 hover:underline"
+                      >
+                        View →
+                      </button>
+                    )}
+                  </p>
                   {user.isBanned && (
                     <p className="text-xs text-red-400 mt-1">🚫 Banned: {user.banReason}</p>
                   )}
@@ -2489,47 +2525,118 @@ const AdminPanel = ({ sessionToken }) => {
       
       {/* Messages Section */}
       {activeSection === 'messages' && (
-        <div className="flex-1 overflow-y-auto space-y-2">
-          {messages.slice().reverse().map(msg => (
-            <div 
-              key={msg.id}
-              className={`p-4 rounded-xl border ${
-                msg.deleted 
-                  ? 'bg-red-500/10 border-red-500/30' 
-                  : 'bg-white/5 border-white/10'
-              }`}
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="font-medium text-sm">{msg.displayName || truncateAddress(msg.wallet)}</span>
-                    <span className="text-xs text-white/30">{new Date(msg.timestamp).toLocaleString()}</span>
-                    {msg.deleted && <span className="text-xs text-red-400">DELETED</span>}
-                    {msg.adminDeleted && <span className="text-xs text-red-400">(by admin)</span>}
-                  </div>
-                  {msg.isGif ? (
-                    <img src={msg.deleted ? '' : msg.content} alt="GIF" className="max-w-xs rounded-lg" />
-                  ) : (
-                    <p className="text-sm text-white/70">
-                      {msg.deleted ? (
-                        <>
-                          <span className="line-through text-red-400/50">{msg.originalContent}</span>
-                        </>
-                      ) : msg.content}
-                    </p>
-                  )}
-                </div>
-                {!msg.deleted && (
-                  <button
-                    onClick={() => handleDeleteMessage(msg.id)}
-                    className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex-shrink-0"
-                  >
-                    Delete
-                  </button>
-                )}
-              </div>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3 mb-4">
+            {/* User Filter Dropdown */}
+            <div className="flex-1 min-w-48">
+              <select
+                value={filterUser}
+                onChange={(e) => setFilterUser(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+              >
+                <option value="">All Users</option>
+                {messageUsers.map(user => (
+                  <option key={user.wallet} value={user.wallet}>
+                    {user.displayName || truncateAddress(user.wallet)} ({userMessageCounts[user.wallet?.toLowerCase()] || 0} msgs)
+                  </option>
+                ))}
+              </select>
             </div>
-          ))}
+            
+            {/* Search */}
+            <div className="flex-1 min-w-48">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search messages..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+              />
+            </div>
+            
+            {/* Clear Filters */}
+            {(filterUser || searchQuery) && (
+              <button
+                onClick={() => { setFilterUser(''); setSearchQuery(''); }}
+                className="px-3 py-2 bg-white/10 rounded-lg text-sm text-white/60 hover:bg-white/20 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          
+          {/* Results Count */}
+          <div className="text-xs text-white/40 mb-2">
+            Showing {filteredMessages.length} of {messages.length} messages
+            {filterUser && (
+              <span className="ml-2 text-amber-400">
+                • Filtered by: {messageUsers.find(u => u.wallet?.toLowerCase() === filterUser.toLowerCase())?.displayName || truncateAddress(filterUser)}
+              </span>
+            )}
+          </div>
+          
+          {/* Messages List */}
+          <div className="flex-1 overflow-y-auto space-y-2">
+            {filteredMessages.slice().reverse().map(msg => (
+              <div 
+                key={msg.id}
+                className={`p-4 rounded-xl border ${
+                  msg.deleted 
+                    ? 'bg-red-500/10 border-red-500/30' 
+                    : 'bg-white/5 border-white/10'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <button 
+                        onClick={() => setFilterUser(msg.wallet)}
+                        className="font-medium text-sm hover:text-amber-400 transition-colors"
+                        title="Filter by this user"
+                      >
+                        {msg.displayName || truncateAddress(msg.wallet)}
+                      </button>
+                      <span className="text-xs text-white/30">{new Date(msg.timestamp).toLocaleString()}</span>
+                      {msg.deleted && <span className="text-xs text-red-400">DELETED</span>}
+                      {msg.adminDeleted && <span className="text-xs text-red-400">(by admin)</span>}
+                    </div>
+                    {msg.isGif ? (
+                      <img src={msg.deleted ? '' : msg.content} alt="GIF" className="max-w-xs rounded-lg" />
+                    ) : (
+                      <p className="text-sm text-white/70">
+                        {msg.deleted ? (
+                          <>
+                            <span className="line-through text-red-400/50">{msg.originalContent}</span>
+                          </>
+                        ) : msg.content}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 flex-shrink-0">
+                    {!msg.deleted && (
+                      <button
+                        onClick={() => handleDeleteMessage(msg.id)}
+                        className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    )}
+                    <button
+                      onClick={() => { setMuteModal({ wallet: msg.wallet, displayName: msg.displayName }); }}
+                      className="px-3 py-1 text-xs bg-yellow-500/20 text-yellow-400 rounded-lg hover:bg-yellow-500/30 transition-colors"
+                      title="Mute this user"
+                    >
+                      Mute
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+            {filteredMessages.length === 0 && (
+              <p className="text-white/40 text-center py-8">No messages found</p>
+            )}
+          </div>
         </div>
       )}
       
