@@ -3320,6 +3320,34 @@ const AdminPanel = ({ sessionToken }) => {
     }
   };
   
+  // Delete reply (admin)
+  const handleDeleteReply = async (replyId) => {
+    if (!confirm('Delete this reply?')) return;
+    try {
+      const response = await fetch(`${API_URL}/api/admin/delete-reply`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}` 
+        },
+        body: JSON.stringify({ replyId }),
+      });
+      if (response.ok) {
+        // Update local state - find the reply in allReplies and mark as deleted
+        setMessages(prev => prev.map(m => ({
+          ...m,
+          allReplies: (m.allReplies || []).map(r => 
+            r.id === replyId 
+              ? { ...r, deleted: true, originalContent: r.content, content: 'Message deleted' }
+              : r
+          ),
+        })));
+      }
+    } catch (error) {
+      console.error('Failed to delete reply:', error);
+    }
+  };
+  
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -3621,6 +3649,9 @@ const AdminPanel = ({ sessionToken }) => {
                       <span className="text-xs text-white/30">{new Date(msg.timestamp).toLocaleString()}</span>
                       {msg.deleted && <span className="text-xs text-red-400">DELETED</span>}
                       {msg.adminDeleted && <span className="text-xs text-red-400">(by admin)</span>}
+                      {msg.replyCount > 0 && (
+                        <span className="text-xs text-amber-400">{msg.replyCount} replies</span>
+                      )}
                     </div>
                     {msg.isGif ? (
                       <img src={msg.deleted ? '' : msg.content} alt="GIF" className="max-w-xs rounded-lg" />
@@ -3632,6 +3663,38 @@ const AdminPanel = ({ sessionToken }) => {
                           </>
                         ) : msg.content}
                       </p>
+                    )}
+                    
+                    {/* Thread Replies */}
+                    {msg.allReplies && msg.allReplies.length > 0 && (
+                      <div className="mt-3 ml-4 border-l-2 border-white/10 pl-4 space-y-2">
+                        <div className="text-xs text-white/40 mb-2">Thread replies:</div>
+                        {msg.allReplies.map(reply => (
+                          <div 
+                            key={reply.id} 
+                            className={`p-2 rounded-lg ${reply.deleted ? 'bg-red-500/10' : 'bg-white/5'}`}
+                          >
+                            <div className="flex items-baseline gap-2 mb-1">
+                              <span className="text-xs font-medium">{reply.displayName || truncateAddress(reply.wallet)}</span>
+                              <span className="text-xs text-white/30">{new Date(reply.timestamp).toLocaleString()}</span>
+                              {reply.deleted && <span className="text-xs text-red-400">DELETED</span>}
+                            </div>
+                            <p className="text-xs text-white/60">
+                              {reply.deleted ? (
+                                <span className="line-through text-red-400/50">{reply.originalContent}</span>
+                              ) : reply.content}
+                            </p>
+                            {!reply.deleted && (
+                              <button
+                                onClick={() => handleDeleteReply(reply.id)}
+                                className="mt-1 px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                              >
+                                Delete Reply
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
