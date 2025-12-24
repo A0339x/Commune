@@ -1277,6 +1277,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             timestamp: new Date(r.timestamp),
           })),
         })));
+        // Scroll to bottom after messages load
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+        }, 100);
       }
     } catch (error) {
       console.error('Failed to load message history:', error);
