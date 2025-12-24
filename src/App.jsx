@@ -197,6 +197,41 @@ const Badge = ({ children, variant = 'default', className = '' }) => {
   );
 };
 
+// Confirm Modal Component
+const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText = 'Delete', confirmVariant = 'danger' }) => {
+  if (!isOpen) return null;
+  
+  const confirmStyles = {
+    danger: 'bg-red-500 hover:bg-red-600 text-white',
+    warning: 'bg-amber-500 hover:bg-amber-600 text-black',
+    primary: 'bg-amber-400 hover:bg-amber-500 text-black',
+  };
+  
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-[#1a1a25] border border-white/10 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-fade-in">
+        <h3 className="text-lg font-bold mb-2">{title}</h3>
+        <p className="text-white/60 text-sm mb-6">{message}</p>
+        <div className="flex gap-3 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-xl text-sm font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => { onConfirm(); onClose(); }}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${confirmStyles[confirmVariant]}`}
+          >
+            {confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Avatar = ({ emoji, size = 'md', status }) => {
   const sizes = {
     sm: 'w-8 h-8 text-base',
@@ -884,6 +919,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
   const [loading, setLoading] = useState(true);
   const [editingReplyId, setEditingReplyId] = useState(null);
   const [editReplyContent, setEditReplyContent] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { replyId }
   const repliesEndRef = useRef(null);
   
   // Edit a reply
@@ -907,8 +943,6 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
   
   // Delete a reply
   const deleteReply = (replyId) => {
-    if (!confirm('Delete this reply?')) return;
-    
     if (wsRef?.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'delete_reply',
@@ -1149,7 +1183,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                           Edit
                         </button>
                         <button
-                          onClick={() => deleteReply(reply.id)}
+                          onClick={() => setDeleteConfirm({ replyId: reply.id })}
                           className="text-xs text-white/30 hover:text-red-400"
                         >
                           Delete
@@ -1181,6 +1215,17 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
           </div>
         </div>
       </div>
+      
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteReply(deleteConfirm?.replyId)}
+        title="Delete Reply"
+        message="Are you sure you want to delete this reply? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };
@@ -1217,6 +1262,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [announcement, setAnnouncement] = useState(null);
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const [pendingMessages, setPendingMessages] = useState([]); // Messages waiting for server confirmation
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // { messageId } for delete confirmation
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
@@ -2054,10 +2100,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     cancelEditing();
   };
   
-  // Delete a message
+  // Delete a message (called after confirmation)
   const deleteMessage = (messageId) => {
-    if (!confirm('Delete this message?')) return;
-    
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'delete',
@@ -2411,7 +2455,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                           Edit
                         </button>
                         <button
-                          onClick={() => deleteMessage(msg.id)}
+                          onClick={() => setDeleteConfirm({ messageId: msg.id })}
                           className="text-xs text-white/30 hover:text-red-400 transition-all duration-200 opacity-0 group-hover:opacity-100"
                         >
                           Delete
@@ -2933,6 +2977,17 @@ const UserList = ({ sessionToken }) => {
           ))
         )}
       </div>
+      
+      {/* Delete Message Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteMessage(deleteConfirm?.messageId)}
+        title="Delete Message"
+        message="Are you sure you want to delete this message? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };
@@ -2967,6 +3022,9 @@ const AdminPanel = ({ sessionToken }) => {
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   const [warningSent, setWarningSent] = useState(false);
   const [announcementSent, setAnnouncementSent] = useState(false);
+  const [deleteMessageConfirm, setDeleteMessageConfirm] = useState(null); // { messageId }
+  const [deleteReplyConfirm, setDeleteReplyConfirm] = useState(null); // { replyId }
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   
   // Send warning to user
   const handleSendWarning = async () => {
@@ -3148,10 +3206,9 @@ const AdminPanel = ({ sessionToken }) => {
     setSelectedMessages(new Set());
   };
   
-  // Bulk delete messages
+  // Bulk delete messages (called after confirmation)
   const handleBulkDelete = async () => {
     if (selectedMessages.size === 0) return;
-    if (!confirm(`Delete ${selectedMessages.size} messages?`)) return;
     
     setProcessing(true);
     try {
@@ -3295,9 +3352,8 @@ const AdminPanel = ({ sessionToken }) => {
     }
   };
   
-  // Delete message
+  // Delete message (called after confirmation)
   const handleDeleteMessage = async (messageId) => {
-    if (!confirm('Delete this message?')) return;
     try {
       const response = await fetch(`${API_URL}/api/admin/delete-message`, {
         method: 'POST',
@@ -3320,9 +3376,8 @@ const AdminPanel = ({ sessionToken }) => {
     }
   };
   
-  // Delete reply (admin)
+  // Delete reply (admin, called after confirmation)
   const handleDeleteReply = async (replyId) => {
-    if (!confirm('Delete this reply?')) return;
     try {
       const response = await fetch(`${API_URL}/api/admin/delete-reply`, {
         method: 'POST',
@@ -3552,7 +3607,7 @@ const AdminPanel = ({ sessionToken }) => {
               <>
                 <span className="text-xs text-amber-400">{selectedMessages.size} selected</span>
                 <button
-                  onClick={handleBulkDelete}
+                  onClick={() => setBulkDeleteConfirm(true)}
                   disabled={processing}
                   className="px-3 py-1.5 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors disabled:opacity-50"
                 >
@@ -3686,7 +3741,7 @@ const AdminPanel = ({ sessionToken }) => {
                             </p>
                             {!reply.deleted && (
                               <button
-                                onClick={() => handleDeleteReply(reply.id)}
+                                onClick={() => setDeleteReplyConfirm({ replyId: reply.id })}
                                 className="mt-1 px-2 py-0.5 text-xs bg-red-500/20 text-red-400 rounded hover:bg-red-500/30 transition-colors"
                               >
                                 Delete Reply
@@ -3700,7 +3755,7 @@ const AdminPanel = ({ sessionToken }) => {
                   <div className="flex gap-2 flex-shrink-0">
                     {!msg.deleted && (
                       <button
-                        onClick={() => handleDeleteMessage(msg.id)}
+                        onClick={() => setDeleteMessageConfirm({ messageId: msg.id })}
                         className="px-3 py-1 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
                       >
                         Delete
@@ -4086,6 +4141,39 @@ const AdminPanel = ({ sessionToken }) => {
           </div>
         </div>
       )}
+      
+      {/* Delete Message Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteMessageConfirm}
+        onClose={() => setDeleteMessageConfirm(null)}
+        onConfirm={() => handleDeleteMessage(deleteMessageConfirm?.messageId)}
+        title="Delete Message"
+        message="Are you sure you want to delete this message? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
+      
+      {/* Delete Reply Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteReplyConfirm}
+        onClose={() => setDeleteReplyConfirm(null)}
+        onConfirm={() => handleDeleteReply(deleteReplyConfirm?.replyId)}
+        title="Delete Reply"
+        message="Are you sure you want to delete this reply? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
+      
+      {/* Bulk Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={bulkDeleteConfirm}
+        onClose={() => setBulkDeleteConfirm(false)}
+        onConfirm={handleBulkDelete}
+        title="Delete Selected Messages"
+        message={`Are you sure you want to delete ${selectedMessages.size} messages? This action cannot be undone.`}
+        confirmText="Delete All"
+        confirmVariant="danger"
+      />
     </div>
   );
 };
