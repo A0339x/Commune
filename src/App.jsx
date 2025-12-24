@@ -855,12 +855,45 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position }) =>
 // ============================================
 // THREAD MODAL (Full Thread View)
 // ============================================
-const ThreadModal = ({ message, sessionToken, onClose }) => {
+const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onRegisterReplyCallback }) => {
   const [threadReplies, setThreadReplies] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const repliesEndRef = useRef(null);
+  
+  // Register callback for receiving new replies via WebSocket
+  useEffect(() => {
+    if (onRegisterReplyCallback) {
+      onRegisterReplyCallback((parentId, reply) => {
+        if (parentId === message.id) {
+          setThreadReplies(prev => {
+            // Check if this reply already exists (avoid duplicates)
+            const exists = prev.some(r => 
+              r.id === reply.id || 
+              (r.id?.startsWith('temp-') && r.content === reply.content && r.wallet?.toLowerCase() === reply.wallet?.toLowerCase())
+            );
+            if (exists) {
+              // Replace temp with real reply
+              return prev.map(r => 
+                (r.id?.startsWith('temp-') && r.content === reply.content && r.wallet?.toLowerCase() === reply.wallet?.toLowerCase())
+                  ? reply
+                  : r
+              );
+            }
+            return [...prev, reply];
+          });
+        }
+      });
+    }
+    
+    // Cleanup on unmount
+    return () => {
+      if (onRegisterReplyCallback) {
+        onRegisterReplyCallback(null);
+      }
+    };
+  }, [message.id, onRegisterReplyCallback]);
   
   // Load full thread
   useEffect(() => {
@@ -886,8 +919,8 @@ const ThreadModal = ({ message, sessionToken, onClose }) => {
     };
     loadThread();
     
-    // Poll for new replies
-    const interval = setInterval(loadThread, 5000);
+    // Poll for new replies less frequently since we have WebSocket
+    const interval = setInterval(loadThread, 30000);
     return () => clearInterval(interval);
   }, [message.id, sessionToken]);
   
@@ -898,30 +931,68 @@ const ThreadModal = ({ message, sessionToken, onClose }) => {
   const sendReply = async () => {
     if (!replyText.trim() || sending) return;
     setSending(true);
-    try {
-      const response = await fetch(`${API_URL}/api/messages`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify({ content: replyText, replyTo: message.id }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        setThreadReplies(prev => [...prev, {
-          ...data.message,
-          user: truncateAddress(data.message.wallet),
-          avatar: '🛡️',
-          timestamp: new Date(data.message.timestamp),
-        }]);
-        setReplyText('');
+    
+    const content = replyText.trim();
+    const tempId = `temp-reply-${Date.now()}`;
+    
+    // Optimistically add reply
+    const tempReply = {
+      id: tempId,
+      wallet: walletAddress,
+      content: content,
+      user: truncateAddress(walletAddress),
+      avatar: '🛡️',
+      timestamp: new Date(),
+      sendStatus: 'sending',
+    };
+    setThreadReplies(prev => [...prev, tempReply]);
+    setReplyText('');
+    
+    // Send via WebSocket
+    if (wsRef?.current?.readyState === WebSocket.OPEN) {
+      try {
+        wsRef.current.send(JSON.stringify({
+          type: 'reply',
+          content: content,
+          replyTo: message.id,
+        }));
+        // The WebSocket handler will confirm and update via callback
+      } catch (error) {
+        console.error('Failed to send reply via WebSocket:', error);
+        // Mark as failed
+        setThreadReplies(prev => prev.map(r => 
+          r.id === tempId ? { ...r, sendStatus: 'failed' } : r
+        ));
       }
-    } catch (error) {
-      console.error('Failed to send reply:', error);
-    } finally {
-      setSending(false);
+    } else {
+      // Fallback to HTTP if WebSocket unavailable
+      try {
+        const response = await fetch(`${API_URL}/api/messages`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({ content: content, replyTo: message.id }),
+        });
+        const data = await response.json();
+        if (data.success) {
+          // Replace temp with real reply
+          setThreadReplies(prev => prev.filter(r => r.id !== tempId).concat({
+            ...data.message,
+            user: truncateAddress(data.message.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(data.message.timestamp),
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to send reply:', error);
+        setThreadReplies(prev => prev.map(r => 
+          r.id === tempId ? { ...r, sendStatus: 'failed' } : r
+        ));
+      }
     }
+    setSending(false);
   };
   
   return (
@@ -1056,6 +1127,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const lastMessageTimestampRef = useRef(0); // Track last received message timestamp
   const retryQueueRef = useRef([]); // Queue for failed messages to retry
   const retryTimeoutRef = useRef(null);
+  const threadReplyCallbackRef = useRef(null); // Callback for ThreadModal to receive new replies
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
@@ -1295,10 +1367,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         break;
         
       case 'new_reply':
+        // Update main message's recent replies preview
         setMessages(prev => prev.map(msg => {
           if (msg.id === data.parentId) {
             const newReplies = [...(msg.recentReplies || []), {
               ...data.reply,
+              displayName: data.reply.displayName,
               user: truncateAddress(data.reply.wallet),
               avatar: '🛡️',
               timestamp: new Date(data.reply.timestamp),
@@ -1311,6 +1385,18 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           }
           return msg;
         }));
+        
+        // Notify ThreadModal if it's open for this thread
+        if (threadReplyCallbackRef.current) {
+          threadReplyCallbackRef.current(data.parentId, {
+            ...data.reply,
+            displayName: data.reply.displayName,
+            user: truncateAddress(data.reply.wallet),
+            avatar: '🛡️',
+            timestamp: new Date(data.reply.timestamp),
+          });
+        }
+        
         // Play sound for replies (not our own)
         if (data.reply.wallet?.toLowerCase() !== walletAddress?.toLowerCase()) {
           playNotificationSound(false);
@@ -1986,6 +2072,9 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           message={openThread}
           sessionToken={sessionToken}
           onClose={() => setOpenThread(null)}
+          wsRef={wsRef}
+          walletAddress={walletAddress}
+          onRegisterReplyCallback={(callback) => { threadReplyCallbackRef.current = callback; }}
         />
       )}
       
