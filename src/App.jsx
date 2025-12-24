@@ -3071,11 +3071,12 @@ const AdminPanel = ({ sessionToken }) => {
               <select
                 value={filterUser}
                 onChange={(e) => setFilterUser(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+                className="w-full bg-[#1a1a24] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-400/50"
+                style={{ colorScheme: 'dark' }}
               >
-                <option value="">All Users</option>
+                <option value="" className="bg-[#1a1a24] text-white">All Users</option>
                 {messageUsers.map(user => (
-                  <option key={user.wallet} value={user.wallet}>
+                  <option key={user.wallet} value={user.wallet} className="bg-[#1a1a24] text-white">
                     {user.displayName || truncateAddress(user.wallet)} ({userMessageCounts[user.wallet?.toLowerCase()] || 0} msgs)
                   </option>
                 ))}
@@ -3208,11 +3209,12 @@ const AdminPanel = ({ sessionToken }) => {
                 <select
                   value={warningTarget}
                   onChange={(e) => setWarningTarget(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-400/50"
+                  className="w-full bg-[#1a1a24] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-400/50"
+                  style={{ colorScheme: 'dark' }}
                 >
-                  <option value="">Choose a user...</option>
+                  <option value="" className="bg-[#1a1a24] text-white">Choose a user...</option>
                   {messageUsers.map(user => (
-                    <option key={user.wallet} value={user.wallet}>
+                    <option key={user.wallet} value={user.wallet} className="bg-[#1a1a24] text-white">
                       {user.displayName || truncateAddress(user.wallet)}
                     </option>
                   ))}
@@ -3284,33 +3286,6 @@ const AdminPanel = ({ sessionToken }) => {
                   className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400/50 resize-none"
                 />
               </div>
-              
-              {/* Preview */}
-              {announcementMessage && (
-                <div>
-                  <label className="text-sm text-white/60 block mb-1">Preview</label>
-                  <div 
-                    className={`p-4 rounded-xl border ${
-                      announcementType === 'urgent' 
-                        ? 'bg-red-500/20 border-red-500/50 text-red-200' 
-                        : announcementType === 'warning'
-                          ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-200'
-                          : announcementType === 'success'
-                            ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200'
-                            : 'bg-blue-500/20 border-blue-500/50 text-blue-200'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">
-                        {announcementType === 'urgent' ? '🚨' : 
-                         announcementType === 'warning' ? '⚠️' : 
-                         announcementType === 'success' ? '✅' : '📢'}
-                      </span>
-                      <p className="text-sm font-medium">{announcementMessage}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
               
               <button
                 onClick={handleSendAnnouncement}
