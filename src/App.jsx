@@ -1169,16 +1169,28 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   // WebSocket URL
   const WS_URL = API_URL.replace('https://', 'wss://').replace('http://', 'ws://');
   
+  // Track last pong received
+  const lastPongRef = useRef(Date.now());
+  const connectionCheckRef = useRef(null);
+  
   // Connect to WebSocket
   const connectWebSocket = () => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) return;
+    // Clean up existing connection
+    if (wsRef.current) {
+      try {
+        wsRef.current.close();
+      } catch (e) {}
+      wsRef.current = null;
+    }
     
+    console.log('Connecting to WebSocket...');
     const ws = new WebSocket(`${WS_URL}/api/ws?token=${sessionToken}`);
     wsRef.current = ws;
     
     ws.onopen = () => {
       console.log('WebSocket connected');
       setConnected(true);
+      lastPongRef.current = Date.now();
       // Load initial message history
       loadMessageHistory();
     };
@@ -1192,17 +1204,25 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       }
     };
     
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
+    ws.onclose = (event) => {
+      console.log('WebSocket disconnected, code:', event.code, 'reason:', event.reason);
       setConnected(false);
-      // Reconnect after 3 seconds
+      wsRef.current = null;
+      // Reconnect after 2 seconds
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
       reconnectTimeoutRef.current = setTimeout(() => {
         connectWebSocket();
-      }, 3000);
+      }, 2000);
     };
     
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      // Force close to trigger reconnect
+      try {
+        ws.close();
+      } catch (e) {}
     };
   };
   
@@ -1335,7 +1355,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         break;
         
       case 'pong':
-        // Keep-alive response
+        // Keep-alive response - update last pong time
+        lastPongRef.current = Date.now();
         break;
         
       case 'error':
@@ -1400,18 +1421,71 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   useEffect(() => {
     connectWebSocket();
     
-    // Keep-alive ping every 30 seconds
+    // Keep-alive ping every 15 seconds (more frequent)
     const pingInterval = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ type: 'ping' }));
       }
-    }, 30000);
+    }, 15000);
+    
+    // Check connection health every 20 seconds
+    // If no pong received in 45 seconds, force reconnect
+    connectionCheckRef.current = setInterval(() => {
+      const timeSinceLastPong = Date.now() - lastPongRef.current;
+      
+      if (timeSinceLastPong > 45000) {
+        console.log('Connection stale (no pong in 45s), forcing reconnect...');
+        setConnected(false);
+        if (wsRef.current) {
+          try {
+            wsRef.current.close();
+          } catch (e) {}
+          wsRef.current = null;
+        }
+        connectWebSocket();
+      } else if (wsRef.current?.readyState !== WebSocket.OPEN && connected) {
+        // State mismatch - we think we're connected but we're not
+        console.log('Connection state mismatch, forcing reconnect...');
+        setConnected(false);
+        connectWebSocket();
+      }
+    }, 20000);
+    
+    // Also check on visibility change (when user comes back to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('Tab became visible, checking connection...');
+        if (wsRef.current?.readyState !== WebSocket.OPEN) {
+          console.log('Connection lost while tab was hidden, reconnecting...');
+          setConnected(false);
+          connectWebSocket();
+        } else {
+          // Send a ping to verify connection is actually alive
+          wsRef.current.send(JSON.stringify({ type: 'ping' }));
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    // Check on online/offline events
+    const handleOnline = () => {
+      console.log('Browser came online, checking connection...');
+      if (wsRef.current?.readyState !== WebSocket.OPEN) {
+        connectWebSocket();
+      }
+    };
+    window.addEventListener('online', handleOnline);
     
     return () => {
       clearInterval(pingInterval);
+      if (connectionCheckRef.current) {
+        clearInterval(connectionCheckRef.current);
+      }
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
       if (wsRef.current) {
         wsRef.current.close();
       }
@@ -1420,6 +1494,16 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   const sendMessage = async (replyTo = null) => {
     if (!newMessage.trim() || sending) return;
+    
+    // Check connection first
+    if (wsRef.current?.readyState !== WebSocket.OPEN) {
+      console.log('WebSocket not connected, attempting reconnect...');
+      setConnected(false);
+      connectWebSocket();
+      // Show error to user
+      alert('Connection lost. Reconnecting... Please try again.');
+      return;
+    }
     
     const messageContent = newMessage;
     const tempId = `temp-${Date.now()}`;
@@ -1450,35 +1534,24 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     // Extract mentioned wallets from selectedMentions
     const mentions = selectedMentions.map(m => m.wallet);
     
-    // Send via WebSocket if connected, otherwise fallback to HTTP
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    // Send via WebSocket
+    try {
       wsRef.current.send(JSON.stringify({
         type: replyTo ? 'reply' : 'message',
         content: messageContent,
         replyTo,
         mentions,
       }));
-    } else {
-      // Fallback to HTTP
-      setSending(true);
-      try {
-        await fetch(`${API_URL}/api/messages`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${sessionToken}`,
-          },
-          body: JSON.stringify({ content: messageContent, replyTo, mentions }),
-        });
-      } catch (error) {
-        console.error('Failed to send message:', error);
-        setMessages(prev => prev.filter(m => m.id !== tempId));
-      } finally {
-        setSending(false);
-      }
+    } catch (error) {
+      console.error('Failed to send message via WebSocket:', error);
+      // Remove temp message on failure
+      setMessages(prev => prev.filter(m => m.id !== tempId));
+      // Try to reconnect
+      setConnected(false);
+      connectWebSocket();
     }
     
-    // Clear mentions
+    // Clear selected mentions
     setSelectedMentions([]);
   };
   
