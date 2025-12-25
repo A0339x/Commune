@@ -6553,6 +6553,14 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       setSubStage(5);
       await delay(1500);
       
+      // Show personality quote
+      setSubStage(6);
+      await delay(4000);
+      
+      // Fade out quote
+      setSubStage(7);
+      await delay(1500);
+      
       // Move to username color scene
       setScene(3);
       setSubStage(0);
@@ -6720,6 +6728,17 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 <span className="text-8xl block mb-4">{allBadges[currentBadgeIndex].emoji}</span>
                 <p className="text-xl font-bold text-amber-400">{allBadges[currentBadgeIndex].name}</p>
               </div>
+            </div>
+          )}
+          
+          {/* Personality quote after badges */}
+          {subStage >= 6 && subStage < 8 && (
+            <div className={`transition-all duration-1000 ${
+              subStage === 7 ? 'opacity-0' : 'opacity-100'
+            }`}>
+              <p className="text-2xl text-white/90 italic max-w-lg mx-auto leading-relaxed">
+                "{getHolderPersonality()}"
+              </p>
             </div>
           )}
         </div>
