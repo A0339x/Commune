@@ -5410,42 +5410,55 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
     }
   }, [address]);
   
-  // Save selected modifier preference
-  const saveModifierPreference = async (modifierEmoji) => {
-    setSavingBadge(true);
-    try {
-      const response = await fetch(`${API_URL}/api/reputation/modifier`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${sessionToken}`,
-        },
-        body: JSON.stringify({ modifier: modifierEmoji }),
-      });
-      
-      // Wait for server to confirm
-      await response.json();
-      
-      setSelectedModifier(modifierEmoji);
-      
-      // Clear ALL reputation caches SYNCHRONOUSLY before reload
-      const keysToRemove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('reputation_')) {
-          keysToRemove.push(key);
+  // Track the original modifier to detect changes
+  const [originalModifier, setOriginalModifier] = useState(null);
+  
+  useEffect(() => {
+    if (selectedModifier && originalModifier === null) {
+      setOriginalModifier(selectedModifier);
+    }
+  }, [selectedModifier, originalModifier]);
+  
+  // Update selected badges locally (no server call yet)
+  const updateSelectedBadges = (newSelection) => {
+    setSelectedModifier(newSelection);
+  };
+  
+  // Save and close settings
+  const closeSettings = async () => {
+    // Check if badges changed
+    if (selectedModifier !== originalModifier && selectedModifier) {
+      setSavingBadge(true);
+      try {
+        const response = await fetch(`${API_URL}/api/reputation/modifier`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${sessionToken}`,
+          },
+          body: JSON.stringify({ modifier: selectedModifier }),
+        });
+        
+        await response.json();
+        
+        // Clear ALL reputation caches
+        const keysToRemove = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('reputation_')) {
+            keysToRemove.push(key);
+          }
         }
+        keysToRemove.forEach(key => localStorage.removeItem(key));
+        
+        // Reload to show new badges
+        window.location.reload();
+      } catch (error) {
+        console.error('Failed to save badge preference:', error);
+        setSavingBadge(false);
       }
-      keysToRemove.forEach(key => localStorage.removeItem(key));
-      
-      // Small delay to ensure cache is cleared
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Force page reload to refresh all badges
-      window.location.reload();
-    } catch (error) {
-      console.error('Failed to save modifier preference:', error);
-      setSavingBadge(false);
+    } else {
+      setShowSettings(false);
     }
   };
   
@@ -5675,16 +5688,17 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
       {showSettings && (
         <div 
           className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6"
-          onClick={() => setShowSettings(false)}
+          onClick={closeSettings}
         >
           <Card className="max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Settings</h2>
               <button 
-                onClick={() => setShowSettings(false)}
-                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
+                onClick={closeSettings}
+                disabled={savingBadge}
+                className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors disabled:opacity-50"
               >
-                <Icons.X />
+                {savingBadge ? <Spinner size="sm" /> : <Icons.X />}
               </button>
             </div>
             
@@ -5830,7 +5844,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                             newSelected[1] = emoji;
                           }
                         }
-                        saveModifierPreference(newSelected.join(','));
+                        updateSelectedBadges(newSelected.join(','));
                       };
                       
                       return (
