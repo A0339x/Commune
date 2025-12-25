@@ -2758,6 +2758,17 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           )}
         </div>
       </div>
+      
+      {/* Delete Message Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        onConfirm={() => deleteMessage(deleteConfirm?.messageId)}
+        title="Delete Message"
+        message="Are you sure you want to delete this message? This action cannot be undone."
+        confirmText="Delete"
+        confirmVariant="danger"
+      />
     </div>
   );
 };
@@ -2977,17 +2988,6 @@ const UserList = ({ sessionToken }) => {
           ))
         )}
       </div>
-      
-      {/* Delete Message Confirm Modal */}
-      <ConfirmModal
-        isOpen={!!deleteConfirm}
-        onClose={() => setDeleteConfirm(null)}
-        onConfirm={() => deleteMessage(deleteConfirm?.messageId)}
-        title="Delete Message"
-        message="Are you sure you want to delete this message? This action cannot be undone."
-        confirmText="Delete"
-        confirmVariant="danger"
-      />
     </div>
   );
 };
