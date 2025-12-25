@@ -5671,24 +5671,25 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
             <div className="flex gap-2 mb-4">
               <button
                 onClick={() => setSettingsTab('profile')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                   settingsTab === 'profile'
                     ? 'bg-amber-400/20 text-amber-400 border border-amber-400/50'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
                 }`}
               >
-                <Icons.User className="inline w-4 h-4 mr-2" />
+                <Icons.User />
                 Profile
               </button>
               <button
                 onClick={() => setSettingsTab('badges')}
-                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2 ${
                   settingsTab === 'badges'
                     ? 'bg-amber-400/20 text-amber-400 border border-amber-400/50'
                     : 'bg-white/5 text-white/70 hover:bg-white/10'
                 }`}
               >
-                🏅 Badges
+                <span>🏅</span>
+                Badges
               </button>
             </div>
             
