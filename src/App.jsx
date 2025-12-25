@@ -2980,42 +2980,49 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                 ? 'bg-red-500/5 border-red-500/30 focus-within:border-red-400/50' 
                 : 'bg-white/5 border-white/10 focus-within:border-amber-400/50'
           }`}>
-            <button 
-              className="text-white/40 hover:text-white/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => setShowGifPicker(!showGifPicker)}
-              disabled={rateLimited || !!activeWarning}
-            >
-              <span className="text-xs font-bold">GIF</span>
-            </button>
-            <input
-              ref={inputRef}
-              type="text"
-              value={newMessage}
-              onChange={handleInputChange}
-              disabled={rateLimited || !!activeWarning}
-              onKeyDown={(e) => {
-                handleMentionKeyDown(e);
-                if (e.key === 'Enter' && !e.shiftKey && !showMentions) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder={
-                rateLimited 
-                  ? `Wait ${rateLimitSeconds}s to send messages...` 
-                  : activeWarning 
-                    ? "Acknowledge warning to continue..." 
-                    : "Type a message... (use @ to mention)"
-              }
-              className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none text-sm disabled:cursor-not-allowed"
-            />
-            <button 
-              onClick={() => sendMessage()}
-              disabled={!newMessage.trim() || !!activeWarning || rateLimited}
-              className="text-amber-400 hover:text-amber-300 transition-colors disabled:text-white/20 disabled:cursor-not-allowed"
-            >
-              <Icons.Send />
-            </button>
+            {rateLimited ? (
+              /* Centered countdown when rate limited */
+              <div className="flex-1 flex items-center justify-center py-0.5">
+                <span className="text-white/40 text-sm">⏳ Wait {rateLimitSeconds}s to send messages</span>
+              </div>
+            ) : (
+              <>
+                <button 
+                  className="text-white/40 hover:text-white/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setShowGifPicker(!showGifPicker)}
+                  disabled={!!activeWarning}
+                >
+                  <span className="text-xs font-bold">GIF</span>
+                </button>
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  disabled={!!activeWarning}
+                  onKeyDown={(e) => {
+                    handleMentionKeyDown(e);
+                    if (e.key === 'Enter' && !e.shiftKey && !showMentions) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder={
+                    activeWarning 
+                      ? "Acknowledge warning to continue..." 
+                      : "Type a message... (use @ to mention)"
+                  }
+                  className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none text-sm disabled:cursor-not-allowed"
+                />
+                <button 
+                  onClick={() => sendMessage()}
+                  disabled={!newMessage.trim() || !!activeWarning}
+                  className="text-amber-400 hover:text-amber-300 transition-colors disabled:text-white/20 disabled:cursor-not-allowed"
+                >
+                  <Icons.Send />
+                </button>
+              </>
+            )}
           </div>
           
           {/* Mentions Dropdown */}
