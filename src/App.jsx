@@ -6192,6 +6192,62 @@ const AuthenticatedApp = () => {
 };
 
 // ============================================
+// BADGE WITH TOOLTIP - For wrapped screen
+// ============================================
+const BadgeWithTooltip = ({ emoji, name, description }) => {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
+  const badgeRef = useRef(null);
+  
+  const handleMouseEnter = () => {
+    const rect = badgeRef.current?.getBoundingClientRect();
+    if (rect) {
+      setTooltipPos({
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10
+      });
+    }
+    setShowTooltip(true);
+  };
+  
+  return (
+    <>
+      <div 
+        ref={badgeRef}
+        className="flex flex-col items-center cursor-help group"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setShowTooltip(false)}
+      >
+        <span className="text-4xl mb-1 transition-transform group-hover:scale-110">{emoji}</span>
+        <span className="text-xs text-white/60">{name}</span>
+      </div>
+      
+      {showTooltip && ReactDOM.createPortal(
+        <div 
+          className="fixed z-[400] animate-fade-in pointer-events-none"
+          style={{
+            left: tooltipPos.x,
+            top: tooltipPos.y,
+            transform: 'translate(-50%, -100%)'
+          }}
+        >
+          <div className="bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl p-3 max-w-xs mb-2">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{emoji}</span>
+              <div>
+                <p className="text-sm font-medium text-white">{name}</p>
+                <p className="text-xs text-white/50">{description}</p>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
+
+// ============================================
 // RECOGNITION LOADER - "GUARD WRAPPED" EXPERIENCE
 // ============================================
 const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
@@ -6368,7 +6424,7 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
         
         {/* Wrapped Stage - GUARD Wrapped */}
         {stage === 'wrapped' && guardData && (
-          <div className="animate-fade-in space-y-6">
+          <div className="space-y-6 animate-fade-in-slow">
             {/* Header */}
             <div className="text-center">
               <h1 className="text-3xl font-bold mb-2">
@@ -6399,22 +6455,26 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
                 <p className="text-white/50 text-sm mb-3">Recognition earned</p>
                 <div className="flex justify-center gap-4 flex-wrap">
                   {guardData.isEarlyAdopter && (
-                    <div className="flex flex-col items-center">
-                      <span className="text-4xl mb-1">🏆</span>
-                      <span className="text-xs text-white/60">Early Adopter</span>
-                    </div>
+                    <BadgeWithTooltip 
+                      emoji="🏆" 
+                      name="Early Adopter" 
+                      description="First 100 GUARD holders ever"
+                    />
                   )}
                   {guardData.primaryBadge && (
-                    <div className="flex flex-col items-center">
-                      <span className="text-4xl mb-1">{guardData.primaryBadge.emoji}</span>
-                      <span className="text-xs text-white/60">{guardData.primaryBadge.name}</span>
-                    </div>
+                    <BadgeWithTooltip 
+                      emoji={guardData.primaryBadge.emoji} 
+                      name={guardData.primaryBadge.name} 
+                      description={guardData.primaryBadge.description}
+                    />
                   )}
                   {guardData.availableModifiers?.map(mod => (
-                    <div key={mod.emoji} className="flex flex-col items-center">
-                      <span className="text-4xl mb-1">{mod.emoji}</span>
-                      <span className="text-xs text-white/60">{mod.name}</span>
-                    </div>
+                    <BadgeWithTooltip 
+                      key={mod.emoji}
+                      emoji={mod.emoji} 
+                      name={mod.name} 
+                      description={mod.description}
+                    />
                   ))}
                 </div>
               </div>
