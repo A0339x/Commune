@@ -6449,181 +6449,412 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
 };
 
 // ============================================
-// WRAPPED PRESENTATION - Spotify-style staged reveal
+// WRAPPED PRESENTATION - Cinematic reveal
 // ============================================
 const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuration, getHolderPersonality, onEnterCommunity }) => {
-  const [revealStage, setRevealStage] = useState(0);
+  const [scene, setScene] = useState(0);
+  const [subStage, setSubStage] = useState(0);
+  const [flipDate, setFlipDate] = useState(null);
+  const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0);
   
-  // Progress through reveal stages
+  // Build badges array
+  const allBadges = [];
+  if (guardData.isEarlyAdopter) {
+    allBadges.push({ 
+      emoji: '🏆', 
+      name: 'Early Adopter', 
+      reason: 'For being one of the first 100 GUARD holders ever'
+    });
+  }
+  if (guardData.primaryBadge) {
+    allBadges.push({ 
+      emoji: guardData.primaryBadge.emoji, 
+      name: guardData.primaryBadge.name, 
+      reason: guardData.primaryBadge.description
+    });
+  }
+  if (guardData.availableModifiers) {
+    guardData.availableModifiers.forEach(mod => {
+      allBadges.push({ 
+        emoji: mod.emoji, 
+        name: mod.name, 
+        reason: mod.description
+      });
+    });
+  }
+  
+  // Scene progression
   useEffect(() => {
-    const timings = [
-      1500,  // Stage 1: Title
-      2000,  // Stage 2: Subtitle
-      2500,  // Stage 3: Journey date
-      2500,  // Stage 4: Recognition badges
-      2500,  // Stage 5: Quote
-      2000,  // Stage 6: Username preview
-      1500,  // Stage 7: Button
+    const scenes = [
+      // Scene 0: Title sequence
+      { duration: 2000, action: () => setSubStage(1) },  // Show title
+      { duration: 2000, action: () => setSubStage(2) },  // Show subtitle
+      { duration: 2500, action: () => setSubStage(3) },  // Fade out
+      { duration: 1000, action: () => { setScene(1); setSubStage(0); } },  // Next scene
+      
+      // Scene 1: Date flip sequence
+      { duration: 1500, action: () => setSubStage(1) },  // "Your journey began..."
+      { duration: 1500, action: () => { setSubStage(2); startDateFlip(); } },  // Show today, start flip
+      { duration: 3500, action: () => setSubStage(3) },  // Show duration
+      { duration: 3000, action: () => setSubStage(4) },  // Fade out
+      { duration: 1000, action: () => { setScene(2); setSubStage(0); setCurrentBadgeIndex(0); } },  // Next scene
+      
+      // Scene 2: Badges sequence - handled dynamically
     ];
     
-    let currentStage = 0;
-    const advanceStage = () => {
-      currentStage++;
-      setRevealStage(currentStage);
-      
-      if (currentStage < timings.length) {
-        setTimeout(advanceStage, timings[currentStage]);
+    let timeoutId;
+    let currentStep = 0;
+    
+    const runSequence = () => {
+      if (scene === 0 || scene === 1) {
+        // Run preset sequences for scenes 0 and 1
+        const sceneOffset = scene === 0 ? 0 : 4;
+        const sceneSteps = scene === 0 ? 4 : 5;
+        
+        if (currentStep < sceneSteps) {
+          const step = scenes[sceneOffset + currentStep];
+          timeoutId = setTimeout(() => {
+            step.action();
+            currentStep++;
+            runSequence();
+          }, step.duration);
+        }
       }
     };
     
-    // Start first reveal
-    setTimeout(advanceStage, timings[0]);
+    runSequence();
     
-  }, []);
+    return () => clearTimeout(timeoutId);
+  }, [scene]);
+  
+  // Badge sequence for Scene 2
+  useEffect(() => {
+    if (scene !== 2) return;
+    
+    let timeoutId;
+    
+    const badgeSequence = async () => {
+      // Show "Recognition earned" title
+      setSubStage(1);
+      await delay(1500);
+      
+      // Loop through each badge
+      for (let i = 0; i < allBadges.length; i++) {
+        setCurrentBadgeIndex(i);
+        setSubStage(2); // Show reason
+        await delay(2000);
+        setSubStage(3); // Show badge
+        await delay(2500);
+        setSubStage(4); // Fade badge out (keep title)
+        await delay(1000);
+      }
+      
+      // Fade out recognition title
+      setSubStage(5);
+      await delay(1500);
+      
+      // Move to username color scene
+      setScene(3);
+      setSubStage(0);
+    };
+    
+    badgeSequence();
+    
+    return () => clearTimeout(timeoutId);
+  }, [scene, allBadges.length]);
+  
+  // Username color scene (Scene 3)
+  useEffect(() => {
+    if (scene !== 3) return;
+    
+    const usernameSequence = async () => {
+      await delay(1000);
+      setSubStage(1); // Show message about color
+      await delay(2500);
+      setSubStage(2); // Show username in white
+      await delay(2000);
+      setSubStage(3); // Transition to colored/glowing
+      await delay(3000);
+      setSubStage(4); // Fade out
+      await delay(1500);
+      
+      // Move to final summary
+      setScene(4);
+      setSubStage(0);
+    };
+    
+    usernameSequence();
+  }, [scene]);
+  
+  // Final scene sequence (now Scene 4)
+  useEffect(() => {
+    if (scene !== 4) return;
+    
+    const finalSequence = async () => {
+      await delay(500);
+      setSubStage(1); // Fade in complete wrapped
+    };
+    
+    finalSequence();
+  }, [scene]);
+  
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  
+  // Date flip animation
+  const startDateFlip = () => {
+    const today = new Date();
+    const targetDate = new Date(guardData.firstBuy);
+    
+    // Start with today
+    setFlipDate(today);
+    
+    // Animate backwards
+    const totalDuration = 2500;
+    const steps = 20;
+    const stepDuration = totalDuration / steps;
+    const dayDiff = Math.floor((today - targetDate) / (1000 * 60 * 60 * 24));
+    const daysPerStep = dayDiff / steps;
+    
+    let step = 0;
+    const flipInterval = setInterval(() => {
+      step++;
+      const daysBack = Math.floor(daysPerStep * step);
+      const newDate = new Date(today);
+      newDate.setDate(today.getDate() - daysBack);
+      setFlipDate(newDate);
+      
+      if (step >= steps) {
+        clearInterval(flipInterval);
+        setFlipDate(targetDate);
+      }
+    }, stepDuration);
+  };
+  
+  const formatFlipDate = (date) => {
+    if (!date) return { day: '--', month: '---', year: '----' };
+    return {
+      day: date.getDate(),
+      month: date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase(),
+      year: date.getFullYear()
+    };
+  };
+  
+  const flipDateParts = formatFlipDate(flipDate);
   
   return (
-    <div className="space-y-6">
-      {/* Stage 1: Title - centered initially, moves up */}
-      <div className={`text-center transition-all duration-1000 ease-out ${
-        revealStage >= 1 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-8'
-      } ${
-        revealStage >= 2 ? '' : 'absolute inset-0 flex items-center justify-center'
-      }`}>
-        <h1 className={`font-bold mb-2 transition-all duration-700 ${
-          revealStage >= 2 ? 'text-3xl' : 'text-5xl'
-        }`}>
-          <span className="text-amber-400">Your GUARD</span> Journey
-        </h1>
-      </div>
+    <div className="min-h-[60vh] flex items-center justify-center">
       
-      {/* Stage 2: Subtitle */}
-      <div className={`text-center transition-all duration-1000 ease-out ${
-        revealStage >= 2 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-4'
-      }`}>
-        <p className="text-white/50">Here's your story in the community</p>
-      </div>
-      
-      {/* Main Stats Card - appears piece by piece */}
-      <div className={`bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-6 transition-all duration-1000 ${
-        revealStage >= 3 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
-      }`}>
-        
-        {/* Stage 3: First Purchase Date */}
-        {guardData.firstBuy && (
-          <div className={`text-center transition-all duration-1000 ease-out ${
-            revealStage >= 3 
-              ? 'opacity-100 translate-y-0' 
-              : 'opacity-0 translate-y-4'
+      {/* Scene 0: Title Sequence */}
+      {scene === 0 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 3 ? 'opacity-0' : 'opacity-100'}`}>
+          <h1 className={`text-5xl font-bold mb-4 transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           }`}>
-            <p className="text-white/50 text-sm mb-1">Your journey began on</p>
-            <p className="text-2xl font-bold text-amber-400">{formatDate(guardData.firstBuy)}</p>
-            <p className="text-white/40 text-sm mt-1">
-              That's <span className="text-white font-medium">{getHoldingDuration()}</span> of holding strong
-            </p>
-          </div>
-        )}
-        
-        {/* Divider */}
-        <div className={`border-t border-white/10 transition-all duration-700 ${
-          revealStage >= 4 ? 'opacity-100' : 'opacity-0'
-        }`} />
-        
-        {/* Stage 4: Badges Earned */}
-        <div className={`text-center transition-all duration-1000 ease-out ${
-          revealStage >= 4 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-4'
-        }`}>
-          <p className="text-white/50 text-sm mb-3">Recognition earned</p>
-          <div className="flex justify-center gap-4 flex-wrap">
-            {guardData.isEarlyAdopter && (
-              <BadgeWithTooltip 
-                emoji="🏆" 
-                name="Early Adopter" 
-                description="First 100 GUARD holders ever"
-              />
-            )}
-            {guardData.primaryBadge && (
-              <BadgeWithTooltip 
-                emoji={guardData.primaryBadge.emoji} 
-                name={guardData.primaryBadge.name} 
-                description={guardData.primaryBadge.description}
-              />
-            )}
-            {guardData.availableModifiers?.map(mod => (
-              <BadgeWithTooltip 
-                key={mod.emoji}
-                emoji={mod.emoji} 
-                name={mod.name} 
-                description={mod.description}
-              />
-            ))}
-          </div>
-        </div>
-        
-        {/* Divider */}
-        <div className={`border-t border-white/10 transition-all duration-700 ${
-          revealStage >= 5 ? 'opacity-100' : 'opacity-0'
-        }`} />
-        
-        {/* Stage 5: Personality Quote */}
-        <div className={`text-center transition-all duration-1000 ease-out ${
-          revealStage >= 5 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-4'
-        }`}>
-          <p className="text-lg text-white/90 italic">
-            "{getHolderPersonality()}"
+            <span className="text-amber-400">Your GUARD</span> Journey
+          </h1>
+          <p className={`text-xl text-white/60 transition-all duration-1000 ${
+            subStage >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}>
+            Here's your story in the community
           </p>
         </div>
-      </div>
+      )}
       
-      {/* Stage 6: Username Preview */}
-      <div className={`bg-white/5 border border-white/10 rounded-xl p-4 text-center transition-all duration-1000 ease-out ${
-        revealStage >= 6 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-4'
-      }`}>
-        <p className="text-white/50 text-sm mb-2">In chat, your name will glow:</p>
-        <p className={`text-xl font-bold ${
-          guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑' 
-            ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' 
-            : guardData.primaryBadge?.emoji === '💎' 
-              ? 'text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]'
-              : guardData.primaryBadge?.emoji === '🌳'
-                ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]'
+      {/* Scene 1: Date Flip Sequence */}
+      {scene === 1 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
+          }`}>
+            Your journey began...
+          </p>
+          
+          {/* Flip Clock Style Date */}
+          <div className={`flex justify-center gap-3 mb-8 transition-all duration-700 ${
+            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          }`}>
+            {/* Day */}
+            <div className="bg-[#1a1a2e] rounded-lg p-4 min-w-[80px] shadow-xl border border-white/10">
+              <span className="text-4xl font-bold text-white font-mono">{flipDateParts.day}</span>
+            </div>
+            {/* Month */}
+            <div className="bg-[#1a1a2e] rounded-lg p-4 min-w-[100px] shadow-xl border border-white/10">
+              <span className="text-4xl font-bold text-white font-mono">{flipDateParts.month}</span>
+            </div>
+            {/* Year */}
+            <div className="bg-[#1a1a2e] rounded-lg p-4 shadow-xl border border-white/10">
+              <span className="text-4xl font-bold text-amber-400 font-mono">{flipDateParts.year}</span>
+            </div>
+          </div>
+          
+          <p className={`text-lg text-white/50 transition-all duration-1000 ${
+            subStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}>
+            That's <span className="text-amber-400 font-bold">{getHoldingDuration()}</span> of holding strong
+          </p>
+        </div>
+      )}
+      
+      {/* Scene 2: Badges Sequence */}
+      {scene === 2 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+          <h2 className={`text-2xl font-bold text-white/80 mb-12 transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
+          }`}>
+            Recognition earned
+          </h2>
+          
+          {subStage >= 2 && subStage < 5 && allBadges[currentBadgeIndex] && (
+            <div className="space-y-8">
+              {/* Reason text */}
+              <p className={`text-lg text-white/60 italic max-w-md mx-auto transition-all duration-700 ${
+                subStage >= 2 && subStage < 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+              }`}>
+                "{allBadges[currentBadgeIndex].reason}"
+              </p>
+              
+              {/* Badge reveal */}
+              <div className={`transition-all duration-700 ${
+                subStage >= 3 && subStage < 4 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+              }`}>
+                <span className="text-8xl block mb-4">{allBadges[currentBadgeIndex].emoji}</span>
+                <p className="text-xl font-bold text-amber-400">{allBadges[currentBadgeIndex].name}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Scene 3: Username Color Reveal */}
+      {scene === 3 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          {/* Message about color */}
+          <p className={`text-xl text-white/60 mb-12 max-w-md mx-auto transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}>
+            Your recognition gives you a special presence in chat
+          </p>
+          
+          {/* Username reveal */}
+          <div className={`transition-all duration-1000 ${
+            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+          }`}>
+            <p className={`text-4xl font-bold transition-all duration-1500 ${
+              subStage >= 3 
+                ? guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑'
+                  ? 'text-amber-400 drop-shadow-[0_0_12px_rgba(251,191,36,0.7)]'
+                  : guardData.primaryBadge?.emoji === '💎'
+                    ? 'text-purple-400 drop-shadow-[0_0_10px_rgba(192,132,252,0.6)]'
+                    : guardData.primaryBadge?.emoji === '🌳'
+                      ? 'text-cyan-400 drop-shadow-[0_0_8px_rgba(34,211,238,0.5)]'
+                      : guardData.primaryBadge?.emoji === '🌿'
+                        ? 'text-teal-400 drop-shadow-[0_0_6px_rgba(45,212,191,0.4)]'
+                        : 'text-white'
                 : 'text-white'
+            }`}>
+              {address.slice(0, 6)}...{address.slice(-4)}
+            </p>
+            
+            {/* Hint text */}
+            <p className={`text-sm text-white/40 mt-6 transition-all duration-1000 ${
+              subStage >= 3 ? 'opacity-100' : 'opacity-0'
+            }`}>
+              Hover over your name to reveal your achievements
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Scene 4: Final Summary */}
+      {scene === 4 && (
+        <div className={`space-y-6 w-full transition-all duration-1500 ${
+          subStage >= 1 ? 'opacity-100' : 'opacity-0'
         }`}>
-          {address.slice(0, 6)}...{address.slice(-4)}
-        </p>
-        <p className="text-white/30 text-xs mt-2">
-          Hover over your name to see your achievements
-        </p>
-      </div>
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-3xl font-bold mb-2">
+              <span className="text-amber-400">Your GUARD</span> Journey
+            </h1>
+            <p className="text-white/50">Here's your story in the community</p>
+          </div>
+          
+          {/* Main Stats Card */}
+          <div className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-6">
+            
+            {/* First Purchase */}
+            {guardData.firstBuy && (
+              <div className="text-center">
+                <p className="text-white/50 text-sm mb-1">Your journey began on</p>
+                <p className="text-2xl font-bold text-amber-400">{formatDate(guardData.firstBuy)}</p>
+                <p className="text-white/40 text-sm mt-1">
+                  That's <span className="text-white font-medium">{getHoldingDuration()}</span> of holding strong
+                </p>
+              </div>
+            )}
+            
+            <div className="border-t border-white/10" />
+            
+            {/* Badges Earned */}
+            <div className="text-center">
+              <p className="text-white/50 text-sm mb-3">Recognition earned</p>
+              <div className="flex justify-center gap-4 flex-wrap">
+                {allBadges.map((badge, i) => (
+                  <BadgeWithTooltip 
+                    key={i}
+                    emoji={badge.emoji} 
+                    name={badge.name} 
+                    description={badge.reason}
+                  />
+                ))}
+              </div>
+            </div>
+            
+            <div className="border-t border-white/10" />
+            
+            {/* Personality */}
+            <div className="text-center">
+              <p className="text-lg text-white/90 italic">
+                "{getHolderPersonality()}"
+              </p>
+            </div>
+          </div>
+          
+          {/* Username Preview */}
+          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+            <p className="text-white/50 text-sm mb-2">In chat, your name will glow:</p>
+            <p className={`text-xl font-bold ${
+              guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑' 
+                ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' 
+                : guardData.primaryBadge?.emoji === '💎' 
+                  ? 'text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]'
+                  : guardData.primaryBadge?.emoji === '🌳'
+                    ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]'
+                    : 'text-white'
+            }`}>
+              {address.slice(0, 6)}...{address.slice(-4)}
+            </p>
+            <p className="text-white/30 text-xs mt-2">
+              Hover over your name to see your achievements
+            </p>
+          </div>
+          
+          {/* Enter Button */}
+          <button
+            onClick={onEnterCommunity}
+            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-amber-500/25"
+          >
+            🎉 Let's Go! Enter the Community
+          </button>
+          
+          <p className="text-center text-white/30 text-sm">
+            Your friends are waiting
+          </p>
+        </div>
+      )}
       
-      {/* Stage 7: Enter Button */}
-      <button
-        onClick={onEnterCommunity}
-        className={`w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold rounded-xl transition-all duration-1000 transform hover:scale-[1.02] shadow-lg shadow-amber-500/25 ${
-          revealStage >= 7 
-            ? 'opacity-100 translate-y-0' 
-            : 'opacity-0 translate-y-4 pointer-events-none'
-        }`}
-      >
-        🎉 Let's Go! Enter the Community
-      </button>
-      
-      <p className={`text-center text-white/30 text-sm transition-all duration-1000 ${
-        revealStage >= 7 ? 'opacity-100' : 'opacity-0'
-      }`}>
-        Your friends are waiting
-      </p>
     </div>
   );
+};
 };
 
 // ============================================
