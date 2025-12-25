@@ -5347,7 +5347,6 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [userReputation, setUserReputation] = useState(null);
   const [selectedModifier, setSelectedModifier] = useState(null);
   const [savingBadge, setSavingBadge] = useState(false);
-  const [badgeRefreshKey, setBadgeRefreshKey] = useState(0);
   
   // Check if user is admin
   useEffect(() => {
@@ -5417,10 +5416,19 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
         body: JSON.stringify({ modifier: modifierEmoji }),
       });
       setSelectedModifier(modifierEmoji);
-      // Clear local cache to force refresh
-      localStorage.removeItem(`reputation_${address.toLowerCase()}`);
-      // Trigger badge refresh across the app
-      setBadgeRefreshKey(prev => prev + 1);
+      
+      // Clear ALL reputation caches to force refresh
+      const keysToRemove = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('reputation_')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => localStorage.removeItem(key));
+      
+      // Force page reload to refresh all badges
+      window.location.reload();
     } catch (error) {
       console.error('Failed to save modifier preference:', error);
     } finally {
