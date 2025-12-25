@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactDOM from 'react-dom';
 import '@rainbow-me/rainbowkit/styles.css';
 import {
   RainbowKitProvider,
@@ -229,6 +230,197 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
         </div>
       </div>
     </div>
+  );
+};
+
+// Link Preview Component - Obsidian Surfing style
+const LinkPreview = ({ url, children }) => {
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
+  const [isHoveringPreview, setIsHoveringPreview] = useState(false);
+  const [isHoveringLink, setIsHoveringLink] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const linkRef = useRef(null);
+  const hoverTimeoutRef = useRef(null);
+  const closeTimeoutRef = useRef(null);
+  
+  // Calculate position for preview
+  const calculatePosition = () => {
+    if (!linkRef.current) return;
+    const rect = linkRef.current.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const previewWidth = 600;
+    const previewHeight = 450;
+    
+    let x = rect.left;
+    let y = rect.bottom + 8;
+    
+    // Adjust if would go off right edge
+    if (x + previewWidth > viewportWidth - 20) {
+      x = viewportWidth - previewWidth - 20;
+    }
+    
+    // Adjust if would go off bottom edge - show above instead
+    if (y + previewHeight > viewportHeight - 20) {
+      y = rect.top - previewHeight - 8;
+    }
+    
+    // Ensure minimum x
+    if (x < 20) x = 20;
+    
+    setPreviewPosition({ x, y });
+  };
+  
+  const handleLinkMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    setIsHoveringLink(true);
+    hoverTimeoutRef.current = setTimeout(() => {
+      calculatePosition();
+      setShowPreview(true);
+      setIsLoading(true);
+    }, 500); // 500ms delay before showing
+  };
+  
+  const handleLinkMouseLeave = () => {
+    setIsHoveringLink(false);
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    // Small delay before closing to allow mouse to move to preview
+    closeTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringPreview) {
+        setShowPreview(false);
+      }
+    }, 150);
+  };
+  
+  const handlePreviewMouseEnter = () => {
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+    }
+    setIsHoveringPreview(true);
+  };
+  
+  const handlePreviewMouseLeave = () => {
+    setIsHoveringPreview(false);
+    // Small delay before closing
+    closeTimeoutRef.current = setTimeout(() => {
+      if (!isHoveringLink) {
+        setShowPreview(false);
+      }
+    }, 150);
+  };
+  
+  // Cleanup timeouts
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
+  
+  // Extract domain for display
+  const getDomain = (url) => {
+    try {
+      return new URL(url).hostname;
+    } catch {
+      return url;
+    }
+  };
+  
+  return (
+    <>
+      <a
+        ref={linkRef}
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-blue-400 hover:text-blue-300 hover:underline break-all inline-flex items-center gap-1"
+        onClick={(e) => e.stopPropagation()}
+        onMouseEnter={handleLinkMouseEnter}
+        onMouseLeave={handleLinkMouseLeave}
+      >
+        {children}
+        <svg className="w-3 h-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+        </svg>
+      </a>
+      
+      {/* Preview Portal */}
+      {showPreview && ReactDOM.createPortal(
+        <div
+          className="fixed z-[200] animate-fade-in"
+          style={{ 
+            left: previewPosition.x, 
+            top: previewPosition.y,
+          }}
+          onMouseEnter={handlePreviewMouseEnter}
+          onMouseLeave={handlePreviewMouseLeave}
+        >
+          <div className="w-[600px] h-[450px] bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            {/* Browser-like Header */}
+            <div className="flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/10">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-500/80" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
+                <div className="w-3 h-3 rounded-full bg-green-500/80" />
+              </div>
+              <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5 mx-2">
+                <svg className="w-3 h-3 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
+                </svg>
+                <span className="text-xs text-white/50 truncate flex-1">{getDomain(url)}</span>
+                {isLoading && (
+                  <div className="w-3 h-3 border border-white/30 border-t-transparent rounded-full animate-spin" />
+                )}
+              </div>
+              <a 
+                href={url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                title="Open in new tab"
+              >
+                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>
+            
+            {/* iframe Content */}
+            <div className="flex-1 relative bg-white">
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#12121a]">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-white/50 text-sm">Loading preview...</span>
+                  </div>
+                </div>
+              )}
+              <iframe
+                src={url}
+                className="w-full h-full border-0"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                onLoad={() => setIsLoading(false)}
+                onError={() => setIsLoading(false)}
+                title={`Preview of ${getDomain(url)}`}
+              />
+            </div>
+            
+            {/* Footer hint */}
+            <div className="px-3 py-1.5 bg-white/5 border-t border-white/10">
+              <p className="text-xs text-white/30 text-center">
+                Hover to interact • Move mouse away to close
+              </p>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
 
@@ -2445,19 +2637,12 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     
     urlParts.forEach((part, i) => {
       if (urls.includes(part)) {
-        // This is a URL - make it clickable
+        // This is a URL - wrap in LinkPreview
         const displayUrl = part.length > 50 ? part.slice(0, 47) + '...' : part;
         processedParts.push(
-          <a
-            key={`url-${i}`}
-            href={part}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-400 hover:text-blue-300 hover:underline break-all"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <LinkPreview key={`url-${i}`} url={part}>
             {displayUrl}
-          </a>
+          </LinkPreview>
         );
         urlIndex++;
       } else {
