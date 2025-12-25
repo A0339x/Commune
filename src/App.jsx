@@ -447,36 +447,63 @@ const LinkPreview = ({ url, children }) => {
       
       {/* Preview Portal */}
       {showPreview && ReactDOM.createPortal(
-        <div
-          ref={previewRef}
-          className="fixed z-[200] animate-fade-in"
-          style={{ 
-            left: previewPosition.x, 
-            top: previewPosition.y,
-          }}
-          onMouseEnter={handlePreviewMouseEnter}
-          onMouseLeave={handlePreviewMouseLeave}
-        >
-          <div className={`w-[600px] ${isBlocked ? 'h-[250px]' : 'h-[450px]'} bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col`}>
-            {/* Draggable Header */}
-            <div 
-              className={`flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-              onMouseDown={handleDragStart}
+        isBlocked ? (
+          /* Simple tooltip for blocked sites */
+          <div
+            ref={previewRef}
+            className="fixed z-[200] animate-fade-in"
+            style={{ 
+              left: previewPosition.x, 
+              top: previewPosition.y,
+            }}
+            onMouseEnter={handlePreviewMouseEnter}
+            onMouseLeave={handlePreviewMouseLeave}
+          >
+            <a
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl hover:bg-[#22222f] transition-colors"
             >
-              {/* Drag handle indicator */}
-              <div className="flex flex-col gap-0.5 mr-1">
-                <div className="w-4 h-0.5 bg-white/20 rounded-full" />
-                <div className="w-4 h-0.5 bg-white/20 rounded-full" />
-              </div>
-              
-              <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
-                <svg className="w-3 h-3 text-white/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                </svg>
-                <span className="text-xs text-white/50 truncate flex-1">{getDomain(url)}</span>
-                {isLoading && (
-                  <div className="w-3 h-3 border border-white/30 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                )}
+              <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+              <span className="text-sm text-white/70">Open in new tab</span>
+              <span className="text-xs text-white/30">({getDomain(url)})</span>
+            </a>
+          </div>
+        ) : (
+          /* Full preview for non-blocked sites */
+          <div
+            ref={previewRef}
+            className="fixed z-[200] animate-fade-in"
+            style={{ 
+              left: previewPosition.x, 
+              top: previewPosition.y,
+            }}
+            onMouseEnter={handlePreviewMouseEnter}
+            onMouseLeave={handlePreviewMouseLeave}
+          >
+            <div className="w-[600px] h-[450px] bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+              {/* Draggable Header */}
+              <div 
+                className={`flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                onMouseDown={handleDragStart}
+              >
+                {/* Drag handle indicator */}
+                <div className="flex flex-col gap-0.5 mr-1">
+                  <div className="w-4 h-0.5 bg-white/20 rounded-full" />
+                  <div className="w-4 h-0.5 bg-white/20 rounded-full" />
+                </div>
+                
+                <div className="flex-1 flex items-center gap-2 bg-white/5 rounded-lg px-3 py-1.5">
+                  <svg className="w-3 h-3 text-white/30 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                  <span className="text-xs text-white/50 truncate flex-1">{getDomain(url)}</span>
+                  {isLoading && (
+                    <div className="w-3 h-3 border border-white/30 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                  )}
               </div>
               
               <a 
@@ -503,87 +530,60 @@ const LinkPreview = ({ url, children }) => {
               </button>
             </div>
             
-            {/* Content Area */}
-            {isBlocked ? (
-              /* Blocked site - show clean message */
-              <div className="flex-1 flex items-center justify-center bg-[#12121a]">
-                <div className="flex flex-col items-center gap-4 text-center px-8">
-                  <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center">
-                    <svg className="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                    </svg>
+            {/* Content Area - iframe preview */}
+            <div className="flex-1 relative bg-white">
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-white/50 text-sm">Loading preview...</span>
                   </div>
-                  <div>
-                    <p className="text-white/70 font-medium mb-1">Preview not available</p>
-                    <p className="text-white/40 text-sm">This site blocks embedded previews.</p>
-                  </div>
-                  <a 
-                    href={url} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-black text-sm font-medium rounded-xl transition-colors"
-                  >
-                    Open in new tab →
-                  </a>
                 </div>
-              </div>
-            ) : (
-              /* Normal iframe preview */
-              <div className="flex-1 relative bg-white">
-                {isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                      <span className="text-white/50 text-sm">Loading preview...</span>
+              )}
+              
+              {loadError && !isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
+                  <div className="flex flex-col items-center gap-4 text-center px-8">
+                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center">
+                      <svg className="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
                     </div>
-                  </div>
-                )}
-                
-                {loadError && !isLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
-                    <div className="flex flex-col items-center gap-4 text-center px-8">
-                      <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="text-white/70 font-medium mb-1">Failed to load</p>
-                        <p className="text-white/40 text-sm">This site couldn't be loaded.</p>
-                      </div>
-                      <a 
-                        href={url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-black text-sm font-medium rounded-xl transition-colors"
-                      >
-                        Open in new tab →
-                      </a>
+                    <div>
+                      <p className="text-white/70 font-medium mb-1">Failed to load</p>
+                      <p className="text-white/40 text-sm">This site couldn't be loaded.</p>
                     </div>
+                    <a 
+                      href={url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-black text-sm font-medium rounded-xl transition-colors"
+                    >
+                      Open in new tab →
+                    </a>
                   </div>
-                )}
-                
-                <iframe
-                  src={`${API_URL}/api/proxy?url=${encodeURIComponent(url)}`}
-                  className="w-full h-full border-0"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"
-                  onLoad={handleIframeLoad}
-                  onError={() => { setIsLoading(false); setLoadError(true); }}
-                  title={`Preview of ${getDomain(url)}`}
-                />
-              </div>
-            )}
+                </div>
+              )}
+              
+              <iframe
+                src={`${API_URL}/api/proxy?url=${encodeURIComponent(url)}`}
+                className="w-full h-full border-0"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"
+                onLoad={handleIframeLoad}
+                onError={() => { setIsLoading(false); setLoadError(true); }}
+                title={`Preview of ${getDomain(url)}`}
+              />
+            </div>
             
-            {/* Footer hint - only show for previewable sites */}
-            {!isBlocked && (
-              <div className="px-3 py-1.5 bg-white/5 border-t border-white/10">
-                <p className="text-xs text-white/30 text-center">
-                  Drag header to move • Move mouse away to close
-                </p>
-              </div>
-            )}
+            {/* Footer hint */}
+            <div className="px-3 py-1.5 bg-white/5 border-t border-white/10">
+              <p className="text-xs text-white/30 text-center">
+                Drag header to move • Move mouse away to close
+              </p>
+            </div>
           </div>
-        </div>,
+        </div>
+        ),
         document.body
       )}
     </>
