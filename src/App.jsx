@@ -6390,7 +6390,13 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
         
         {/* Loading Stage - Terminal */}
         {(stage === 'loading' || stage === 'transitioning') && (
-          <div className={`transition-opacity duration-1000 ${stage === 'transitioning' ? 'opacity-0' : 'animate-fade-in-slow'}`}>
+          <div 
+            className="animate-fade-in-slow"
+            style={{ 
+              opacity: stage === 'transitioning' ? 0 : undefined,
+              transition: stage === 'transitioning' ? 'opacity 1s ease-out' : undefined
+            }}
+          >
             <h2 className="text-xl font-bold text-center mb-6 text-amber-400">
               🛡️ Scanning Your GUARD Journey
             </h2>
