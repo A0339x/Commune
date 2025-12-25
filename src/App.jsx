@@ -2648,10 +2648,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       
       {/* Chat Header */}
       <div className="px-6 py-3 border-b border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-yellow-400 animate-pulse'}`} />
-          <h2 className="font-medium text-white/80">GUARD Chat</h2>
-        </div>
+        <h2 className="font-medium text-white/80">GUARD Chat</h2>
         <Badge variant={connected ? 'success' : 'warning'}>
           {connected ? `${onlineCount} online` : 'Connecting...'}
         </Badge>
@@ -2907,23 +2904,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         {/* Connection Status / Warning / Announcement / Sound Toggle */}
         <div className="flex items-center justify-between mb-3 px-2">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            {/* Status dot */}
-            <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-              activeWarning 
-                ? 'bg-red-400 animate-pulse' 
-                : announcementVisible && announcement
-                  ? announcement.type === 'urgent' 
-                    ? 'bg-red-400 animate-pulse'
-                    : announcement.type === 'warning'
-                      ? 'bg-yellow-400 animate-pulse'
-                      : announcement.type === 'success'
-                        ? 'bg-emerald-400 animate-pulse'
-                        : 'bg-blue-400 animate-pulse'
-                  : connected 
-                    ? 'bg-emerald-400' 
-                    : 'bg-amber-400 animate-pulse'
-            }`} />
-            
             {/* Warning inline */}
             {activeWarning ? (
               <div className="flex items-center gap-2 flex-1 min-w-0 text-red-400">
