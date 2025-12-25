@@ -6251,7 +6251,7 @@ const BadgeWithTooltip = ({ emoji, name, description }) => {
 // RECOGNITION LOADER - "GUARD WRAPPED" EXPERIENCE
 // ============================================
 const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
-  const [stage, setStage] = useState('loading'); // 'loading', 'wrapped', 'ready'
+  const [stage, setStage] = useState('loading'); // 'loading', 'transitioning', 'wrapped', 'ready'
   const [terminalLines, setTerminalLines] = useState([]);
   const [guardData, setGuardData] = useState(null);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -6300,7 +6300,10 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
           await addTerminalLine(`> ✓ Data retrieved successfully!`, 2500);
           await addTerminalLine(`> Preparing your GUARD journey recap...`, 2000);
           
-          setTimeout(() => setStage('wrapped'), 1500);
+          // Start fade out transition
+          setStage('transitioning');
+          // After fade out completes, show wrapped
+          setTimeout(() => setStage('wrapped'), 1000);
         } else {
           await addTerminalLine(`> ⚠ Could not retrieve history`, 2000);
           await addTerminalLine(`> Proceeding to community...`, 2000);
@@ -6386,8 +6389,8 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
       <div className="max-w-2xl w-full">
         
         {/* Loading Stage - Terminal */}
-        {stage === 'loading' && (
-          <div className="animate-fade-in">
+        {(stage === 'loading' || stage === 'transitioning') && (
+          <div className={`transition-opacity duration-1000 ${stage === 'transitioning' ? 'opacity-0' : 'opacity-100'}`}>
             <h2 className="text-xl font-bold text-center mb-6 text-amber-400">
               🛡️ Scanning Your GUARD Journey
             </h2>
@@ -6412,7 +6415,7 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
                     {line.text}
                   </div>
                 ))}
-                <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-1" />
+                {stage === 'loading' && <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-1" />}
               </div>
             </div>
             
