@@ -6224,14 +6224,14 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
     
     const fetchReputationWithProgress = async () => {
       try {
-        await addTerminalLine(`> Initializing connection...`, 200);
-        await addTerminalLine(`> Wallet identified: ${address.slice(0, 6)}...${address.slice(-4)}`, 600);
-        await addTerminalLine(`> Scanning blockchain for GUARD activity...`, 400);
+        await addTerminalLine(`> Initializing connection...`, 1500);
+        await addTerminalLine(`> Wallet identified: ${address.slice(0, 6)}...${address.slice(-4)}`, 2500);
+        await addTerminalLine(`> Scanning blockchain for GUARD activity...`, 3000);
         
         // Actually fetch the reputation data
         const response = await fetch(`${API_URL}/api/reputation?wallet=${address}&detailed=true`);
         
-        await addTerminalLine(`> Retrieving your community achievements...`, 500);
+        await addTerminalLine(`> Retrieving your community achievements...`, 3000);
         
         if (response.ok) {
           const data = await response.json();
@@ -6241,19 +6241,19 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
           const cacheKey = `reputation_${address.toLowerCase()}`;
           localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
           
-          await addTerminalLine(`> ✓ Data retrieved successfully!`, 400);
-          await addTerminalLine(`> Preparing your GUARD journey recap...`, 600);
+          await addTerminalLine(`> ✓ Data retrieved successfully!`, 2500);
+          await addTerminalLine(`> Preparing your GUARD journey recap...`, 2000);
           
-          setTimeout(() => setStage('wrapped'), 800);
+          setTimeout(() => setStage('wrapped'), 1500);
         } else {
-          await addTerminalLine(`> ⚠ Could not retrieve history`, 300);
-          await addTerminalLine(`> Proceeding to community...`, 500);
-          setTimeout(() => handleEnterCommunity(), 1000);
+          await addTerminalLine(`> ⚠ Could not retrieve history`, 2000);
+          await addTerminalLine(`> Proceeding to community...`, 2000);
+          setTimeout(() => handleEnterCommunity(), 1500);
         }
       } catch (error) {
         console.error('Failed to fetch reputation:', error);
-        await addTerminalLine(`> Connection issue, skipping recap...`, 300);
-        setTimeout(() => handleEnterCommunity(), 1000);
+        await addTerminalLine(`> Connection issue, skipping recap...`, 2000);
+        setTimeout(() => handleEnterCommunity(), 1500);
       }
     };
     
