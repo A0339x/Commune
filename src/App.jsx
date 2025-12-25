@@ -659,12 +659,13 @@ const Spinner = ({ size = 'md' }) => {
 // ============================================
 // REPUTATION BADGE COMPONENT
 // ============================================
-// Now shows colored username instead of emoji badges
+// Shows colored username with glow based on reputation tier
 const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
   const [reputation, setReputation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const [hiddenBadges, setHiddenBadges] = useState([]);
   const nameRef = useRef(null);
   
   useEffect(() => {
@@ -681,6 +682,8 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
           if (Date.now() - timestamp < 60 * 60 * 1000) {
             setReputation(data);
             setLoading(false);
+            // Still fetch hidden badges preference
+            fetchHiddenBadges();
             return;
           }
         }
@@ -692,10 +695,28 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
           // Cache it
           localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
         }
+        
+        // Fetch hidden badges preference
+        fetchHiddenBadges();
       } catch (error) {
         console.error('Failed to fetch reputation:', error);
       } finally {
         setLoading(false);
+      }
+    };
+    
+    const fetchHiddenBadges = async () => {
+      try {
+        const prefResponse = await fetch(`${API_URL}/api/reputation/modifier?wallet=${wallet}`);
+        if (prefResponse.ok) {
+          const prefData = await prefResponse.json();
+          // modifier now stores hidden badges as "hidden:emoji1,emoji2"
+          if (prefData.modifier && prefData.modifier.startsWith('hidden:')) {
+            setHiddenBadges(prefData.modifier.replace('hidden:', '').split(',').filter(e => e));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch badge preferences:', error);
       }
     };
     
@@ -714,46 +735,8 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
     setShowHover(true);
   };
   
-  // Determine color class based on reputation
-  const getColorClass = () => {
-    if (!reputation?.primaryBadge) return 'text-white';
-    
-    const { primaryBadge, isEarlyAdopter } = reputation;
-    
-    // Early Adopter or Founding Member = Gold
-    if (isEarlyAdopter || primaryBadge.emoji === '👑') {
-      return 'text-amber-400';
-    }
-    // Diamond Hands = Purple
-    if (primaryBadge.emoji === '💎') {
-      return 'text-purple-400';
-    }
-    // OG = Cyan
-    if (primaryBadge.emoji === '🌳') {
-      return 'text-cyan-400';
-    }
-    // Veteran = Teal
-    if (primaryBadge.emoji === '🌿') {
-      return 'text-teal-400';
-    }
-    // Survivor = Emerald
-    if (primaryBadge.emoji === '🌾') {
-      return 'text-emerald-400';
-    }
-    // Believer = Green
-    if (primaryBadge.emoji === '🌱') {
-      return 'text-green-400';
-    }
-    // Holder = Lime
-    if (primaryBadge.emoji === '🍃') {
-      return 'text-lime-400';
-    }
-    
-    return 'text-white';
-  };
-  
-  // Build all badges for tooltip
-  const getAllBadges = () => {
+  // Build all badges (unfiltered)
+  const getAllBadgesRaw = () => {
     if (!reputation?.primaryBadge) return [];
     
     const { primaryBadge, availableModifiers, isEarlyAdopter } = reputation;
@@ -772,8 +755,88 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
     return badges;
   };
   
-  const colorClass = getColorClass();
-  const allBadges = getAllBadges();
+  // Get visible badges (filtered by user preference)
+  const getVisibleBadges = () => {
+    const all = getAllBadgesRaw();
+    return all.filter(b => !hiddenBadges.includes(b.emoji));
+  };
+  
+  // Determine the highest visible badge for color/glow
+  const getHighestVisibleBadge = () => {
+    const visible = getVisibleBadges();
+    if (visible.length === 0) return null;
+    
+    // Priority order: Early Adopter > Founding > Diamond > OG > Veteran > Survivor > Believer > Holder > Modifiers
+    const priority = ['🏆', '👑', '💎', '🌳', '🌿', '🌾', '🌱', '🍃', '⭐', '🔄'];
+    for (const emoji of priority) {
+      const badge = visible.find(b => b.emoji === emoji);
+      if (badge) return badge;
+    }
+    return visible[0];
+  };
+  
+  // Determine color and glow based on highest visible badge
+  const getStyleClasses = () => {
+    const highestBadge = getHighestVisibleBadge();
+    if (!highestBadge) return { color: 'text-white', glow: '' };
+    
+    const emoji = highestBadge.emoji;
+    
+    // Early Adopter or Founding Member = Gold with glow
+    if (emoji === '🏆' || emoji === '👑') {
+      return { 
+        color: 'text-amber-400', 
+        glow: 'drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' 
+      };
+    }
+    // Diamond Hands = Purple with glow
+    if (emoji === '💎') {
+      return { 
+        color: 'text-purple-400', 
+        glow: 'drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]' 
+      };
+    }
+    // OG = Cyan with subtle glow
+    if (emoji === '🌳') {
+      return { 
+        color: 'text-cyan-400', 
+        glow: 'drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]' 
+      };
+    }
+    // Veteran = Teal
+    if (emoji === '🌿') {
+      return { 
+        color: 'text-teal-400', 
+        glow: 'drop-shadow-[0_0_4px_rgba(45,212,191,0.3)]' 
+      };
+    }
+    // Survivor = Emerald
+    if (emoji === '🌾') {
+      return { 
+        color: 'text-emerald-400', 
+        glow: '' 
+      };
+    }
+    // Believer = Green
+    if (emoji === '🌱') {
+      return { 
+        color: 'text-green-400', 
+        glow: '' 
+      };
+    }
+    // Holder = Lime
+    if (emoji === '🍃') {
+      return { 
+        color: 'text-lime-400', 
+        glow: '' 
+      };
+    }
+    
+    return { color: 'text-white', glow: '' };
+  };
+  
+  const { color, glow } = getStyleClasses();
+  const visibleBadges = getVisibleBadges();
   
   // If children provided, wrap them with color. Otherwise just return colored span
   if (children) {
@@ -781,7 +844,7 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
       <>
         <span 
           ref={nameRef}
-          className={`${colorClass} ${reputation?.primaryBadge ? 'cursor-help' : ''}`}
+          className={`${color} ${glow} ${visibleBadges.length > 0 ? 'cursor-help' : ''} transition-all`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={() => setShowHover(false)}
         >
@@ -789,7 +852,7 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
         </span>
         
         {/* Tooltip */}
-        {showHover && showTooltip && allBadges.length > 0 && ReactDOM.createPortal(
+        {showHover && showTooltip && visibleBadges.length > 0 && ReactDOM.createPortal(
           <div 
             className="fixed z-[300] animate-fade-in pointer-events-none"
             style={{ 
@@ -800,7 +863,7 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
           >
             <div className="bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl p-3 max-w-xs">
               <div className="space-y-2">
-                {allBadges.map((badge, i) => (
+                {visibleBadges.map((badge, i) => (
                   <div key={badge.emoji} className={`flex items-center gap-2 ${i > 0 ? 'pt-2 border-t border-white/10' : ''}`}>
                     <span className="text-lg">{badge.emoji}</span>
                     <div>
@@ -5840,85 +5903,113 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                     {(() => {
                       const allBadges = [];
                       if (userReputation.isEarlyAdopter) {
-                        allBadges.push({ emoji: '🏆', name: 'Early Adopter', description: 'First 100 GUARD holders ever', type: 'earlyAdopter' });
+                        allBadges.push({ emoji: '🏆', name: 'Early Adopter', description: 'First 100 GUARD holders ever' });
                       }
                       if (userReputation.primaryBadge) {
-                        allBadges.push({ ...userReputation.primaryBadge, type: 'primary' });
+                        allBadges.push(userReputation.primaryBadge);
                       }
                       if (userReputation.availableModifiers) {
                         userReputation.availableModifiers.forEach(mod => {
-                          allBadges.push({ ...mod, type: 'modifier' });
+                          allBadges.push(mod);
                         });
                       }
                       
-                      // Parse selected badges (stored as "emoji1,emoji2")
-                      const getSelectedBadges = () => {
-                        if (selectedModifier && selectedModifier.includes(',')) {
-                          return selectedModifier.split(',').filter(e => e); // filter empty strings
+                      // Parse hidden badges from selectedModifier (stored as "hidden:emoji1,emoji2")
+                      const getHiddenBadges = () => {
+                        if (selectedModifier && selectedModifier.startsWith('hidden:')) {
+                          return selectedModifier.replace('hidden:', '').split(',').filter(e => e);
                         }
-                        if (selectedModifier) {
-                          return [selectedModifier];
-                        }
-                        // Default: show first two badges
-                        return allBadges.slice(0, 2).map(b => b.emoji);
+                        return [];
                       };
                       
-                      const selectedBadges = getSelectedBadges();
-                      const displayedBadges = allBadges.filter(b => selectedBadges.includes(b.emoji));
+                      const hiddenBadges = getHiddenBadges();
+                      const visibleBadges = allBadges.filter(b => !hiddenBadges.includes(b.emoji));
                       
-                      const toggleBadge = (emoji) => {
-                        let newSelected = [...selectedBadges];
-                        if (newSelected.includes(emoji)) {
-                          // Deselect - allow going to 0
-                          newSelected = newSelected.filter(e => e !== emoji);
-                        } else {
-                          // Select - but max 2
-                          if (newSelected.length >= 2) {
-                            setMlmWarning(true);
-                            setTimeout(() => setMlmWarning(false), 3000);
-                            return;
-                          }
-                          newSelected.push(emoji);
+                      // Get highest visible badge for color preview
+                      const priority = ['🏆', '👑', '💎', '🌳', '🌿', '🌾', '🌱', '🍃', '⭐', '🔄'];
+                      let highestBadge = null;
+                      for (const emoji of priority) {
+                        const badge = visibleBadges.find(b => b.emoji === emoji);
+                        if (badge) {
+                          highestBadge = badge;
+                          break;
                         }
-                        updateSelectedBadges(newSelected.join(','));
+                      }
+                      
+                      const getColorAndGlow = () => {
+                        if (!highestBadge) return { color: 'text-white', glow: '' };
+                        const emoji = highestBadge.emoji;
+                        if (emoji === '🏆' || emoji === '👑') return { color: 'text-amber-400', glow: 'drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' };
+                        if (emoji === '💎') return { color: 'text-purple-400', glow: 'drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]' };
+                        if (emoji === '🌳') return { color: 'text-cyan-400', glow: 'drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]' };
+                        if (emoji === '🌿') return { color: 'text-teal-400', glow: 'drop-shadow-[0_0_4px_rgba(45,212,191,0.3)]' };
+                        if (emoji === '🌾') return { color: 'text-emerald-400', glow: '' };
+                        if (emoji === '🌱') return { color: 'text-green-400', glow: '' };
+                        if (emoji === '🍃') return { color: 'text-lime-400', glow: '' };
+                        return { color: 'text-white', glow: '' };
+                      };
+                      
+                      const { color, glow } = getColorAndGlow();
+                      
+                      const toggleBadgeVisibility = (emoji) => {
+                        let newHidden = [...hiddenBadges];
+                        if (newHidden.includes(emoji)) {
+                          // Show badge
+                          newHidden = newHidden.filter(e => e !== emoji);
+                        } else {
+                          // Hide badge
+                          newHidden.push(emoji);
+                        }
+                        updateSelectedBadges(newHidden.length > 0 ? `hidden:${newHidden.join(',')}` : '');
                       };
                       
                       return (
                         <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
                           {/* Username color preview */}
                           <div className="p-4 bg-white/5 rounded-xl">
-                            <p className="text-xs text-white/50 mb-3">Your username color:</p>
+                            <p className="text-xs text-white/50 mb-3">Your username appearance:</p>
                             <div className="flex items-center gap-3 p-3 bg-white/10 rounded-lg">
-                              <span className={`text-lg font-medium ${
-                                userReputation.isEarlyAdopter || userReputation.primaryBadge?.emoji === '👑' ? 'text-amber-400' :
-                                userReputation.primaryBadge?.emoji === '💎' ? 'text-purple-400' :
-                                userReputation.primaryBadge?.emoji === '🌳' ? 'text-cyan-400' :
-                                userReputation.primaryBadge?.emoji === '🌿' ? 'text-teal-400' :
-                                userReputation.primaryBadge?.emoji === '🌾' ? 'text-emerald-400' :
-                                userReputation.primaryBadge?.emoji === '🌱' ? 'text-green-400' :
-                                userReputation.primaryBadge?.emoji === '🍃' ? 'text-lime-400' : 'text-white'
-                              }`}>
+                              <span className={`text-lg font-medium ${color} ${glow} transition-all`}>
                                 {displayName || truncateAddress(address)}
                               </span>
-                              <span className="text-xs text-white/50">← How others see your name</span>
                             </div>
                             <p className="text-xs text-white/40 mt-2">Hover over usernames in chat to see recognition details</p>
                           </div>
                           
-                          {/* All badges list */}
+                          {/* Badge visibility toggles */}
                           <div className="p-4 bg-white/5 rounded-xl">
-                            <p className="text-sm font-medium mb-3">Your recognition:</p>
-                            <div className="space-y-3">
-                              {allBadges.map(badge => (
-                                <div key={badge.emoji} className="flex items-start gap-3 p-2 bg-white/5 rounded-lg">
-                                  <span className="text-2xl">{badge.emoji}</span>
-                                  <div>
-                                    <p className="text-sm font-medium">{badge.name}</p>
-                                    <p className="text-xs text-white/50">{badge.description}</p>
-                                  </div>
-                                </div>
-                              ))}
+                            <p className="text-sm font-medium mb-2">Your recognition:</p>
+                            <p className="text-xs text-white/50 mb-3">Toggle which badges others can see when they hover your name</p>
+                            <div className="space-y-2">
+                              {allBadges.map(badge => {
+                                const isHidden = hiddenBadges.includes(badge.emoji);
+                                return (
+                                  <button
+                                    key={badge.emoji}
+                                    onClick={() => toggleBadgeVisibility(badge.emoji)}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all ${
+                                      isHidden
+                                        ? 'bg-white/5 border border-white/10 opacity-50'
+                                        : 'bg-white/10 border border-white/20'
+                                    }`}
+                                  >
+                                    <span className={`text-2xl ${isHidden ? 'grayscale' : ''}`}>{badge.emoji}</span>
+                                    <div className="flex-1 text-left">
+                                      <p className={`text-sm font-medium ${isHidden ? 'text-white/50' : ''}`}>{badge.name}</p>
+                                      <p className="text-xs text-white/40">{badge.description}</p>
+                                    </div>
+                                    <div className={`w-10 h-6 rounded-full transition-colors ${isHidden ? 'bg-white/10' : 'bg-amber-500'}`}>
+                                      <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform mt-0.5 ${isHidden ? 'ml-0.5' : 'ml-4'}`} />
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
+                            {hiddenBadges.length > 0 && (
+                              <p className="text-xs text-white/30 mt-3 text-center">
+                                {hiddenBadges.length} badge{hiddenBadges.length > 1 ? 's' : ''} hidden from your profile
+                              </p>
+                            )}
                           </div>
                         </div>
                       );
