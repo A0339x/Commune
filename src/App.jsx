@@ -657,6 +657,126 @@ const Spinner = ({ size = 'md' }) => {
 };
 
 // ============================================
+// REPUTATION BADGE COMPONENT
+// ============================================
+const ReputationBadge = ({ wallet, showTooltip = true }) => {
+  const [reputation, setReputation] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showHover, setShowHover] = useState(false);
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const badgeRef = useRef(null);
+  
+  useEffect(() => {
+    if (!wallet) return;
+    
+    const fetchReputation = async () => {
+      try {
+        // Check localStorage cache first
+        const cacheKey = `reputation_${wallet.toLowerCase()}`;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          // Cache for 1 hour client-side
+          if (Date.now() - timestamp < 60 * 60 * 1000) {
+            setReputation(data);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        const response = await fetch(`${API_URL}/api/reputation?wallet=${wallet}`);
+        if (response.ok) {
+          const data = await response.json();
+          setReputation(data);
+          // Cache it
+          localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+        }
+      } catch (error) {
+        console.error('Failed to fetch reputation:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchReputation();
+  }, [wallet]);
+  
+  const handleMouseEnter = (e) => {
+    if (!showTooltip) return;
+    const rect = badgeRef.current?.getBoundingClientRect();
+    if (rect) {
+      setHoverPosition({ 
+        x: rect.left + rect.width / 2, 
+        y: rect.bottom + 8 
+      });
+    }
+    setShowHover(true);
+  };
+  
+  if (loading || !reputation?.primaryBadge) return null;
+  
+  const { primaryBadge, modifier, isEarlyAdopter } = reputation;
+  
+  return (
+    <>
+      <span 
+        ref={badgeRef}
+        className="inline-flex items-center gap-0.5 cursor-help"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={() => setShowHover(false)}
+      >
+        {isEarlyAdopter && <span title="Early Adopter - First 100 holders">🏆</span>}
+        <span>{primaryBadge.emoji}</span>
+        {modifier && <span>{modifier.emoji}</span>}
+      </span>
+      
+      {/* Tooltip */}
+      {showHover && showTooltip && ReactDOM.createPortal(
+        <div 
+          className="fixed z-[300] animate-fade-in"
+          style={{ 
+            left: hoverPosition.x, 
+            top: hoverPosition.y,
+            transform: 'translateX(-50%)'
+          }}
+        >
+          <div className="bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl p-3 max-w-xs">
+            <div className="space-y-2">
+              {isEarlyAdopter && (
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🏆</span>
+                  <div>
+                    <p className="text-sm font-medium text-white">Early Adopter</p>
+                    <p className="text-xs text-white/50">First 100 GUARD holders</p>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{primaryBadge.emoji}</span>
+                <div>
+                  <p className="text-sm font-medium text-white">{primaryBadge.name}</p>
+                  <p className="text-xs text-white/50">{primaryBadge.description}</p>
+                </div>
+              </div>
+              {modifier && (
+                <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+                  <span className="text-lg">{modifier.emoji}</span>
+                  <div>
+                    <p className="text-sm font-medium text-white">{modifier.name}</p>
+                    <p className="text-xs text-white/50">{modifier.description}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
+};
+
+// ============================================
 // LANDING PAGE
 // ============================================
 const LandingPage = () => {
@@ -1637,6 +1757,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                 <div className="flex-1">
                   <div className="flex items-baseline gap-2">
                     <span className="font-medium">{message.displayName || message.user}</span>
+                    <ReputationBadge wallet={message.wallet} />
                     {message.displayName && (
                       <span className="text-xs text-white/20 font-mono">{message.user}</span>
                     )}
@@ -1667,6 +1788,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2">
                       <span className="text-sm font-medium">{reply.displayName || reply.user}</span>
+                      <ReputationBadge wallet={reply.wallet} />
                       {reply.displayName && (
                         <span className="text-xs text-white/20 font-mono">{reply.user}</span>
                       )}
@@ -3218,6 +3340,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                     <span className="font-medium text-sm">
                       {msg.displayName || msg.user}
                     </span>
+                    <ReputationBadge wallet={msg.wallet} />
                     {msg.displayName && (
                       <span className="text-xs text-white/20 font-mono">{msg.user}</span>
                     )}
