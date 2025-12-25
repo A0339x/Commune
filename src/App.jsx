@@ -708,7 +708,7 @@ const InsufficientTokensPage = ({ tokenBalance }) => {
 // ============================================
 // THREAD PREVIEW COMPONENT (Hover Peek)
 // ============================================
-const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRef, walletAddress }) => {
+const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRef, walletAddress, rateLimited, rateLimitSeconds }) => {
   const [threadReplies, setThreadReplies] = useState(replies || []);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -891,23 +891,29 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
       
       {/* Reply Input */}
       <div className="p-3 border-t border-white/5">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={replyText}
-            onChange={(e) => setReplyText(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendReply()}
-            placeholder="Reply..."
-            className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
-          />
-          <button
-            onClick={sendReply}
-            disabled={!replyText.trim() || sending}
-            className="px-3 py-2 bg-amber-500 rounded-lg text-black text-sm font-medium disabled:opacity-50"
-          >
-            {sending ? '...' : '↩'}
-          </button>
-        </div>
+        {rateLimited ? (
+          <div className="flex items-center justify-center py-2 text-amber-400/70 text-xs">
+            🕵️ Nice try, but no loopholes here! Wait {rateLimitSeconds}s
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && sendReply()}
+              placeholder="Reply..."
+              className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+            />
+            <button
+              onClick={sendReply}
+              disabled={!replyText.trim() || sending}
+              className="px-3 py-2 bg-amber-500 rounded-lg text-black text-sm font-medium disabled:opacity-50"
+            >
+              {sending ? '...' : '↩'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -916,7 +922,7 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
 // ============================================
 // THREAD MODAL (Full Thread View)
 // ============================================
-const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onRegisterReplyCallback, tenorApiKey }) => {
+const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onRegisterReplyCallback, tenorApiKey, rateLimited, rateLimitSeconds }) => {
   const [threadReplies, setThreadReplies] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -1329,26 +1335,32 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
             </div>
           )}
           
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowGifPicker(!showGifPicker)}
-              className={`px-3 py-3 rounded-xl transition-colors ${showGifPicker ? 'bg-amber-400/20 text-amber-400' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
-              title="Send GIF"
-            >
-              GIF
-            </button>
-            <input
-              type="text"
-              value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendReply()}
-              placeholder="Reply to thread..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400/50"
-            />
-            <Button onClick={sendReply} disabled={!replyText.trim() || sending}>
-              {sending ? <Spinner size="sm" /> : <Icons.Send />}
-            </Button>
-          </div>
+          {rateLimited ? (
+            <div className="flex items-center justify-center py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+              <span className="text-amber-400/80 text-sm">🕵️ Sneaky! But threads count too. Wait {rateLimitSeconds}s</span>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowGifPicker(!showGifPicker)}
+                className={`px-3 py-3 rounded-xl transition-colors ${showGifPicker ? 'bg-amber-400/20 text-amber-400' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
+                title="Send GIF"
+              >
+                GIF
+              </button>
+              <input
+                type="text"
+                value={replyText}
+                onChange={(e) => setReplyText(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && sendReply()}
+                placeholder="Reply to thread..."
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400/50"
+              />
+              <Button onClick={sendReply} disabled={!replyText.trim() || sending}>
+                {sending ? <Spinner size="sm" /> : <Icons.Send />}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
       
@@ -2506,6 +2518,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           walletAddress={walletAddress}
           onRegisterReplyCallback={(callback) => { threadReplyCallbackRef.current = callback; }}
           tenorApiKey={tenorApiKey}
+          rateLimited={rateLimited}
+          rateLimitSeconds={rateLimitSeconds}
         />
       )}
       
@@ -2627,6 +2641,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           position={hoverPosition}
           wsRef={wsRef}
           walletAddress={walletAddress}
+          rateLimited={rateLimited}
+          rateLimitSeconds={rateLimitSeconds}
         />
       )}
       
