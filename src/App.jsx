@@ -3053,52 +3053,59 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           
           {/* GIF Picker */}
           {showGifPicker && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#151520] border border-white/10 rounded-xl p-3 max-h-80 overflow-hidden flex flex-col">
-              {/* Search */}
-              <input
-                type="text"
-                value={gifSearch}
-                onChange={(e) => handleGifSearchChange(e.target.value)}
-                placeholder="Search GIFs..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-amber-400/50 mb-3"
-                autoFocus
+            <>
+              {/* Backdrop to close on click outside */}
+              <div 
+                className="fixed inset-0 z-[5]" 
+                onClick={() => setShowGifPicker(false)}
               />
-              
-              {/* Results */}
-              <div className="flex-1 overflow-y-auto">
-                {gifLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Spinner size="sm" />
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2">
-                    {(gifSearch ? gifResults : trendingGifs).map((gif) => (
-                      <button
-                        key={gif.id}
-                        onClick={() => sendGif(gif)}
-                        className="relative aspect-square rounded-lg overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all"
-                      >
-                        <img
-                          src={gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url}
-                          alt={gif.content_description || 'GIF'}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#151520] border border-white/10 rounded-xl p-3 max-h-80 overflow-hidden flex flex-col z-10">
+                {/* Search */}
+                <input
+                  type="text"
+                  value={gifSearch}
+                  onChange={(e) => handleGifSearchChange(e.target.value)}
+                  placeholder="Search GIFs..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-amber-400/50 mb-3"
+                  autoFocus
+                />
                 
-                {!gifLoading && gifSearch && gifResults.length === 0 && (
-                  <p className="text-white/40 text-center py-4 text-sm">No GIFs found</p>
-                )}
+                {/* Results */}
+                <div className="flex-1 overflow-y-auto">
+                  {gifLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Spinner size="sm" />
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-2">
+                      {(gifSearch ? gifResults : trendingGifs).map((gif) => (
+                        <button
+                          key={gif.id}
+                          onClick={() => sendGif(gif)}
+                          className="relative aspect-square rounded-lg overflow-hidden hover:ring-2 hover:ring-amber-400 transition-all"
+                        >
+                          <img
+                            src={gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url}
+                            alt={gif.content_description || 'GIF'}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  
+                  {!gifLoading && gifSearch && gifResults.length === 0 && (
+                    <p className="text-white/40 text-center py-4 text-sm">No GIFs found</p>
+                  )}
+                </div>
+                
+                {/* Tenor attribution */}
+                <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
+                  <span className="text-xs text-white/30">Powered by Tenor</span>
+                </div>
               </div>
-              
-              {/* Tenor attribution */}
-              <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
-                <span className="text-xs text-white/30">Powered by Tenor</span>
-              </div>
-            </div>
+            </>
           )}
         </div>
       </div>
@@ -4710,8 +4717,11 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
       
       {/* Settings Modal */}
       {showSettings && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6">
-          <Card className="max-w-md w-full p-6">
+        <div 
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-6"
+          onClick={() => setShowSettings(false)}
+        >
+          <Card className="max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold">Settings</h2>
               <button 
