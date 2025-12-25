@@ -290,8 +290,10 @@ const LinkPreview = ({ url, children }) => {
     const rect = linkRef.current.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
-    const previewWidth = 600;
-    const previewHeight = isBlocked ? 200 : 450;
+    
+    // Different sizes for blocked (small tooltip) vs full preview
+    const previewWidth = isBlocked ? 280 : 600;
+    const previewHeight = isBlocked ? 50 : 450;
     
     let x = rect.left;
     let y = rect.bottom + 8;
@@ -306,9 +308,20 @@ const LinkPreview = ({ url, children }) => {
       y = rect.top - previewHeight - 8;
     }
     
-    // Ensure minimum x
+    // Ensure minimum bounds
     if (x < 20) x = 20;
     if (y < 20) y = 20;
+    
+    // For blocked sites, keep tooltip close to link
+    if (isBlocked) {
+      // Prefer showing below the link if there's room
+      if (rect.bottom + previewHeight + 20 < viewportHeight) {
+        y = rect.bottom + 4;
+      } else {
+        // Otherwise show above
+        y = rect.top - previewHeight - 4;
+      }
+    }
     
     setPreviewPosition({ x, y });
   };
