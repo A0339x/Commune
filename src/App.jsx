@@ -725,10 +725,33 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
   
   const { primaryBadge, modifier, availableModifiers, isEarlyAdopter } = reputation;
   
-  // Use preferred modifier if set, otherwise use default
-  const displayModifier = modifierPref 
-    ? availableModifiers?.find(m => m.emoji === modifierPref) || modifier
-    : modifier;
+  // Build all available badges
+  const allBadges = [];
+  if (isEarlyAdopter) {
+    allBadges.push({ emoji: '🏆', name: 'Early Adopter', description: 'First 100 GUARD holders' });
+  }
+  if (primaryBadge) {
+    allBadges.push(primaryBadge);
+  }
+  if (availableModifiers) {
+    availableModifiers.forEach(mod => allBadges.push(mod));
+  }
+  
+  // Determine which badges to display (max 2)
+  let displayBadges = [];
+  if (modifierPref && modifierPref.includes(',')) {
+    // User has selected specific badges
+    const selectedEmojis = modifierPref.split(',');
+    displayBadges = allBadges.filter(b => selectedEmojis.includes(b.emoji)).slice(0, 2);
+  } else if (modifierPref) {
+    // Old format - single modifier preference, show primary + that modifier
+    displayBadges = [primaryBadge];
+    const selectedMod = availableModifiers?.find(m => m.emoji === modifierPref);
+    if (selectedMod) displayBadges.push(selectedMod);
+  } else {
+    // Default: first 2 badges
+    displayBadges = allBadges.slice(0, 2);
+  }
   
   return (
     <>
@@ -738,9 +761,9 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setShowHover(false)}
       >
-        {isEarlyAdopter && <span title="Early Adopter - First 100 holders">🏆</span>}
-        <span>{primaryBadge.emoji}</span>
-        {displayModifier && <span>{displayModifier.emoji}</span>}
+        {displayBadges.map(badge => (
+          <span key={badge.emoji} title={badge.name}>{badge.emoji}</span>
+        ))}
       </span>
       
       {/* Tooltip */}
@@ -755,31 +778,15 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
         >
           <div className="bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl p-3 max-w-xs">
             <div className="space-y-2">
-              {isEarlyAdopter && (
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🏆</span>
+              {displayBadges.map((badge, i) => (
+                <div key={badge.emoji} className={`flex items-center gap-2 ${i > 0 ? 'pt-1 border-t border-white/10' : ''}`}>
+                  <span className="text-lg">{badge.emoji}</span>
                   <div>
-                    <p className="text-sm font-medium text-white">Early Adopter</p>
-                    <p className="text-xs text-white/50">First 100 GUARD holders</p>
+                    <p className="text-sm font-medium text-white">{badge.name}</p>
+                    <p className="text-xs text-white/50">{badge.description}</p>
                   </div>
                 </div>
-              )}
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{primaryBadge.emoji}</span>
-                <div>
-                  <p className="text-sm font-medium text-white">{primaryBadge.name}</p>
-                  <p className="text-xs text-white/50">{primaryBadge.description}</p>
-                </div>
-              </div>
-              {displayModifier && (
-                <div className="flex items-center gap-2 pt-1 border-t border-white/10">
-                  <span className="text-lg">{displayModifier.emoji}</span>
-                  <div>
-                    <p className="text-sm font-medium text-white">{displayModifier.name}</p>
-                    <p className="text-xs text-white/50">{displayModifier.description}</p>
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
           </div>
         </div>,
@@ -5780,78 +5787,116 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                 {/* Badge Display */}
                 {userReputation?.primaryBadge ? (
                   <>
-                    {/* Current badge display */}
-                    <div className="p-4 bg-white/5 rounded-xl">
-                      <p className="text-xs text-white/50 mb-3">Your current badges:</p>
-                      <div className="flex items-center gap-2 p-3 bg-white/10 rounded-lg">
-                        {userReputation.isEarlyAdopter && <span className="text-2xl" title="Early Adopter">🏆</span>}
-                        <span className="text-2xl" title={userReputation.primaryBadge.name}>{userReputation.primaryBadge.emoji}</span>
-                        {(selectedModifier || userReputation.modifier) && (
-                          <span className="text-2xl" title={(userReputation.availableModifiers?.find(m => m.emoji === selectedModifier) || userReputation.modifier)?.name}>
-                            {selectedModifier || userReputation.modifier?.emoji}
-                          </span>
-                        )}
-                        <span className="text-sm text-white/70 ml-2">
-                          {userReputation.isEarlyAdopter && 'Early Adopter + '}
-                          {userReputation.primaryBadge.name}
-                          {(selectedModifier || userReputation.modifier) && ` + ${(userReputation.availableModifiers?.find(m => m.emoji === selectedModifier) || userReputation.modifier)?.name}`}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Modifier selector */}
-                    {userReputation.availableModifiers?.length > 1 && (
-                      <div className="p-4 bg-white/5 rounded-xl">
-                        <p className="text-sm font-medium mb-2">Choose your modifier:</p>
-                        <p className="text-xs text-white/50 mb-3">You qualify for multiple modifiers. Pick which one to display!</p>
-                        <div className="flex flex-col gap-2">
-                          {userReputation.availableModifiers.map((mod) => (
-                            <button
-                              key={mod.emoji}
-                              onClick={() => saveModifierPreference(mod.emoji)}
-                              disabled={savingBadge}
-                              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                                selectedModifier === mod.emoji || (!selectedModifier && mod.emoji === userReputation.modifier?.emoji)
-                                  ? 'bg-amber-400/20 border border-amber-400/50'
-                                  : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                              }`}
-                            >
-                              <span className="text-2xl">{mod.emoji}</span>
-                              <div className="text-left">
-                                <p className="text-sm font-medium">{mod.name}</p>
-                                <p className="text-xs text-white/50">{mod.description}</p>
-                              </div>
-                              {(selectedModifier === mod.emoji || (!selectedModifier && mod.emoji === userReputation.modifier?.emoji)) && (
-                                <span className="ml-auto text-amber-400">✓</span>
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Badge explanations */}
-                    <div className="p-4 bg-white/5 rounded-xl">
-                      <p className="text-sm font-medium mb-3">Your badge details:</p>
-                      <div className="space-y-3">
-                        {userReputation.isEarlyAdopter && (
-                          <div className="flex items-start gap-3">
-                            <span className="text-lg">🏆</span>
-                            <div>
-                              <p className="text-sm font-medium">Early Adopter</p>
-                              <p className="text-xs text-white/50">First 100 GUARD holders ever</p>
+                    {/* Build list of all available badges */}
+                    {(() => {
+                      const allBadges = [];
+                      if (userReputation.isEarlyAdopter) {
+                        allBadges.push({ emoji: '🏆', name: 'Early Adopter', description: 'First 100 GUARD holders ever', type: 'earlyAdopter' });
+                      }
+                      if (userReputation.primaryBadge) {
+                        allBadges.push({ ...userReputation.primaryBadge, type: 'primary' });
+                      }
+                      if (userReputation.availableModifiers) {
+                        userReputation.availableModifiers.forEach(mod => {
+                          allBadges.push({ ...mod, type: 'modifier' });
+                        });
+                      }
+                      
+                      // Parse selected badges (stored as "emoji1,emoji2")
+                      const getSelectedBadges = () => {
+                        if (selectedModifier && selectedModifier.includes(',')) {
+                          return selectedModifier.split(',');
+                        }
+                        // Default: show first two badges
+                        return allBadges.slice(0, 2).map(b => b.emoji);
+                      };
+                      
+                      const selectedBadges = getSelectedBadges();
+                      const displayedBadges = allBadges.filter(b => selectedBadges.includes(b.emoji));
+                      
+                      const toggleBadge = (emoji) => {
+                        let newSelected = [...selectedBadges];
+                        if (newSelected.includes(emoji)) {
+                          // Remove if already selected (but keep at least 1)
+                          if (newSelected.length > 1) {
+                            newSelected = newSelected.filter(e => e !== emoji);
+                          }
+                        } else {
+                          // Add if not at max
+                          if (newSelected.length < 2) {
+                            newSelected.push(emoji);
+                          } else {
+                            // Replace the second one
+                            newSelected[1] = emoji;
+                          }
+                        }
+                        saveModifierPreference(newSelected.join(','));
+                      };
+                      
+                      return (
+                        <>
+                          {/* Current badge display */}
+                          <div className="p-4 bg-white/5 rounded-xl">
+                            <p className="text-xs text-white/50 mb-3">Your displayed badges:</p>
+                            <div className="flex items-center gap-2 p-3 bg-white/10 rounded-lg">
+                              {displayedBadges.map(badge => (
+                                <span key={badge.emoji} className="text-2xl" title={badge.name}>{badge.emoji}</span>
+                              ))}
+                              <span className="text-sm text-white/70 ml-2">
+                                {displayedBadges.map(b => b.name).join(' + ')}
+                              </span>
                             </div>
                           </div>
-                        )}
-                        <div className="flex items-start gap-3">
-                          <span className="text-lg">{userReputation.primaryBadge.emoji}</span>
-                          <div>
-                            <p className="text-sm font-medium">{userReputation.primaryBadge.name}</p>
-                            <p className="text-xs text-white/50">{userReputation.primaryBadge.description}</p>
+                          
+                          {/* Badge selector - only show if more than 2 badges available */}
+                          {allBadges.length > 2 && (
+                            <div className="p-4 bg-white/5 rounded-xl">
+                              <p className="text-sm font-medium mb-2">Choose 2 badges to display:</p>
+                              <p className="text-xs text-white/50 mb-3">You have {allBadges.length} badges! Pick which 2 to show.</p>
+                              <div className="flex flex-col gap-2">
+                                {allBadges.map((badge) => (
+                                  <button
+                                    key={badge.emoji}
+                                    onClick={() => toggleBadge(badge.emoji)}
+                                    disabled={savingBadge}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                                      selectedBadges.includes(badge.emoji)
+                                        ? 'bg-amber-400/20 border border-amber-400/50'
+                                        : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                                    }`}
+                                  >
+                                    <span className="text-2xl">{badge.emoji}</span>
+                                    <div className="text-left flex-1">
+                                      <p className="text-sm font-medium">{badge.name}</p>
+                                      <p className="text-xs text-white/50">{badge.description}</p>
+                                    </div>
+                                    {selectedBadges.includes(badge.emoji) && (
+                                      <span className="text-amber-400">✓</span>
+                                    )}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Badge explanations */}
+                          <div className="p-4 bg-white/5 rounded-xl">
+                            <p className="text-sm font-medium mb-3">All your badges:</p>
+                            <div className="space-y-3">
+                              {allBadges.map(badge => (
+                                <div key={badge.emoji} className="flex items-start gap-3">
+                                  <span className="text-lg">{badge.emoji}</span>
+                                  <div>
+                                    <p className="text-sm font-medium">{badge.name}</p>
+                                    <p className="text-xs text-white/50">{badge.description}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    </div>
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   <div className="p-6 bg-white/5 rounded-xl text-center">
