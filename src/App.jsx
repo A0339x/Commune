@@ -6705,9 +6705,9 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 2: Badges Sequence */}
       {scene === 2 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`text-center transition-all duration-1000 ${subStage === 7 ? 'opacity-0' : 'opacity-100'}`}>
           <h2 className={`text-2xl font-bold text-white/80 mb-12 transition-all duration-1000 ${
-            subStage >= 1 ? 'opacity-100' : 'opacity-0'
+            subStage >= 1 && subStage < 5 ? 'opacity-100' : 'opacity-0'
           }`}>
             Recognition earned
           </h2>
