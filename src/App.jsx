@@ -2805,17 +2805,24 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                         
                         {/* Emoji picker dropdown */}
                         {showReactionPicker === msg.id && (
-                          <div className="absolute bottom-full left-0 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-2 flex gap-1 shadow-lg z-10">
-                            {reactionEmojis.map(emoji => (
-                              <button
-                                key={emoji}
-                                onClick={() => toggleReaction(msg.id, emoji)}
-                                className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors ${hasReacted(msg.reactions, emoji) ? 'bg-amber-400/20' : ''}`}
-                              >
-                                {emoji}
-                              </button>
-                            ))}
-                          </div>
+                          <>
+                            {/* Invisible backdrop to catch outside clicks */}
+                            <div 
+                              className="fixed inset-0 z-[5]" 
+                              onClick={() => setShowReactionPicker(null)}
+                            />
+                            <div className="absolute bottom-full left-0 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-2 flex gap-1 shadow-lg z-10">
+                              {reactionEmojis.map(emoji => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => toggleReaction(msg.id, emoji)}
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors ${hasReacted(msg.reactions, emoji) ? 'bg-amber-400/20' : ''}`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </>
                         )}
                       </div>
                     )}
