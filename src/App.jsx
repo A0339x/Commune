@@ -1399,6 +1399,13 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [announcementVisible, setAnnouncementVisible] = useState(false);
   const [pendingMessages, setPendingMessages] = useState([]); // Messages waiting for server confirmation
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { messageId } for delete confirmation
+  
+  // Onboarding state
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+  const [isFirstVisit, setIsFirstVisit] = useState(false);
+  const [systemMessage, setSystemMessage] = useState(null); // { type: 'welcome'|'tip'|'reconnecting', text, icon }
+  const [currentTipIndex, setCurrentTipIndex] = useState(0);
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
@@ -1416,8 +1423,67 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
+  // Tips for the system message bar
+  const tips = [
+    { icon: '💬', text: 'Click any message to start a thread' },
+    { icon: '🎉', text: 'React to messages with emojis' },
+    { icon: '📷', text: 'Send GIFs in chat and threads' },
+    { icon: '@', text: 'Use @mention to notify someone' },
+    { icon: '⚙️', text: 'Set your display name in Settings' },
+    { icon: '🔔', text: 'Toggle sound notifications with the 🔔 button' },
+  ];
+  
   // Tenor API Key - fetched from server
   const [tenorApiKey, setTenorApiKey] = useState('');
+  
+  // Check if first visit and show onboarding
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('commune_visited');
+    const hasCompletedOnboarding = localStorage.getItem('commune_onboarded');
+    
+    if (!hasVisited) {
+      setIsFirstVisit(true);
+      setShowWelcomeModal(true);
+      localStorage.setItem('commune_visited', 'true');
+    }
+    
+    // Set initial system message
+    if (!hasCompletedOnboarding) {
+      setSystemMessage({ type: 'welcome', icon: '👋', text: 'Welcome to Commune! Set your display name in Settings to get started.' });
+    } else {
+      // Show rotating tips for returning users
+      const randomTip = tips[Math.floor(Math.random() * tips.length)];
+      setSystemMessage({ type: 'tip', ...randomTip });
+    }
+  }, []);
+  
+  // Rotate tips every 30 seconds for returning users
+  useEffect(() => {
+    const hasCompletedOnboarding = localStorage.getItem('commune_onboarded');
+    if (!hasCompletedOnboarding) return;
+    
+    const interval = setInterval(() => {
+      setCurrentTipIndex(prev => (prev + 1) % tips.length);
+      setSystemMessage({ type: 'tip', ...tips[(currentTipIndex + 1) % tips.length] });
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [currentTipIndex]);
+  
+  // Update system message when connection status changes
+  useEffect(() => {
+    if (!connected && !loading) {
+      setSystemMessage({ type: 'reconnecting', icon: '🔄', text: 'Reconnecting...' });
+    } else if (connected && systemMessage?.type === 'reconnecting') {
+      // Restore previous message type
+      const hasCompletedOnboarding = localStorage.getItem('commune_onboarded');
+      if (!hasCompletedOnboarding) {
+        setSystemMessage({ type: 'welcome', icon: '👋', text: 'Welcome to Commune! Set your display name in Settings to get started.' });
+      } else {
+        setSystemMessage({ type: 'tip', ...tips[currentTipIndex] });
+      }
+    }
+  }, [connected, loading]);
   
   // Fetch warnings on mount
   useEffect(() => {
@@ -2450,6 +2516,116 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         />
       )}
       
+      {/* Welcome Modal for First-Time Users */}
+      {showWelcomeModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-[#12121a] border border-white/10 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            {onboardingStep === 0 && (
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                  🛡️
+                </div>
+                <h2 className="text-2xl font-bold mb-3">Welcome to Commune!</h2>
+                <p className="text-white/60 mb-8">
+                  You've joined an exclusive community of GUARD token holders. Let's get you set up.
+                </p>
+                <Button onClick={() => setOnboardingStep(1)} className="w-full">
+                  Get Started →
+                </Button>
+              </div>
+            )}
+            
+            {onboardingStep === 1 && (
+              <div className="text-center">
+                <div className="text-5xl mb-6">💬</div>
+                <h2 className="text-xl font-bold mb-3">Real-Time Chat</h2>
+                <p className="text-white/60 mb-8">
+                  Chat with other GUARD holders in real-time. Click any message to start a threaded conversation.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setOnboardingStep(0)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button onClick={() => setOnboardingStep(2)} className="flex-1">
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {onboardingStep === 2 && (
+              <div className="text-center">
+                <div className="text-5xl mb-6">🎉</div>
+                <h2 className="text-xl font-bold mb-3">Express Yourself</h2>
+                <p className="text-white/60 mb-8">
+                  React with emojis, send GIFs, and @mention other members to get their attention.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setOnboardingStep(1)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button onClick={() => setOnboardingStep(3)} className="flex-1">
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {onboardingStep === 3 && (
+              <div className="text-center">
+                <div className="text-5xl mb-6">⚙️</div>
+                <h2 className="text-xl font-bold mb-3">Make It Yours</h2>
+                <p className="text-white/60 mb-8">
+                  Set your display name in Settings (top right) so others know who you are!
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setOnboardingStep(2)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button 
+                    onClick={() => {
+                      setShowWelcomeModal(false);
+                      localStorage.setItem('commune_onboarded', 'true');
+                      setSystemMessage({ type: 'tip', ...tips[0] });
+                    }} 
+                    className="flex-1"
+                  >
+                    Enter Chat 🚀
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Progress dots */}
+            <div className="flex justify-center gap-2 mt-6">
+              {[0, 1, 2, 3].map(step => (
+                <div 
+                  key={step}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    step === onboardingStep ? 'bg-amber-400' : 'bg-white/20'
+                  }`}
+                />
+              ))}
+            </div>
+            
+            {/* Skip button */}
+            {onboardingStep < 3 && (
+              <button
+                onClick={() => {
+                  setShowWelcomeModal(false);
+                  localStorage.setItem('commune_onboarded', 'true');
+                  setSystemMessage({ type: 'tip', ...tips[0] });
+                }}
+                className="absolute top-4 right-4 text-white/40 hover:text-white/60 text-sm transition-colors"
+              >
+                Skip
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
       {/* Thread Preview on Hover */}
       {hoverThread && !openThread && (
         <ThreadPreview
@@ -2463,12 +2639,43 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         />
       )}
       
-      {/* Chat Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-        <div className="flex items-center gap-3">
-          <div className={`w-3 h-3 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`} />
-          <h2 className="font-semibold">GUARD Chat</h2>
-          <Badge>{connected ? `${onlineCount} online` : 'Connecting...'}</Badge>
+      {/* System Message Bar */}
+      <div className="px-6 py-3 border-b border-white/5 flex items-center justify-between">
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Status indicator */}
+          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+            !connected ? 'bg-yellow-400 animate-pulse' : 
+            systemMessage?.type === 'welcome' ? 'bg-amber-400' : 
+            'bg-emerald-400'
+          }`} />
+          
+          {/* System message */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {systemMessage && (
+              <>
+                <span className="text-sm">{systemMessage.icon}</span>
+                <span className="text-sm text-white/60 truncate">{systemMessage.text}</span>
+              </>
+            )}
+          </div>
+        </div>
+        
+        {/* Right side: online count + dismiss for welcome */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {systemMessage?.type === 'welcome' && (
+            <button
+              onClick={() => {
+                localStorage.setItem('commune_onboarded', 'true');
+                setSystemMessage({ type: 'tip', ...tips[0] });
+              }}
+              className="text-xs text-white/40 hover:text-white/60 transition-colors"
+            >
+              Dismiss
+            </button>
+          )}
+          <Badge variant={connected ? 'success' : 'warning'}>
+            {connected ? `${onlineCount} online` : 'Connecting...'}
+          </Badge>
         </div>
       </div>
       
