@@ -6855,7 +6855,6 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     </div>
   );
 };
-};
 
 // ============================================
 // MAIN APP
