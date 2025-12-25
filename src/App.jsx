@@ -877,7 +877,11 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
                   <span className="text-xs font-medium">{reply.displayName || reply.user}</span>
                   <span className="text-xs text-white/20">{formatTime(reply.timestamp)}</span>
                 </div>
-                <p className="text-white/70 text-sm">{reply.content}</p>
+                {reply.isGif ? (
+                  <img src={reply.content} alt="GIF" className="mt-1 max-w-32 rounded-lg" />
+                ) : (
+                  <p className="text-white/70 text-sm">{reply.content}</p>
+                )}
               </div>
             </div>
           ))
@@ -912,7 +916,7 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
 // ============================================
 // THREAD MODAL (Full Thread View)
 // ============================================
-const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onRegisterReplyCallback }) => {
+const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onRegisterReplyCallback, tenorApiKey }) => {
   const [threadReplies, setThreadReplies] = useState([]);
   const [replyText, setReplyText] = useState('');
   const [sending, setSending] = useState(false);
@@ -920,7 +924,82 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
   const [editingReplyId, setEditingReplyId] = useState(null);
   const [editReplyContent, setEditReplyContent] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { replyId }
+  const [showGifPicker, setShowGifPicker] = useState(false);
+  const [gifSearch, setGifSearch] = useState('');
+  const [gifResults, setGifResults] = useState([]);
+  const [gifLoading, setGifLoading] = useState(false);
+  const [trendingGifs, setTrendingGifs] = useState([]);
   const repliesEndRef = useRef(null);
+  const gifSearchTimeoutRef = useRef(null);
+  
+  // GIF Functions
+  const fetchTrendingGifs = async () => {
+    if (!tenorApiKey) return;
+    try {
+      const response = await fetch(
+        `https://tenor.googleapis.com/v2/featured?key=${tenorApiKey}&limit=20&media_filter=gif,tinygif`
+      );
+      const data = await response.json();
+      setTrendingGifs(data.results || []);
+    } catch (error) {
+      console.error('Failed to fetch trending GIFs:', error);
+    }
+  };
+  
+  const searchGifs = async (query) => {
+    if (!query.trim() || !tenorApiKey) {
+      setGifResults([]);
+      return;
+    }
+    
+    setGifLoading(true);
+    try {
+      const response = await fetch(
+        `https://tenor.googleapis.com/v2/search?key=${tenorApiKey}&q=${encodeURIComponent(query)}&limit=20&media_filter=gif,tinygif`
+      );
+      const data = await response.json();
+      setGifResults(data.results || []);
+    } catch (error) {
+      console.error('Failed to search GIFs:', error);
+    } finally {
+      setGifLoading(false);
+    }
+  };
+  
+  const handleGifSearchChange = (value) => {
+    setGifSearch(value);
+    if (gifSearchTimeoutRef.current) {
+      clearTimeout(gifSearchTimeoutRef.current);
+    }
+    gifSearchTimeoutRef.current = setTimeout(() => {
+      searchGifs(value);
+    }, 300);
+  };
+  
+  const sendGifReply = (gif) => {
+    const gifUrl = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+    if (!gifUrl) return;
+    
+    if (wsRef?.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'reply',
+        content: gifUrl,
+        replyTo: message.id,
+        isGif: true,
+      }));
+    }
+    
+    setShowGifPicker(false);
+    setGifSearch('');
+    setGifResults([]);
+  };
+  
+  // Load trending GIFs when picker opens
+  useEffect(() => {
+    if (showGifPicker && trendingGifs.length === 0) {
+      fetchTrendingGifs();
+    }
+  }, [showGifPicker]);
   
   // Edit a reply
   const saveReplyEdit = (replyId) => {
@@ -1169,12 +1248,14 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                           <button onClick={() => { setEditingReplyId(null); setEditReplyContent(''); }} className="text-xs px-3 py-1 bg-white/10 text-white/70 rounded-lg">Cancel</button>
                         </div>
                       </div>
+                    ) : reply.deleted ? (
+                      <p className="text-sm mt-1 text-white/40 italic">Message deleted</p>
+                    ) : reply.isGif ? (
+                      <img src={reply.content} alt="GIF" className="mt-1 max-w-48 rounded-lg" />
                     ) : (
-                      <p className={`text-sm mt-1 ${reply.deleted ? 'text-white/40 italic' : 'text-white/70'}`}>
-                        {reply.deleted ? 'Message deleted' : reply.content}
-                      </p>
+                      <p className="text-sm mt-1 text-white/70">{reply.content}</p>
                     )}
-                    {canModifyReply && editingReplyId !== reply.id && (
+                    {canModifyReply && editingReplyId !== reply.id && !reply.isGif && (
                       <div className="flex gap-3 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => { setEditingReplyId(reply.id); setEditReplyContent(reply.content); }}
@@ -1182,6 +1263,17 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                         >
                           Edit
                         </button>
+                        <button
+                          onClick={() => setDeleteConfirm({ replyId: reply.id })}
+                          className="text-xs text-white/30 hover:text-red-400"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                    {/* Delete only for GIF replies */}
+                    {canModifyReply && reply.isGif && (
+                      <div className="flex gap-3 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => setDeleteConfirm({ replyId: reply.id })}
                           className="text-xs text-white/30 hover:text-red-400"
@@ -1199,8 +1291,52 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
         </div>
         
         {/* Reply Input */}
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 relative">
+          {/* GIF Picker */}
+          {showGifPicker && (
+            <div className="absolute bottom-full left-4 right-4 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-3 shadow-2xl max-h-80 overflow-hidden flex flex-col z-20">
+              <input
+                type="text"
+                value={gifSearch}
+                onChange={(e) => handleGifSearchChange(e.target.value)}
+                placeholder="Search GIFs..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50"
+                autoFocus
+              />
+              <div className="flex-1 overflow-y-auto">
+                {gifLoading ? (
+                  <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(gifSearch ? gifResults : trendingGifs).map((gif) => (
+                      <img
+                        key={gif.id}
+                        src={gif.media_formats?.tinygif?.url}
+                        alt="GIF"
+                        onClick={() => sendGifReply(gif)}
+                        className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      />
+                    ))}
+                  </div>
+                )}
+                {!gifLoading && gifSearch && gifResults.length === 0 && (
+                  <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
+                )}
+              </div>
+              <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
+                <span className="text-xs text-white/30">Powered by Tenor</span>
+              </div>
+            </div>
+          )}
+          
           <div className="flex gap-2">
+            <button
+              onClick={() => setShowGifPicker(!showGifPicker)}
+              className={`px-3 py-3 rounded-xl transition-colors ${showGifPicker ? 'bg-amber-400/20 text-amber-400' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
+              title="Send GIF"
+            >
+              GIF
+            </button>
             <input
               type="text"
               value={replyText}
@@ -2310,6 +2446,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
           wsRef={wsRef}
           walletAddress={walletAddress}
           onRegisterReplyCallback={(callback) => { threadReplyCallbackRef.current = callback; }}
+          tenorApiKey={tenorApiKey}
         />
       )}
       
