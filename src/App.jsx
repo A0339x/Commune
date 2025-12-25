@@ -234,6 +234,39 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
 };
 
 // Link Preview Component - Obsidian Surfing style
+const PREVIEW_BLOCKLIST = [
+  'google.com', 'google.', // All Google domains
+  'youtube.com', 'youtu.be',
+  'twitter.com', 'x.com',
+  'facebook.com', 'fb.com',
+  'instagram.com',
+  'linkedin.com',
+  'tiktok.com',
+  'reddit.com',
+  'amazon.com', 'amazon.',
+  'netflix.com',
+  'spotify.com',
+  'discord.com', 'discord.gg',
+  'twitch.tv',
+  'github.com', // Has its own embed restrictions
+  'microsoft.com',
+  'apple.com',
+  'cloudflare.com',
+];
+
+const isBlockedDomain = (url) => {
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+    return PREVIEW_BLOCKLIST.some(blocked => 
+      hostname === blocked || 
+      hostname.endsWith('.' + blocked) ||
+      hostname.includes(blocked)
+    );
+  } catch {
+    return false;
+  }
+};
+
 const LinkPreview = ({ url, children }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [previewPosition, setPreviewPosition] = useState({ x: 0, y: 0 });
@@ -248,6 +281,9 @@ const LinkPreview = ({ url, children }) => {
   const hoverTimeoutRef = useRef(null);
   const closeTimeoutRef = useRef(null);
   
+  // Check if URL is blocked from preview
+  const isBlocked = isBlockedDomain(url);
+  
   // Calculate initial position for preview
   const calculatePosition = () => {
     if (!linkRef.current) return;
@@ -255,7 +291,7 @@ const LinkPreview = ({ url, children }) => {
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const previewWidth = 600;
-    const previewHeight = 450;
+    const previewHeight = isBlocked ? 200 : 450;
     
     let x = rect.left;
     let y = rect.bottom + 8;
@@ -421,7 +457,7 @@ const LinkPreview = ({ url, children }) => {
           onMouseEnter={handlePreviewMouseEnter}
           onMouseLeave={handlePreviewMouseLeave}
         >
-          <div className="w-[600px] h-[450px] bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+          <div className={`w-[600px] ${isBlocked ? 'h-[250px]' : 'h-[450px]'} bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col`}>
             {/* Draggable Header */}
             <div 
               className={`flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -467,57 +503,85 @@ const LinkPreview = ({ url, children }) => {
               </button>
             </div>
             
-            {/* iframe Content */}
-            <div className="flex-1 relative bg-white">
-              {isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-white/50 text-sm">Loading preview...</span>
+            {/* Content Area */}
+            {isBlocked ? (
+              /* Blocked site - show clean message */
+              <div className="flex-1 flex items-center justify-center bg-[#12121a]">
+                <div className="flex flex-col items-center gap-4 text-center px-8">
+                  <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center">
+                    <svg className="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
                   </div>
-                </div>
-              )}
-              
-              {loadError && !isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
-                  <div className="flex flex-col items-center gap-4 text-center px-8">
-                    <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center">
-                      <svg className="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H9m3-10V4m0 3a3 3 0 100 6 3 3 0 000-6z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-white/70 font-medium mb-1">Preview unavailable</p>
-                      <p className="text-white/40 text-sm">This site doesn't allow embedding.</p>
-                    </div>
-                    <a 
-                      href={url} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-black text-sm font-medium rounded-xl transition-colors"
-                    >
-                      Open in new tab →
-                    </a>
+                  <div>
+                    <p className="text-white/70 font-medium mb-1">Preview not available</p>
+                    <p className="text-white/40 text-sm">This site blocks embedded previews.</p>
                   </div>
+                  <a 
+                    href={url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-black text-sm font-medium rounded-xl transition-colors"
+                  >
+                    Open in new tab →
+                  </a>
                 </div>
-              )}
-              
-              <iframe
-                src={`${API_URL}/api/proxy?url=${encodeURIComponent(url)}`}
-                className="w-full h-full border-0"
-                sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"
-                onLoad={handleIframeLoad}
-                onError={() => { setIsLoading(false); setLoadError(true); }}
-                title={`Preview of ${getDomain(url)}`}
-              />
-            </div>
+              </div>
+            ) : (
+              /* Normal iframe preview */
+              <div className="flex-1 relative bg-white">
+                {isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="w-8 h-8 border-2 border-amber-400 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-white/50 text-sm">Loading preview...</span>
+                    </div>
+                  </div>
+                )}
+                
+                {loadError && !isLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
+                    <div className="flex flex-col items-center gap-4 text-center px-8">
+                      <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center">
+                        <svg className="w-8 h-8 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="text-white/70 font-medium mb-1">Failed to load</p>
+                        <p className="text-white/40 text-sm">This site couldn't be loaded.</p>
+                      </div>
+                      <a 
+                        href={url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="px-4 py-2 bg-amber-400 hover:bg-amber-500 text-black text-sm font-medium rounded-xl transition-colors"
+                      >
+                        Open in new tab →
+                      </a>
+                    </div>
+                  </div>
+                )}
+                
+                <iframe
+                  src={`${API_URL}/api/proxy?url=${encodeURIComponent(url)}`}
+                  className="w-full h-full border-0"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"
+                  onLoad={handleIframeLoad}
+                  onError={() => { setIsLoading(false); setLoadError(true); }}
+                  title={`Preview of ${getDomain(url)}`}
+                />
+              </div>
+            )}
             
-            {/* Footer hint */}
-            <div className="px-3 py-1.5 bg-white/5 border-t border-white/10">
-              <p className="text-xs text-white/30 text-center">
-                Drag header to move • Move mouse away to close
-              </p>
-            </div>
+            {/* Footer hint - only show for previewable sites */}
+            {!isBlocked && (
+              <div className="px-3 py-1.5 bg-white/5 border-t border-white/10">
+                <p className="text-xs text-white/30 text-center">
+                  Drag header to move • Move mouse away to close
+                </p>
+              </div>
+            )}
           </div>
         </div>,
         document.body
