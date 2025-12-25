@@ -1404,8 +1404,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
-  const [systemMessage, setSystemMessage] = useState(null); // { type: 'welcome'|'tip'|'reconnecting', text, icon }
-  const [currentTipIndex, setCurrentTipIndex] = useState(0);
+  
+  // Rate limit state
+  const [rateLimited, setRateLimited] = useState(false);
+  const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
+  const rateLimitIntervalRef = useRef(null);
   const messagesEndRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
@@ -1423,67 +1426,19 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   const emojis = ['👍', '❤️', '😂', '🔥', '🚀', '💎', '🛡️', '👏'];
   
-  // Tips for the system message bar
-  const tips = [
-    { icon: '💬', text: 'Click any message to start a thread' },
-    { icon: '🎉', text: 'React to messages with emojis' },
-    { icon: '📷', text: 'Send GIFs in chat and threads' },
-    { icon: '@', text: 'Use @mention to notify someone' },
-    { icon: '⚙️', text: 'Set your display name in Settings' },
-    { icon: '🔔', text: 'Toggle sound notifications with the 🔔 button' },
-  ];
-  
   // Tenor API Key - fetched from server
   const [tenorApiKey, setTenorApiKey] = useState('');
   
   // Check if first visit and show onboarding
   useEffect(() => {
     const hasVisited = localStorage.getItem('commune_visited');
-    const hasCompletedOnboarding = localStorage.getItem('commune_onboarded');
     
     if (!hasVisited) {
       setIsFirstVisit(true);
       setShowWelcomeModal(true);
       localStorage.setItem('commune_visited', 'true');
     }
-    
-    // Set initial system message
-    if (!hasCompletedOnboarding) {
-      setSystemMessage({ type: 'welcome', icon: '👋', text: 'Welcome to Commune! Set your display name in Settings to get started.' });
-    } else {
-      // Show rotating tips for returning users
-      const randomTip = tips[Math.floor(Math.random() * tips.length)];
-      setSystemMessage({ type: 'tip', ...randomTip });
-    }
   }, []);
-  
-  // Rotate tips every 30 seconds for returning users
-  useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem('commune_onboarded');
-    if (!hasCompletedOnboarding) return;
-    
-    const interval = setInterval(() => {
-      setCurrentTipIndex(prev => (prev + 1) % tips.length);
-      setSystemMessage({ type: 'tip', ...tips[(currentTipIndex + 1) % tips.length] });
-    }, 30000);
-    
-    return () => clearInterval(interval);
-  }, [currentTipIndex]);
-  
-  // Update system message when connection status changes
-  useEffect(() => {
-    if (!connected && !loading) {
-      setSystemMessage({ type: 'reconnecting', icon: '🔄', text: 'Reconnecting...' });
-    } else if (connected && systemMessage?.type === 'reconnecting') {
-      // Restore previous message type
-      const hasCompletedOnboarding = localStorage.getItem('commune_onboarded');
-      if (!hasCompletedOnboarding) {
-        setSystemMessage({ type: 'welcome', icon: '👋', text: 'Welcome to Commune! Set your display name in Settings to get started.' });
-      } else {
-        setSystemMessage({ type: 'tip', ...tips[currentTipIndex] });
-      }
-    }
-  }, [connected, loading]);
   
   // Fetch warnings on mount
   useEffect(() => {
@@ -1897,6 +1852,13 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         
       case 'error':
         console.error('WebSocket error:', data.message);
+        // Check for rate limit error
+        if (data.message && data.message.includes('Slow down')) {
+          // Extract seconds from message like "Slow down! Try again in 5 seconds."
+          const match = data.message.match(/(\d+)\s*seconds?/);
+          const seconds = match ? parseInt(match[1]) : 10;
+          startRateLimitCountdown(seconds);
+        }
         break;
         
       case 'warning':
@@ -2058,8 +2020,39 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     };
   }, [sessionToken]);
   
+  // Rate limit countdown
+  const startRateLimitCountdown = (seconds) => {
+    setRateLimited(true);
+    setRateLimitSeconds(seconds);
+    
+    // Clear any existing interval
+    if (rateLimitIntervalRef.current) {
+      clearInterval(rateLimitIntervalRef.current);
+    }
+    
+    rateLimitIntervalRef.current = setInterval(() => {
+      setRateLimitSeconds(prev => {
+        if (prev <= 1) {
+          clearInterval(rateLimitIntervalRef.current);
+          setRateLimited(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+  
+  // Cleanup rate limit interval on unmount
+  useEffect(() => {
+    return () => {
+      if (rateLimitIntervalRef.current) {
+        clearInterval(rateLimitIntervalRef.current);
+      }
+    };
+  }, []);
+  
   const sendMessage = async (replyTo = null) => {
-    if (!newMessage.trim() || sending) return;
+    if (!newMessage.trim() || sending || rateLimited) return;
     
     const messageContent = newMessage;
     const tempId = `temp-${Date.now()}`;
@@ -2587,7 +2580,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                     onClick={() => {
                       setShowWelcomeModal(false);
                       localStorage.setItem('commune_onboarded', 'true');
-                      setSystemMessage({ type: 'tip', ...tips[0] });
                     }} 
                     className="flex-1"
                   >
@@ -2615,7 +2607,6 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                 onClick={() => {
                   setShowWelcomeModal(false);
                   localStorage.setItem('commune_onboarded', 'true');
-                  setSystemMessage({ type: 'tip', ...tips[0] });
                 }}
                 className="absolute top-4 right-4 text-white/40 hover:text-white/60 text-sm transition-colors"
               >
@@ -2639,48 +2630,30 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         />
       )}
       
-      {/* System Message Bar */}
+      {/* Chat Header */}
       <div className="px-6 py-3 border-b border-white/5 flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          {/* Status indicator */}
-          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-            !connected ? 'bg-yellow-400 animate-pulse' : 
-            systemMessage?.type === 'welcome' ? 'bg-amber-400' : 
-            'bg-emerald-400'
-          }`} />
-          
-          {/* System message */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            {systemMessage && (
-              <>
-                <span className="text-sm">{systemMessage.icon}</span>
-                <span className="text-sm text-white/60 truncate">{systemMessage.text}</span>
-              </>
-            )}
-          </div>
+        <div className="flex items-center gap-3">
+          <div className={`w-2 h-2 rounded-full ${connected ? 'bg-emerald-400' : 'bg-yellow-400 animate-pulse'}`} />
+          <h2 className="font-medium text-white/80">GUARD Chat</h2>
         </div>
-        
-        {/* Right side: online count + dismiss for welcome */}
-        <div className="flex items-center gap-3 flex-shrink-0">
-          {systemMessage?.type === 'welcome' && (
-            <button
-              onClick={() => {
-                localStorage.setItem('commune_onboarded', 'true');
-                setSystemMessage({ type: 'tip', ...tips[0] });
-              }}
-              className="text-xs text-white/40 hover:text-white/60 transition-colors"
-            >
-              Dismiss
-            </button>
-          )}
-          <Badge variant={connected ? 'success' : 'warning'}>
-            {connected ? `${onlineCount} online` : 'Connecting...'}
-          </Badge>
-        </div>
+        <Badge variant={connected ? 'success' : 'warning'}>
+          {connected ? `${onlineCount} online` : 'Connecting...'}
+        </Badge>
       </div>
       
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300 ${openThread ? 'blur-sm opacity-50' : ''}`}>
+      <div className={`flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300 ${openThread ? 'blur-sm opacity-50' : ''} relative`}>
+        {/* Rate Limit Overlay */}
+        {rateLimited && (
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
+            <div className="text-6xl font-bold text-amber-400 mb-4">{rateLimitSeconds}</div>
+            <div className="text-white/60 text-center px-4">
+              <p className="text-lg font-medium mb-1">Slow down!</p>
+              <p className="text-sm">You're sending messages too fast. Please wait.</p>
+            </div>
+          </div>
+        )}
+        
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Spinner />
@@ -2974,6 +2947,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                   ✕
                 </button>
               </div>
+            ) : rateLimited ? (
+              <p className="text-xs text-amber-400/70">
+                ⏳ Rate limited - wait {rateLimitSeconds}s
+              </p>
             ) : (
               <p className={`text-xs ${
                 connected 
@@ -2981,7 +2958,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                   : 'text-amber-400/70'
               }`}>
                 {connected 
-                  ? 'Real-time connection active' 
+                  ? '● Connected' 
                   : 'Connecting...'}
               </p>
             )}
@@ -2997,13 +2974,16 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         
         <div className="relative">
           <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${
-            activeWarning 
-              ? 'bg-red-500/5 border-red-500/30 focus-within:border-red-400/50' 
-              : 'bg-white/5 border-white/10 focus-within:border-amber-400/50'
+            rateLimited
+              ? 'bg-amber-500/5 border-amber-500/30 opacity-50'
+              : activeWarning 
+                ? 'bg-red-500/5 border-red-500/30 focus-within:border-red-400/50' 
+                : 'bg-white/5 border-white/10 focus-within:border-amber-400/50'
           }`}>
             <button 
               className="text-white/40 hover:text-white/70 transition-colors"
               onClick={() => setShowGifPicker(!showGifPicker)}
+              disabled={rateLimited}
             >
               <span className="text-xs font-bold">GIF</span>
             </button>
@@ -3012,6 +2992,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               type="text"
               value={newMessage}
               onChange={handleInputChange}
+              disabled={rateLimited}
               onKeyDown={(e) => {
                 handleMentionKeyDown(e);
                 if (e.key === 'Enter' && !e.shiftKey && !showMentions) {
