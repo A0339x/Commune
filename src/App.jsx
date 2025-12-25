@@ -292,8 +292,8 @@ const LinkPreview = ({ url, children }) => {
     const viewportHeight = window.innerHeight;
     
     // Different sizes for blocked (small tooltip) vs full preview
-    const previewWidth = isBlocked ? 280 : 600;
-    const previewHeight = isBlocked ? 50 : 450;
+    const previewWidth = isBlocked ? 280 : 900;
+    const previewHeight = isBlocked ? 50 : 700;
     
     let x = rect.left;
     let y = rect.bottom + 8;
@@ -320,6 +320,20 @@ const LinkPreview = ({ url, children }) => {
       } else {
         // Otherwise show above
         y = rect.top - previewHeight - 4;
+      }
+    }
+    
+    // For large previews, center if possible
+    if (!isBlocked) {
+      // Center horizontally if there's room
+      const centeredX = (viewportWidth - previewWidth) / 2;
+      if (centeredX > 20) {
+        x = centeredX;
+      }
+      // Center vertically if there's room
+      const centeredY = (viewportHeight - previewHeight) / 2;
+      if (centeredY > 20) {
+        y = centeredY;
       }
     }
     
@@ -497,7 +511,7 @@ const LinkPreview = ({ url, children }) => {
             onMouseEnter={handlePreviewMouseEnter}
             onMouseLeave={handlePreviewMouseLeave}
           >
-            <div className="w-[600px] h-[450px] bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="w-[900px] h-[700px] bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
               {/* Draggable Header */}
               <div 
                 className={`flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -544,7 +558,7 @@ const LinkPreview = ({ url, children }) => {
             </div>
             
             {/* Content Area - iframe preview */}
-            <div className="flex-1 relative bg-white">
+            <div className="flex-1 relative bg-white overflow-hidden">
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center bg-[#12121a] z-10">
                   <div className="flex flex-col items-center gap-3">
@@ -578,9 +592,16 @@ const LinkPreview = ({ url, children }) => {
                 </div>
               )}
               
+              {/* Scaled iframe for desktop view - 1400px rendered at 600px width */}
               <iframe
                 src={`${API_URL}/api/proxy?url=${encodeURIComponent(url)}`}
-                className="w-full h-full border-0"
+                style={{ 
+                  width: '1400px', 
+                  height: '933px',
+                  transform: 'scale(0.4286)',
+                  transformOrigin: 'top left',
+                  border: 'none',
+                }}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"
                 onLoad={handleIframeLoad}
                 onError={() => { setIsLoading(false); setLoadError(true); }}
