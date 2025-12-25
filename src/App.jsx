@@ -5407,7 +5407,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const saveModifierPreference = async (modifierEmoji) => {
     setSavingBadge(true);
     try {
-      await fetch(`${API_URL}/api/reputation/modifier`, {
+      const response = await fetch(`${API_URL}/api/reputation/modifier`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -5415,9 +5415,13 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
         },
         body: JSON.stringify({ modifier: modifierEmoji }),
       });
+      
+      // Wait for server to confirm
+      await response.json();
+      
       setSelectedModifier(modifierEmoji);
       
-      // Clear ALL reputation caches to force refresh
+      // Clear ALL reputation caches SYNCHRONOUSLY before reload
       const keysToRemove = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -5427,11 +5431,13 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
       }
       keysToRemove.forEach(key => localStorage.removeItem(key));
       
+      // Small delay to ensure cache is cleared
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       // Force page reload to refresh all badges
       window.location.reload();
     } catch (error) {
       console.error('Failed to save modifier preference:', error);
-    } finally {
       setSavingBadge(false);
     }
   };
