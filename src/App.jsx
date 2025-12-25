@@ -2538,10 +2538,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             
             {onboardingStep === 1 && (
               <div className="text-center">
-                <div className="text-5xl mb-6">💬</div>
-                <h2 className="text-xl font-bold mb-3">Real-Time Chat</h2>
+                <div className="text-5xl mb-6">🧵</div>
+                <h2 className="text-xl font-bold mb-3">Threaded Conversations</h2>
                 <p className="text-white/60 mb-8">
-                  Chat with other GUARD holders in real-time. Click any message to start a threaded conversation.
+                  Hover over any message and click <span className="text-amber-400">Reply</span> to start a thread. Hover over "View replies" for a quick preview — click to dive in.
                 </p>
                 <div className="flex gap-3">
                   <Button variant="ghost" onClick={() => setOnboardingStep(0)} className="flex-1">
