@@ -293,7 +293,7 @@ const LinkPreview = ({ url, children }) => {
     
     // Different sizes for blocked (small tooltip) vs full preview
     const previewWidth = isBlocked ? 280 : 900;
-    const previewHeight = isBlocked ? 50 : 700;
+    const previewHeight = isBlocked ? 50 : 600;
     
     let x = rect.left;
     let y = rect.bottom + 8;
@@ -511,7 +511,7 @@ const LinkPreview = ({ url, children }) => {
             onMouseEnter={handlePreviewMouseEnter}
             onMouseLeave={handlePreviewMouseLeave}
           >
-            <div className="w-[900px] h-[700px] bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
+            <div className="w-[900px] h-[600px] bg-[#0a0a0f] border border-white/20 rounded-2xl shadow-2xl overflow-hidden flex flex-col">
               {/* Draggable Header */}
               <div 
                 className={`flex items-center gap-2 px-3 py-2 bg-white/5 border-b border-white/10 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -592,13 +592,13 @@ const LinkPreview = ({ url, children }) => {
                 </div>
               )}
               
-              {/* Scaled iframe for desktop view - 1400px rendered at 600px width */}
+              {/* Scaled iframe for desktop view */}
               <iframe
                 src={`${API_URL}/api/proxy?url=${encodeURIComponent(url)}`}
                 style={{ 
                   width: '1400px', 
-                  height: '933px',
-                  transform: 'scale(0.4286)',
+                  height: '815px',
+                  transform: 'scale(0.643)',
                   transformOrigin: 'top left',
                   border: 'none',
                 }}
