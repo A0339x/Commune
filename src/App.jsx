@@ -854,33 +854,33 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
       onMouseLeave={handleClose}
     >
       {/* Header */}
-      <div className="p-3 border-b border-white/5 bg-white/5">
+      <div className="p-3 border-b border-white/5 bg-white/5 overflow-hidden">
         <div className="flex items-center gap-2">
           <Avatar emoji={message.avatar || '🛡️'} size="sm" />
-          <div>
-            <p className="text-sm font-medium">{message.displayName || message.user}</p>
-            <p className="text-xs text-white/40 line-clamp-1">{message.content}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">{message.displayName || message.user}</p>
+            <p className="text-xs text-white/40 line-clamp-1 break-all">{message.isGif ? '📷 GIF' : message.content}</p>
           </div>
         </div>
       </div>
       
       {/* Replies */}
-      <div className="max-h-56 overflow-y-auto p-3 space-y-3">
+      <div className="max-h-56 overflow-y-auto overflow-x-hidden p-3 space-y-3">
         {threadReplies.length === 0 ? (
           <p className="text-white/30 text-sm text-center py-4">No replies yet</p>
         ) : (
           threadReplies.map((reply) => (
             <div key={reply.id} className="flex gap-2">
               <Avatar emoji={reply.avatar || '🛡️'} size="xs" />
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-medium">{reply.displayName || reply.user}</span>
-                  <span className="text-xs text-white/20">{formatTime(reply.timestamp)}</span>
+                  <span className="text-xs font-medium truncate">{reply.displayName || reply.user}</span>
+                  <span className="text-xs text-white/20 flex-shrink-0">{formatTime(reply.timestamp)}</span>
                 </div>
                 {reply.isGif ? (
                   <img src={reply.content} alt="GIF" className="mt-1 max-w-32 rounded-lg" />
                 ) : (
-                  <p className="text-white/70 text-sm">{reply.content}</p>
+                  <p className="text-white/70 text-sm break-words">{reply.content}</p>
                 )}
               </div>
             </div>
