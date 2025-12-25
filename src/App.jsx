@@ -6181,8 +6181,291 @@ const AuthenticatedApp = () => {
     );
   }
   
-  // Fully authenticated - show dashboard
-  return <CommunityDashboard address={address} tokenBalance={formattedBalance} sessionToken={sessionToken} />;
+  // Fully authenticated - show recognition loading then dashboard
+  return (
+    <RecognitionLoader 
+      address={address} 
+      tokenBalance={formattedBalance} 
+      sessionToken={sessionToken} 
+    />
+  );
+};
+
+// ============================================
+// RECOGNITION LOADER - "GUARD WRAPPED" EXPERIENCE
+// ============================================
+const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
+  const [stage, setStage] = useState('loading'); // 'loading', 'wrapped', 'ready'
+  const [terminalLines, setTerminalLines] = useState([]);
+  const [guardData, setGuardData] = useState(null);
+  const [showDashboard, setShowDashboard] = useState(false);
+  
+  // Check if user has already seen the wrapped experience this session
+  useEffect(() => {
+    const seenKey = `guard_wrapped_seen_${address.toLowerCase()}`;
+    if (sessionStorage.getItem(seenKey)) {
+      setShowDashboard(true);
+    }
+  }, [address]);
+  
+  // Terminal typing effect
+  const addTerminalLine = (text, delay = 0) => {
+    return new Promise(resolve => {
+      setTimeout(() => {
+        setTerminalLines(prev => [...prev, { text, timestamp: Date.now() }]);
+        resolve();
+      }, delay);
+    });
+  };
+  
+  // Fetch reputation data with terminal updates
+  useEffect(() => {
+    if (showDashboard) return;
+    
+    const fetchReputationWithProgress = async () => {
+      try {
+        await addTerminalLine(`> Initializing connection...`, 200);
+        await addTerminalLine(`> Wallet identified: ${address.slice(0, 6)}...${address.slice(-4)}`, 600);
+        await addTerminalLine(`> Scanning blockchain for GUARD activity...`, 400);
+        
+        // Actually fetch the reputation data
+        const response = await fetch(`${API_URL}/api/reputation?wallet=${address}&detailed=true`);
+        
+        await addTerminalLine(`> Retrieving your community achievements...`, 500);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setGuardData(data);
+          
+          // Cache it
+          const cacheKey = `reputation_${address.toLowerCase()}`;
+          localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
+          
+          await addTerminalLine(`> ✓ Data retrieved successfully!`, 400);
+          await addTerminalLine(`> Preparing your GUARD journey recap...`, 600);
+          
+          setTimeout(() => setStage('wrapped'), 800);
+        } else {
+          await addTerminalLine(`> ⚠ Could not retrieve history`, 300);
+          await addTerminalLine(`> Proceeding to community...`, 500);
+          setTimeout(() => handleEnterCommunity(), 1000);
+        }
+      } catch (error) {
+        console.error('Failed to fetch reputation:', error);
+        await addTerminalLine(`> Connection issue, skipping recap...`, 300);
+        setTimeout(() => handleEnterCommunity(), 1000);
+      }
+    };
+    
+    fetchReputationWithProgress();
+  }, [address, showDashboard]);
+  
+  const handleEnterCommunity = () => {
+    const seenKey = `guard_wrapped_seen_${address.toLowerCase()}`;
+    sessionStorage.setItem(seenKey, 'true');
+    setShowDashboard(true);
+  };
+  
+  // If already seen or ready to show dashboard
+  if (showDashboard) {
+    return <CommunityDashboard address={address} tokenBalance={tokenBalance} sessionToken={sessionToken} />;
+  }
+  
+  // Format date nicely
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'Unknown';
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  };
+  
+  // Calculate holding duration
+  const getHoldingDuration = () => {
+    if (!guardData?.firstBuy) return null;
+    const days = Math.floor((Date.now() - guardData.firstBuy) / (1000 * 60 * 60 * 24));
+    const years = Math.floor(days / 365);
+    const months = Math.floor((days % 365) / 30);
+    const remainingDays = days % 30;
+    
+    if (years > 0) {
+      return `${years} year${years > 1 ? 's' : ''}, ${months} month${months !== 1 ? 's' : ''}`;
+    } else if (months > 0) {
+      return `${months} month${months !== 1 ? 's' : ''}, ${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+    }
+    return `${days} day${days !== 1 ? 's' : ''}`;
+  };
+  
+  // Get fun description based on badges
+  const getHolderPersonality = () => {
+    if (!guardData) return null;
+    
+    const { primaryBadge, availableModifiers, isEarlyAdopter } = guardData;
+    
+    if (isEarlyAdopter) {
+      return "You were there from the beginning. A true pioneer who believed before anyone else. 🏆";
+    }
+    if (primaryBadge?.emoji === '👑') {
+      return "A founding member of the GUARD family. Your conviction helped build this community. 👑";
+    }
+    if (primaryBadge?.emoji === '💎') {
+      return "Diamond hands don't shake. You've weathered every storm with unwavering belief. 💎";
+    }
+    if (primaryBadge?.emoji === '🌳') {
+      return "Deep roots grow strong trees. You're an OG who's seen it all. 🌳";
+    }
+    if (primaryBadge?.emoji === '🌿') {
+      return "A veteran holder with stories to tell. Your journey continues. 🌿";
+    }
+    if (availableModifiers?.find(m => m.emoji === '⭐')) {
+      return "A true believer who went all-in early. That's conviction. ⭐";
+    }
+    if (availableModifiers?.find(m => m.emoji === '🔄')) {
+      return "Steady and consistent. You've been stacking GUARD like clockwork. 🔄";
+    }
+    
+    return "Welcome to the GUARD community. Your journey is just beginning! 🛡️";
+  };
+  
+  return (
+    <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center p-6">
+      <div className="max-w-2xl w-full">
+        
+        {/* Loading Stage - Terminal */}
+        {stage === 'loading' && (
+          <div className="animate-fade-in">
+            <h2 className="text-xl font-bold text-center mb-6 text-amber-400">
+              🛡️ Scanning Your GUARD Journey
+            </h2>
+            
+            {/* Terminal Window */}
+            <div className="bg-[#0d1117] border border-[#30363d] rounded-xl overflow-hidden shadow-2xl">
+              {/* Terminal Header */}
+              <div className="bg-[#161b22] px-4 py-2 flex items-center gap-2 border-b border-[#30363d]">
+                <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
+                <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
+                <div className="w-3 h-3 rounded-full bg-[#27ca40]" />
+                <span className="ml-3 text-xs text-white/40 font-mono">guard-scanner v1.0</span>
+              </div>
+              
+              {/* Terminal Body */}
+              <div className="p-4 font-mono text-sm h-64 overflow-y-auto">
+                {terminalLines.map((line, i) => (
+                  <div 
+                    key={i} 
+                    className={`${line.text.includes('✓') ? 'text-green-400' : line.text.includes('⚠') ? 'text-yellow-400' : 'text-green-400/80'} animate-fade-in`}
+                  >
+                    {line.text}
+                  </div>
+                ))}
+                <span className="inline-block w-2 h-4 bg-green-400 animate-pulse ml-1" />
+              </div>
+            </div>
+            
+            <p className="text-center text-white/30 text-sm mt-4">
+              Fetching your blockchain history...
+            </p>
+          </div>
+        )}
+        
+        {/* Wrapped Stage - GUARD Wrapped */}
+        {stage === 'wrapped' && guardData && (
+          <div className="animate-fade-in space-y-6">
+            {/* Header */}
+            <div className="text-center">
+              <h1 className="text-3xl font-bold mb-2">
+                <span className="text-amber-400">Your GUARD</span> Journey
+              </h1>
+              <p className="text-white/50">Here's your story in the community</p>
+            </div>
+            
+            {/* Main Stats Card */}
+            <div className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-6">
+              
+              {/* First Purchase */}
+              {guardData.firstBuy && (
+                <div className="text-center">
+                  <p className="text-white/50 text-sm mb-1">Your journey began on</p>
+                  <p className="text-2xl font-bold text-amber-400">{formatDate(guardData.firstBuy)}</p>
+                  <p className="text-white/40 text-sm mt-1">
+                    That's <span className="text-white font-medium">{getHoldingDuration()}</span> of holding strong
+                  </p>
+                </div>
+              )}
+              
+              {/* Divider */}
+              <div className="border-t border-white/10" />
+              
+              {/* Badges Earned */}
+              <div className="text-center">
+                <p className="text-white/50 text-sm mb-3">Recognition earned</p>
+                <div className="flex justify-center gap-4 flex-wrap">
+                  {guardData.isEarlyAdopter && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-4xl mb-1">🏆</span>
+                      <span className="text-xs text-white/60">Early Adopter</span>
+                    </div>
+                  )}
+                  {guardData.primaryBadge && (
+                    <div className="flex flex-col items-center">
+                      <span className="text-4xl mb-1">{guardData.primaryBadge.emoji}</span>
+                      <span className="text-xs text-white/60">{guardData.primaryBadge.name}</span>
+                    </div>
+                  )}
+                  {guardData.availableModifiers?.map(mod => (
+                    <div key={mod.emoji} className="flex flex-col items-center">
+                      <span className="text-4xl mb-1">{mod.emoji}</span>
+                      <span className="text-xs text-white/60">{mod.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Divider */}
+              <div className="border-t border-white/10" />
+              
+              {/* Personality */}
+              <div className="text-center">
+                <p className="text-lg text-white/90 italic">
+                  "{getHolderPersonality()}"
+                </p>
+              </div>
+            </div>
+            
+            {/* Username Preview */}
+            <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
+              <p className="text-white/50 text-sm mb-2">In chat, your name will glow:</p>
+              <p className={`text-xl font-bold ${
+                guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑' 
+                  ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' 
+                  : guardData.primaryBadge?.emoji === '💎' 
+                    ? 'text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]'
+                    : guardData.primaryBadge?.emoji === '🌳'
+                      ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]'
+                      : 'text-white'
+              }`}>
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </p>
+              <p className="text-white/30 text-xs mt-2">
+                Hover over your name to see your achievements
+              </p>
+            </div>
+            
+            {/* Enter Button */}
+            <button
+              onClick={handleEnterCommunity}
+              className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-amber-500/25"
+            >
+              🎉 Let's Go! Enter the Community
+            </button>
+            
+            <p className="text-center text-white/30 text-sm">
+              Your friends are waiting
+            </p>
+          </div>
+        )}
+        
+      </div>
+    </div>
+  );
 };
 
 // ============================================
