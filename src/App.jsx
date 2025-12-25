@@ -3629,7 +3629,9 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                       <Avatar emoji={reply.avatar || '🛡️'} size="xs" />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-baseline gap-2">
-                          <span className="text-xs font-medium">{reply.displayName || reply.user}</span>
+                          <ReputationBadge wallet={reply.wallet} showTooltip={false}>
+                            <span className="text-xs font-medium">{reply.displayName || reply.user}</span>
+                          </ReputationBadge>
                           <span className="text-xs text-white/20">{formatTime(reply.timestamp)}</span>
                         </div>
                         {reply.isGif ? (
