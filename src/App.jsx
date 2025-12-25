@@ -5354,6 +5354,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [userReputation, setUserReputation] = useState(null);
   const [selectedModifier, setSelectedModifier] = useState(null);
   const [savingBadge, setSavingBadge] = useState(false);
+  const [mlmWarning, setMlmWarning] = useState(false);
   
   // Check if user is admin
   useEffect(() => {
@@ -5830,8 +5831,6 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                       
                       const selectedBadges = getSelectedBadges();
                       const displayedBadges = allBadges.filter(b => selectedBadges.includes(b.emoji));
-                      
-                      const [mlmWarning, setMlmWarning] = React.useState(false);
                       
                       const toggleBadge = (emoji) => {
                         let newSelected = [...selectedBadges];
