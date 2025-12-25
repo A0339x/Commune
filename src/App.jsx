@@ -1298,7 +1298,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
         
         {/* Reply Input */}
         <div className="p-4 border-t border-white/5 relative">
-          {/* GIF Picker */}
+          {/* GIF Picker - overlays the replies area */}
           {showGifPicker && (
             <>
               {/* Backdrop to close on click outside */}
@@ -1306,16 +1306,16 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                 className="fixed inset-0 z-10" 
                 onClick={() => setShowGifPicker(false)}
               />
-              <div className="absolute bottom-full left-4 right-4 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-3 shadow-2xl max-h-72 flex flex-col z-20">
+              <div className="absolute bottom-full left-0 right-0 mb-0 bg-[#12121a] border-t border-white/10 p-3 shadow-2xl z-20" style={{ height: '280px' }}>
                 <input
                   type="text"
                   value={gifSearch}
                   onChange={(e) => handleGifSearchChange(e.target.value)}
                   placeholder="Search GIFs..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50 flex-shrink-0"
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50"
                   autoFocus
                 />
-                <div className="flex-1 overflow-y-auto min-h-0">
+                <div className="overflow-y-auto" style={{ height: '200px' }}>
                   {gifLoading ? (
                     <div className="flex justify-center py-4"><Spinner size="sm" /></div>
                   ) : (
@@ -1335,7 +1335,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                     <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
                   )}
                 </div>
-                <div className="mt-2 pt-2 border-t border-white/10 flex justify-end flex-shrink-0">
+                <div className="pt-2 border-t border-white/10 flex justify-end">
                   <span className="text-xs text-white/30">Powered by Tenor</span>
                 </div>
               </div>
