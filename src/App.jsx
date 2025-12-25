@@ -1300,39 +1300,46 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
         <div className="p-4 border-t border-white/5 relative">
           {/* GIF Picker */}
           {showGifPicker && (
-            <div className="absolute bottom-full left-4 right-4 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-3 shadow-2xl max-h-80 overflow-hidden flex flex-col z-20">
-              <input
-                type="text"
-                value={gifSearch}
-                onChange={(e) => handleGifSearchChange(e.target.value)}
-                placeholder="Search GIFs..."
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50"
-                autoFocus
+            <>
+              {/* Backdrop to close on click outside */}
+              <div 
+                className="fixed inset-0 z-10" 
+                onClick={() => setShowGifPicker(false)}
               />
-              <div className="flex-1 overflow-y-auto">
-                {gifLoading ? (
-                  <div className="flex justify-center py-4"><Spinner size="sm" /></div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {(gifSearch ? gifResults : trendingGifs).map((gif) => (
-                      <img
-                        key={gif.id}
-                        src={gif.media_formats?.tinygif?.url}
-                        alt="GIF"
-                        onClick={() => sendGifReply(gif)}
-                        className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                      />
-                    ))}
-                  </div>
-                )}
-                {!gifLoading && gifSearch && gifResults.length === 0 && (
-                  <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
-                )}
+              <div className="absolute bottom-full left-4 right-4 mb-2 bg-[#1a1a24] border border-white/10 rounded-xl p-3 shadow-2xl max-h-72 flex flex-col z-20">
+                <input
+                  type="text"
+                  value={gifSearch}
+                  onChange={(e) => handleGifSearchChange(e.target.value)}
+                  placeholder="Search GIFs..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50 flex-shrink-0"
+                  autoFocus
+                />
+                <div className="flex-1 overflow-y-auto min-h-0">
+                  {gifLoading ? (
+                    <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {(gifSearch ? gifResults : trendingGifs).map((gif) => (
+                        <img
+                          key={gif.id}
+                          src={gif.media_formats?.tinygif?.url}
+                          alt="GIF"
+                          onClick={() => sendGifReply(gif)}
+                          className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!gifLoading && gifSearch && gifResults.length === 0 && (
+                    <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
+                  )}
+                </div>
+                <div className="mt-2 pt-2 border-t border-white/10 flex justify-end flex-shrink-0">
+                  <span className="text-xs text-white/30">Powered by Tenor</span>
+                </div>
               </div>
-              <div className="mt-2 pt-2 border-t border-white/10 flex justify-end">
-                <span className="text-xs text-white/30">Powered by Tenor</span>
-              </div>
-            </div>
+            </>
           )}
           
           {rateLimited ? (
