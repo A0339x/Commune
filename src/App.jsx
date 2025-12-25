@@ -3386,6 +3386,19 @@ const AdminPanel = ({ sessionToken }) => {
   const [deleteReplyConfirm, setDeleteReplyConfirm] = useState(null); // { replyId }
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
   
+  // Admin onboarding
+  const [showAdminWelcome, setShowAdminWelcome] = useState(false);
+  const [adminOnboardingStep, setAdminOnboardingStep] = useState(0);
+  
+  // Check if first time admin
+  useEffect(() => {
+    const hasSeenAdminWelcome = localStorage.getItem('commune_admin_welcomed');
+    if (!hasSeenAdminWelcome) {
+      setShowAdminWelcome(true);
+      localStorage.setItem('commune_admin_welcomed', 'true');
+    }
+  }, []);
+  
   // Send warning to user
   const handleSendWarning = async () => {
     if (!warningTarget || !warningMessage) return;
@@ -3773,6 +3786,126 @@ const AdminPanel = ({ sessionToken }) => {
   
   return (
     <div className="flex-1 flex flex-col p-6 overflow-hidden">
+      {/* Admin Welcome Modal */}
+      {showAdminWelcome && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+          <div className="relative bg-[#12121a] border border-white/10 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl">
+            {adminOnboardingStep === 0 && (
+              <div className="text-center">
+                <div className="w-20 h-20 bg-gradient-to-br from-red-500 to-orange-500 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">
+                  🛡️
+                </div>
+                <h2 className="text-2xl font-bold mb-3">Welcome, Admin!</h2>
+                <p className="text-white/60 mb-8">
+                  You have elevated privileges to moderate the Commune. With great power comes great responsibility.
+                </p>
+                <Button onClick={() => setAdminOnboardingStep(1)} className="w-full">
+                  Show Me Around →
+                </Button>
+              </div>
+            )}
+            
+            {adminOnboardingStep === 1 && (
+              <div className="text-center">
+                <div className="text-5xl mb-6">👥</div>
+                <h2 className="text-xl font-bold mb-3">User Management</h2>
+                <p className="text-white/60 mb-8">
+                  View all connected users, mute troublemakers temporarily, or ban repeat offenders. Select multiple users for bulk actions.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setAdminOnboardingStep(0)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button onClick={() => setAdminOnboardingStep(2)} className="flex-1">
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {adminOnboardingStep === 2 && (
+              <div className="text-center">
+                <div className="text-5xl mb-6">💬</div>
+                <h2 className="text-xl font-bold mb-3">Message Moderation</h2>
+                <p className="text-white/60 mb-8">
+                  Delete inappropriate messages, view thread replies, or use <span className="text-red-400 font-semibold">Nuke Mode</span> to wipe all messages from a user at once.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setAdminOnboardingStep(1)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button onClick={() => setAdminOnboardingStep(3)} className="flex-1">
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {adminOnboardingStep === 3 && (
+              <div className="text-center">
+                <div className="text-5xl mb-6">📢</div>
+                <h2 className="text-xl font-bold mb-3">Communicate</h2>
+                <p className="text-white/60 mb-8">
+                  Send <span className="text-yellow-400">warnings</span> to specific users that they must acknowledge, or broadcast <span className="text-blue-400">announcements</span> to the entire community.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setAdminOnboardingStep(2)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button onClick={() => setAdminOnboardingStep(4)} className="flex-1">
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {adminOnboardingStep === 4 && (
+              <div className="text-center">
+                <div className="text-5xl mb-6">📋</div>
+                <h2 className="text-xl font-bold mb-3">Audit Log</h2>
+                <p className="text-white/60 mb-8">
+                  Every admin action is logged. Review the history of bans, mutes, deletions, and warnings for accountability and transparency.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setAdminOnboardingStep(3)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button 
+                    onClick={() => setShowAdminWelcome(false)} 
+                    className="flex-1"
+                  >
+                    Let's Go! 🚀
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {/* Progress dots */}
+            <div className="flex justify-center gap-2 mt-6">
+              {[0, 1, 2, 3, 4].map(step => (
+                <div 
+                  key={step}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    step === adminOnboardingStep ? 'bg-amber-400' : 'bg-white/20'
+                  }`}
+                />
+              ))}
+            </div>
+            
+            {/* Skip button */}
+            {adminOnboardingStep < 4 && (
+              <button
+                onClick={() => setShowAdminWelcome(false)}
+                className="absolute top-4 right-4 text-white/40 hover:text-white/60 text-sm transition-colors"
+              >
+                Skip
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
       <h1 className="text-2xl font-bold mb-6 flex items-center gap-3">
         🛡️ Admin Panel
       </h1>
