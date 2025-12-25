@@ -5819,7 +5819,10 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                       // Parse selected badges (stored as "emoji1,emoji2")
                       const getSelectedBadges = () => {
                         if (selectedModifier && selectedModifier.includes(',')) {
-                          return selectedModifier.split(',');
+                          return selectedModifier.split(',').filter(e => e); // filter empty strings
+                        }
+                        if (selectedModifier) {
+                          return [selectedModifier];
                         }
                         // Default: show first two badges
                         return allBadges.slice(0, 2).map(b => b.emoji);
@@ -5828,45 +5831,60 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                       const selectedBadges = getSelectedBadges();
                       const displayedBadges = allBadges.filter(b => selectedBadges.includes(b.emoji));
                       
+                      const [mlmWarning, setMlmWarning] = React.useState(false);
+                      
                       const toggleBadge = (emoji) => {
                         let newSelected = [...selectedBadges];
                         if (newSelected.includes(emoji)) {
-                          // Remove if already selected (but keep at least 1)
-                          if (newSelected.length > 1) {
-                            newSelected = newSelected.filter(e => e !== emoji);
-                          }
+                          // Deselect - allow going to 0
+                          newSelected = newSelected.filter(e => e !== emoji);
                         } else {
-                          // Add if not at max
-                          if (newSelected.length < 2) {
-                            newSelected.push(emoji);
-                          } else {
-                            // Replace the second one
-                            newSelected[1] = emoji;
+                          // Select - but max 2
+                          if (newSelected.length >= 2) {
+                            setMlmWarning(true);
+                            setTimeout(() => setMlmWarning(false), 3000);
+                            return;
                           }
+                          newSelected.push(emoji);
                         }
                         updateSelectedBadges(newSelected.join(','));
                       };
                       
                       return (
-                        <>
+                        <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
                           {/* Current badge display */}
                           <div className="p-4 bg-white/5 rounded-xl">
                             <p className="text-xs text-white/50 mb-3">Your displayed badges:</p>
-                            <div className="flex items-center gap-2 p-3 bg-white/10 rounded-lg">
-                              {displayedBadges.map(badge => (
-                                <span key={badge.emoji} className="text-2xl" title={badge.name}>{badge.emoji}</span>
-                              ))}
-                              <span className="text-sm text-white/70 ml-2">
-                                {displayedBadges.map(b => b.name).join(' + ')}
-                              </span>
+                            <div className="flex items-center gap-2 p-3 bg-white/10 rounded-lg min-h-[52px]">
+                              {displayedBadges.length > 0 ? (
+                                <>
+                                  {displayedBadges.map(badge => (
+                                    <span key={badge.emoji} className="text-2xl" title={badge.name}>{badge.emoji}</span>
+                                  ))}
+                                  <span className="text-sm text-white/70 ml-2">
+                                    {displayedBadges.map(b => b.name).join(' + ')}
+                                  </span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-white/40 italic">No badges selected</span>
+                              )}
                             </div>
                           </div>
                           
-                          {/* Badge selector - only show if more than 2 badges available */}
+                          {/* MLM Warning */}
+                          {mlmWarning && (
+                            <div className="p-3 bg-amber-500/20 border border-amber-500/50 rounded-xl text-center animate-fade-in">
+                              <p className="text-sm text-amber-400">
+                                🚫 Whoa there, Triple Diamond Elite Ambassador! We're keeping it to 2 badges max so this chat doesn't look like an MLM convention.
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Badge selector */}
                           {allBadges.length > 2 && (
                             <div className="p-4 bg-white/5 rounded-xl">
-                              <p className="text-sm font-medium mb-2">Choose 2 badges to display:</p>
-                              <p className="text-xs text-white/50 mb-3">You have {allBadges.length} badges! Pick which 2 to show.</p>
+                              <p className="text-sm font-medium mb-2">Choose up to 2 badges:</p>
+                              <p className="text-xs text-white/50 mb-3">You have {allBadges.length} badges! Tap to select/deselect.</p>
                               <div className="flex flex-col gap-2">
                                 {allBadges.map((badge) => (
                                   <button
@@ -5893,22 +5911,24 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                             </div>
                           )}
                           
-                          {/* Badge explanations */}
-                          <div className="p-4 bg-white/5 rounded-xl">
-                            <p className="text-sm font-medium mb-3">All your badges:</p>
-                            <div className="space-y-3">
-                              {allBadges.map(badge => (
-                                <div key={badge.emoji} className="flex items-start gap-3">
-                                  <span className="text-lg">{badge.emoji}</span>
-                                  <div>
-                                    <p className="text-sm font-medium">{badge.name}</p>
-                                    <p className="text-xs text-white/50">{badge.description}</p>
+                          {/* Badge explanations - only show if 2 or fewer badges */}
+                          {allBadges.length <= 2 && (
+                            <div className="p-4 bg-white/5 rounded-xl">
+                              <p className="text-sm font-medium mb-3">Your badges:</p>
+                              <div className="space-y-3">
+                                {allBadges.map(badge => (
+                                  <div key={badge.emoji} className="flex items-start gap-3">
+                                    <span className="text-lg">{badge.emoji}</span>
+                                    <div>
+                                      <p className="text-sm font-medium">{badge.name}</p>
+                                      <p className="text-xs text-white/50">{badge.description}</p>
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        </>
+                          )}
+                        </div>
                       );
                     })()}
                   </>
