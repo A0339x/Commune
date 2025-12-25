@@ -1421,6 +1421,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [pendingMessages, setPendingMessages] = useState([]); // Messages waiting for server confirmation
   const [deleteConfirm, setDeleteConfirm] = useState(null); // { messageId } for delete confirmation
   
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [highlightedMessageId, setHighlightedMessageId] = useState(null);
+  
   // Onboarding state
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(0);
@@ -1431,6 +1436,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   const [rateLimitSeconds, setRateLimitSeconds] = useState(0);
   const rateLimitIntervalRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const messagesContainerRef = useRef(null);
   const hoverTimeoutRef = useRef(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
@@ -1449,6 +1455,51 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
   
   // Tenor API Key - fetched from server
   const [tenorApiKey, setTenorApiKey] = useState('');
+  
+  // Listen for chat menu events
+  useEffect(() => {
+    const handleSearch = (e) => {
+      const query = e.detail.query.toLowerCase();
+      setSearchQuery(query);
+      
+      // Find matching messages
+      const results = messages.filter(msg => 
+        msg.content?.toLowerCase().includes(query) ||
+        msg.displayName?.toLowerCase().includes(query) ||
+        msg.user?.toLowerCase().includes(query)
+      );
+      setSearchResults(results);
+      
+      // Scroll to first result if found
+      if (results.length > 0) {
+        const firstResult = results[0];
+        setHighlightedMessageId(firstResult.id);
+        const element = document.getElementById(`msg-${firstResult.id}`);
+        element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        // Clear highlight after 3 seconds
+        setTimeout(() => setHighlightedMessageId(null), 3000);
+      }
+    };
+    
+    const handleScrollTop = () => {
+      messagesContainerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    
+    const handleScrollBottom = () => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+    
+    window.addEventListener('chat-search', handleSearch);
+    window.addEventListener('chat-scroll-top', handleScrollTop);
+    window.addEventListener('chat-scroll-bottom', handleScrollBottom);
+    
+    return () => {
+      window.removeEventListener('chat-search', handleSearch);
+      window.removeEventListener('chat-scroll-top', handleScrollTop);
+      window.removeEventListener('chat-scroll-bottom', handleScrollBottom);
+    };
+  }, [messages]);
   
   // Check if first visit and show onboarding
   useEffect(() => {
@@ -2374,38 +2425,77 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
   };
   
-  // Render message content with highlighted mentions
+  // Render message content with highlighted mentions and clickable links
   const renderMessageContent = (content, mentions = []) => {
     if (!content) return null;
     
     // Check if current user is mentioned
     const isMentioned = mentions?.some(m => m.toLowerCase() === walletAddress?.toLowerCase());
     
-    // Simple regex to find @mentions
+    // Combined regex for URLs and @mentions
+    const urlRegex = /(https?:\/\/[^\s]+)/g;
     const mentionRegex = /@(\S+)/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
     
-    while ((match = mentionRegex.exec(content)) !== null) {
-      // Add text before mention
-      if (match.index > lastIndex) {
-        parts.push(content.slice(lastIndex, match.index));
+    // First, split by URLs
+    const urlParts = content.split(urlRegex);
+    const urls = content.match(urlRegex) || [];
+    
+    const processedParts = [];
+    let urlIndex = 0;
+    
+    urlParts.forEach((part, i) => {
+      if (urls.includes(part)) {
+        // This is a URL - make it clickable
+        const displayUrl = part.length > 50 ? part.slice(0, 47) + '...' : part;
+        processedParts.push(
+          <a
+            key={`url-${i}`}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-400 hover:text-blue-300 hover:underline break-all"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {displayUrl}
+          </a>
+        );
+        urlIndex++;
+      } else {
+        // Process mentions within this part
+        const mentionParts = [];
+        let lastIndex = 0;
+        let match;
+        
+        while ((match = mentionRegex.exec(part)) !== null) {
+          // Add text before mention
+          if (match.index > lastIndex) {
+            mentionParts.push(part.slice(lastIndex, match.index));
+          }
+          // Add highlighted mention
+          mentionParts.push(
+            <span key={`mention-${i}-${match.index}`} className="text-amber-400 font-medium">
+              {match[0]}
+            </span>
+          );
+          lastIndex = match.index + match[0].length;
+        }
+        // Add remaining text
+        if (lastIndex < part.length) {
+          mentionParts.push(part.slice(lastIndex));
+        }
+        
+        // Reset regex
+        mentionRegex.lastIndex = 0;
+        
+        if (mentionParts.length > 0) {
+          processedParts.push(...mentionParts);
+        } else if (part) {
+          processedParts.push(part);
+        }
       }
-      // Add highlighted mention
-      parts.push(
-        <span key={match.index} className="text-amber-400 font-medium">
-          {match[0]}
-        </span>
-      );
-      lastIndex = match.index + match[0].length;
-    }
-    // Add remaining text
-    if (lastIndex < content.length) {
-      parts.push(content.slice(lastIndex));
-    }
+    });
     
-    return parts.length > 0 ? parts : content;
+    return processedParts.length > 0 ? processedParts : content;
   };
   
   // Reaction picker state
@@ -2664,7 +2754,10 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
       </div>
       
       {/* Messages */}
-      <div className={`flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300 ${openThread ? 'blur-sm opacity-50' : ''} relative`}>
+      <div 
+        ref={messagesContainerRef}
+        className={`flex-1 overflow-y-auto p-6 space-y-4 transition-all duration-300 ${openThread ? 'blur-sm opacity-50' : ''} relative`}
+      >
         {/* Rate Limit Overlay */}
         {rateLimited && (
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm z-20 flex flex-col items-center justify-center">
@@ -2673,6 +2766,21 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               <p className="text-lg font-medium mb-1">Slow down!</p>
               <p className="text-sm">You're sending messages too fast. Please wait.</p>
             </div>
+          </div>
+        )}
+        
+        {/* Search Results Banner */}
+        {searchQuery && (
+          <div className="sticky top-0 z-10 bg-amber-400/10 border border-amber-400/30 rounded-xl px-4 py-2 flex items-center justify-between backdrop-blur-sm">
+            <span className="text-amber-400 text-sm">
+              🔍 Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{searchQuery}"
+            </span>
+            <button 
+              onClick={() => { setSearchQuery(''); setSearchResults([]); setHighlightedMessageId(null); }}
+              className="text-white/50 hover:text-white text-sm"
+            >
+              Clear
+            </button>
           </div>
         )}
         
@@ -2689,8 +2797,15 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         ) : (
           messages.map((msg) => (
             <div 
-              key={msg.id} 
-              className={`group ${msg.sendStatus === 'failed' || msg.sendStatus === 'queued' ? 'opacity-60' : ''}`}
+              key={msg.id}
+              id={`msg-${msg.id}`}
+              className={`group transition-all duration-500 ${
+                msg.sendStatus === 'failed' || msg.sendStatus === 'queued' ? 'opacity-60' : ''
+              } ${
+                highlightedMessageId === msg.id 
+                  ? 'bg-amber-400/20 -mx-4 px-4 py-2 rounded-xl ring-2 ring-amber-400/50' 
+                  : ''
+              }`}
             >
               {/* Main Message */}
               <div className="flex gap-3">
@@ -4676,6 +4791,7 @@ const AdminPanel = ({ sessionToken }) => {
 // ============================================
 const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [activeTab, setActiveTab] = useState('chat');
+  const [showChatMenu, setShowChatMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [newDisplayName, setNewDisplayName] = useState('');
@@ -4795,19 +4911,102 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         {/* Sidebar Navigation */}
-        <nav className="w-16 sm:w-20 border-r border-white/5 p-3 flex flex-col items-center gap-2 flex-shrink-0">
+        <nav className="w-16 sm:w-20 border-r border-white/5 p-3 flex flex-col items-center gap-2 flex-shrink-0 relative">
+          {/* Chat Tab with Expandable Menu */}
+          <div className="relative">
+            <button
+              onClick={() => {
+                if (activeTab === 'chat') {
+                  setShowChatMenu(!showChatMenu);
+                } else {
+                  setActiveTab('chat');
+                  setShowChatMenu(false);
+                }
+              }}
+              className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                activeTab === 'chat' 
+                  ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30' 
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Icons.Chat />
+            </button>
+            
+            {/* Expandable Chat Menu */}
+            {showChatMenu && activeTab === 'chat' && (
+              <>
+                {/* Backdrop */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setShowChatMenu(false)}
+                />
+                
+                {/* Menu Panel */}
+                <div className="absolute left-full top-0 ml-2 z-50 w-64 bg-[#12121a]/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in slide-in-from-left-2 duration-200">
+                  {/* Header */}
+                  <div className="p-4 border-b border-white/5">
+                    <h3 className="font-semibold text-sm text-white/80">Chat Options</h3>
+                  </div>
+                  
+                  {/* Search */}
+                  <div className="p-3">
+                    <div className="relative">
+                      <input
+                        type="text"
+                        placeholder="Search messages..."
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 pl-10 text-sm focus:outline-none focus:border-amber-400/50 placeholder-white/30"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && e.target.value.trim()) {
+                            // Dispatch search event to ChatRoom
+                            window.dispatchEvent(new CustomEvent('chat-search', { 
+                              detail: { query: e.target.value.trim() } 
+                            }));
+                            setShowChatMenu(false);
+                          }
+                        }}
+                      />
+                      <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-xs text-white/30 mt-2 px-1">Press Enter to search</p>
+                  </div>
+                  
+                  {/* Quick Actions */}
+                  <div className="px-3 pb-3 space-y-1">
+                    <button 
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('chat-scroll-top'));
+                        setShowChatMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <span className="text-base">⬆️</span>
+                      <span>Jump to top</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        window.dispatchEvent(new CustomEvent('chat-scroll-bottom'));
+                        setShowChatMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                    >
+                      <span className="text-base">⬇️</span>
+                      <span>Jump to bottom</span>
+                    </button>
+                  </div>
+                  
+                  {/* Footer */}
+                  <div className="px-4 py-3 bg-white/5 border-t border-white/5">
+                    <p className="text-xs text-white/30 text-center">Click chat icon again to close</p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+          
           <button
-            onClick={() => setActiveTab('chat')}
-            className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
-              activeTab === 'chat' 
-                ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30' 
-                : 'text-white/50 hover:text-white hover:bg-white/5'
-            }`}
-          >
-            <Icons.Chat />
-          </button>
-          <button
-            onClick={() => setActiveTab('video')}
+            onClick={() => { setActiveTab('video'); setShowChatMenu(false); }}
             className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
               activeTab === 'video' 
                 ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30' 
@@ -4820,7 +5019,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
           {/* Admin Tab - Only show for admins */}
           {isAdmin && (
             <button
-              onClick={() => setActiveTab('admin')}
+              onClick={() => { setActiveTab('admin'); setShowChatMenu(false); }}
               className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
                 activeTab === 'admin' 
                   ? 'bg-red-400/20 text-red-400 border border-red-400/30' 
