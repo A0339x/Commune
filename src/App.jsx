@@ -2662,7 +2662,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                           <span className="text-xs font-medium">{reply.displayName || reply.user}</span>
                           <span className="text-xs text-white/20">{formatTime(reply.timestamp)}</span>
                         </div>
-                        <p className="text-white/60 text-xs line-clamp-2">{reply.content}</p>
+                        {reply.isGif ? (
+                          <span className="text-white/60 text-xs italic">📷 GIF</span>
+                        ) : (
+                          <p className="text-white/60 text-xs line-clamp-2">{reply.content}</p>
+                        )}
                       </div>
                     </div>
                   ))}
