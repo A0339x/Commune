@@ -1184,80 +1184,80 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
       {/* Thread Panel */}
       <div className="relative z-10 w-full max-w-lg bg-[#12121a] border border-white/10 rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="p-4 border-b border-white/5 flex items-center justify-between">
-          <h3 className="font-semibold">Thread</h3>
+        <div className="p-4 border-b border-white/5 flex items-center justify-between flex-shrink-0">
+          <h3 className="font-semibold">{showGifPicker ? 'Select GIF' : 'Thread'}</h3>
           <button
-            onClick={onClose}
+            onClick={() => showGifPicker ? setShowGifPicker(false) : onClose()}
             className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
           >
             <Icons.X />
           </button>
         </div>
         
-        {/* Original Message */}
-        <div className="p-4 bg-white/5 border-b border-white/5">
-          <div className="flex gap-3">
-            <Avatar emoji={message.avatar || '🛡️'} size="md" />
-            <div className="flex-1">
-              <div className="flex items-baseline gap-2">
-                <span className="font-medium">{message.displayName || message.user}</span>
-                {message.displayName && (
-                  <span className="text-xs text-white/20 font-mono">{message.user}</span>
-                )}
-                <span className="text-xs text-white/30">{formatTime(message.timestamp)}</span>
-              </div>
-              <p className="text-white/80 mt-1">{message.content}</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Replies Area - relative container for GIF picker */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
-          {/* GIF Picker - overlays the replies area */}
-          {showGifPicker && (
-            <>
-              {/* Backdrop to close on click outside */}
-              <div 
-                className="fixed inset-0 z-10" 
-                onClick={() => setShowGifPicker(false)}
+        {/* GIF Picker - replaces content when open */}
+        {showGifPicker ? (
+          <>
+            {/* Backdrop to close on click outside */}
+            <div 
+              className="fixed inset-0 z-10" 
+              onClick={() => setShowGifPicker(false)}
+            />
+            <div className="flex-1 flex flex-col p-4 z-20 min-h-[400px]">
+              <input
+                type="text"
+                value={gifSearch}
+                onChange={(e) => handleGifSearchChange(e.target.value)}
+                placeholder="Search GIFs..."
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-3 focus:outline-none focus:border-amber-400/50 flex-shrink-0"
+                autoFocus
               />
-              <div className="absolute inset-0 bg-[#12121a] p-3 z-20 flex flex-col">
-                <input
-                  type="text"
-                  value={gifSearch}
-                  onChange={(e) => handleGifSearchChange(e.target.value)}
-                  placeholder="Search GIFs..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50"
-                  autoFocus
-                />
-                <div className="flex-1 overflow-y-auto">
-                  {gifLoading ? (
-                    <div className="flex justify-center py-4"><Spinner size="sm" /></div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {(gifSearch ? gifResults : trendingGifs).map((gif) => (
-                        <img
-                          key={gif.id}
-                          src={gif.media_formats?.tinygif?.url}
-                          alt="GIF"
-                          onClick={() => sendGifReply(gif)}
-                          className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {!gifLoading && gifSearch && gifResults.length === 0 && (
-                    <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
-                  )}
-                </div>
-                <div className="pt-2 border-t border-white/10 flex justify-end flex-shrink-0">
-                  <span className="text-xs text-white/30">Powered by Tenor</span>
+              <div className="flex-1 overflow-y-auto">
+                {gifLoading ? (
+                  <div className="flex justify-center py-8"><Spinner size="sm" /></div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {(gifSearch ? gifResults : trendingGifs).map((gif) => (
+                      <img
+                        key={gif.id}
+                        src={gif.media_formats?.tinygif?.url}
+                        alt="GIF"
+                        onClick={() => sendGifReply(gif)}
+                        className="w-full h-28 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      />
+                    ))}
+                  </div>
+                )}
+                {!gifLoading && gifSearch && gifResults.length === 0 && (
+                  <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
+                )}
+              </div>
+              <div className="pt-3 border-t border-white/10 flex justify-end flex-shrink-0">
+                <span className="text-xs text-white/30">Powered by Tenor</span>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Original Message */}
+            <div className="p-4 bg-white/5 border-b border-white/5 flex-shrink-0">
+              <div className="flex gap-3">
+                <Avatar emoji={message.avatar || '🛡️'} size="md" />
+                <div className="flex-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-medium">{message.displayName || message.user}</span>
+                    {message.displayName && (
+                      <span className="text-xs text-white/20 font-mono">{message.user}</span>
+                    )}
+                    <span className="text-xs text-white/30">{formatTime(message.timestamp)}</span>
+                  </div>
+                  <p className="text-white/80 mt-1">{message.content}</p>
                 </div>
               </div>
-            </>
-          )}
-          
-          {loading ? (
+            </div>
+            
+            {/* Replies Area */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {loading ? (
             <div className="flex items-center justify-center py-8">
               <Spinner />
             </div>
@@ -1341,7 +1341,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
         </div>
         
         {/* Reply Input */}
-        <div className="p-4 border-t border-white/5">
+        <div className="p-4 border-t border-white/5 flex-shrink-0">
           {rateLimited ? (
             <div className="flex items-center justify-center py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
               <span className="text-amber-400/80 text-sm">🕵️ Sneaky! But threads count too. Wait {rateLimitSeconds}s</span>
@@ -1369,6 +1369,8 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
             </div>
           )}
         </div>
+          </>
+        )}
       </div>
       
       {/* Delete Confirm Modal */}
