@@ -664,6 +664,7 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
   const [loading, setLoading] = useState(true);
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const [modifierPref, setModifierPref] = useState(null);
   const badgeRef = useRef(null);
   
   useEffect(() => {
@@ -691,6 +692,13 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
           // Cache it
           localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
         }
+        
+        // Also fetch modifier preference
+        const prefResponse = await fetch(`${API_URL}/api/reputation/modifier?wallet=${wallet}`);
+        if (prefResponse.ok) {
+          const prefData = await prefResponse.json();
+          setModifierPref(prefData.modifier);
+        }
       } catch (error) {
         console.error('Failed to fetch reputation:', error);
       } finally {
@@ -715,7 +723,12 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
   
   if (loading || !reputation?.primaryBadge) return null;
   
-  const { primaryBadge, modifier, isEarlyAdopter } = reputation;
+  const { primaryBadge, modifier, availableModifiers, isEarlyAdopter } = reputation;
+  
+  // Use preferred modifier if set, otherwise use default
+  const displayModifier = modifierPref 
+    ? availableModifiers?.find(m => m.emoji === modifierPref) || modifier
+    : modifier;
   
   return (
     <>
@@ -727,7 +740,7 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
       >
         {isEarlyAdopter && <span title="Early Adopter - First 100 holders">🏆</span>}
         <span>{primaryBadge.emoji}</span>
-        {modifier && <span>{modifier.emoji}</span>}
+        {displayModifier && <span>{displayModifier.emoji}</span>}
       </span>
       
       {/* Tooltip */}
@@ -758,12 +771,12 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
                   <p className="text-xs text-white/50">{primaryBadge.description}</p>
                 </div>
               </div>
-              {modifier && (
+              {displayModifier && (
                 <div className="flex items-center gap-2 pt-1 border-t border-white/10">
-                  <span className="text-lg">{modifier.emoji}</span>
+                  <span className="text-lg">{displayModifier.emoji}</span>
                   <div>
-                    <p className="text-sm font-medium text-white">{modifier.name}</p>
-                    <p className="text-xs text-white/50">{modifier.description}</p>
+                    <p className="text-sm font-medium text-white">{displayModifier.name}</p>
+                    <p className="text-xs text-white/50">{displayModifier.description}</p>
                   </div>
                 </div>
               )}
@@ -3975,8 +3988,9 @@ const UserList = ({ sessionToken }) => {
             <div key={user.wallet} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
               <Avatar emoji={getAvatarEmoji(user.wallet)} size="sm" status="online" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">
+                <p className="text-sm font-medium truncate flex items-center gap-1">
                   {user.displayName || truncateAddress(user.wallet)}
+                  <ReputationBadge wallet={user.wallet} />
                 </p>
                 {user.displayName && (
                   <p className="text-xs text-white/30 font-mono truncate">{truncateAddress(user.wallet)}</p>
@@ -5325,6 +5339,9 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [nameError, setNameError] = useState('');
   const [nameSuccess, setNameSuccess] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [userReputation, setUserReputation] = useState(null);
+  const [selectedModifier, setSelectedModifier] = useState(null);
+  const [savingBadge, setSavingBadge] = useState(false);
   
   // Check if user is admin
   useEffect(() => {
@@ -5359,6 +5376,49 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
     };
     fetchDisplayName();
   }, [address]);
+  
+  // Fetch user's reputation for badge selector
+  useEffect(() => {
+    const fetchReputation = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/reputation?wallet=${address}`);
+        const data = await response.json();
+        setUserReputation(data);
+        
+        // Also fetch their modifier preference
+        const prefResponse = await fetch(`${API_URL}/api/reputation/modifier?wallet=${address}`);
+        const prefData = await prefResponse.json();
+        setSelectedModifier(prefData.modifier);
+      } catch (error) {
+        console.error('Failed to fetch reputation:', error);
+      }
+    };
+    if (address) {
+      fetchReputation();
+    }
+  }, [address]);
+  
+  // Save selected modifier preference
+  const saveModifierPreference = async (modifierEmoji) => {
+    setSavingBadge(true);
+    try {
+      await fetch(`${API_URL}/api/reputation/modifier`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${sessionToken}`,
+        },
+        body: JSON.stringify({ modifier: modifierEmoji }),
+      });
+      setSelectedModifier(modifierEmoji);
+      // Clear local cache to force refresh
+      localStorage.removeItem(`reputation_${address.toLowerCase()}`);
+    } catch (error) {
+      console.error('Failed to save modifier preference:', error);
+    } finally {
+      setSavingBadge(false);
+    }
+  };
   
   // Save display name
   const saveDisplayName = async () => {
@@ -5668,6 +5728,75 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                 </div>
                 <span className="font-medium text-amber-400">{tokenBalance}</span>
               </div>
+              
+              {/* Badge Display */}
+              {userReputation?.primaryBadge && (
+                <div className="p-4 bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <span>🏅</span>
+                    <span className="font-medium">Your Badges</span>
+                  </div>
+                  
+                  {/* Current badge display */}
+                  <div className="flex items-center gap-2 mb-4 p-3 bg-white/5 rounded-lg">
+                    {userReputation.isEarlyAdopter && <span className="text-xl" title="Early Adopter">🏆</span>}
+                    <span className="text-xl" title={userReputation.primaryBadge.name}>{userReputation.primaryBadge.emoji}</span>
+                    {userReputation.modifier && <span className="text-xl" title={userReputation.modifier.name}>{userReputation.modifier.emoji}</span>}
+                    <span className="text-sm text-white/70 ml-2">
+                      {userReputation.primaryBadge.name}
+                      {userReputation.modifier && ` + ${userReputation.modifier.name}`}
+                    </span>
+                  </div>
+                  
+                  {/* Modifier selector */}
+                  {userReputation.availableModifiers?.length > 1 && (
+                    <div>
+                      <p className="text-xs text-white/50 mb-2">Choose which modifier to display:</p>
+                      <div className="flex gap-2">
+                        {userReputation.availableModifiers.map((mod) => (
+                          <button
+                            key={mod.emoji}
+                            onClick={() => saveModifierPreference(mod.emoji)}
+                            disabled={savingBadge}
+                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
+                              selectedModifier === mod.emoji || (!selectedModifier && mod.emoji === userReputation.modifier?.emoji)
+                                ? 'bg-amber-400/20 border border-amber-400/50'
+                                : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="text-lg">{mod.emoji}</span>
+                            <span className="text-sm">{mod.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Badge descriptions */}
+                  <div className="mt-4 space-y-2">
+                    {userReputation.isEarlyAdopter && (
+                      <p className="text-xs text-white/40">🏆 Early Adopter - First 100 GUARD holders</p>
+                    )}
+                    <p className="text-xs text-white/40">{userReputation.primaryBadge.emoji} {userReputation.primaryBadge.description}</p>
+                    {userReputation.modifier && (
+                      <p className="text-xs text-white/40">{userReputation.modifier.emoji} {userReputation.modifier.description}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* No badge message */}
+              {userReputation && !userReputation.primaryBadge && (
+                <div className="p-4 bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span>🏅</span>
+                    <span className="font-medium">Badges</span>
+                  </div>
+                  <p className="text-sm text-white/50">
+                    Hold GUARD tokens to earn reputation badges! Badges are based on how long you've held tokens.
+                  </p>
+                </div>
+              )}
             </div>
             
             <ConnectButton.Custom>
