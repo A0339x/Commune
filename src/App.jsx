@@ -2975,15 +2975,15 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
         <div className="relative">
           <div className={`flex items-center gap-2 rounded-2xl border px-4 py-3 transition-all ${
             rateLimited
-              ? 'bg-amber-500/5 border-amber-500/30 opacity-50'
+              ? 'bg-amber-500/5 border-amber-500/30'
               : activeWarning 
                 ? 'bg-red-500/5 border-red-500/30 focus-within:border-red-400/50' 
                 : 'bg-white/5 border-white/10 focus-within:border-amber-400/50'
           }`}>
             <button 
-              className="text-white/40 hover:text-white/70 transition-colors"
+              className="text-white/40 hover:text-white/70 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               onClick={() => setShowGifPicker(!showGifPicker)}
-              disabled={rateLimited}
+              disabled={rateLimited || !!activeWarning}
             >
               <span className="text-xs font-bold">GIF</span>
             </button>
@@ -2992,7 +2992,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
               type="text"
               value={newMessage}
               onChange={handleInputChange}
-              disabled={rateLimited}
+              disabled={rateLimited || !!activeWarning}
               onKeyDown={(e) => {
                 handleMentionKeyDown(e);
                 if (e.key === 'Enter' && !e.shiftKey && !showMentions) {
@@ -3000,13 +3000,18 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                   sendMessage();
                 }
               }}
-              placeholder={activeWarning ? "Acknowledge warning to continue..." : "Type a message... (use @ to mention)"}
-              className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none text-sm"
-              disabled={!!activeWarning}
+              placeholder={
+                rateLimited 
+                  ? `Wait ${rateLimitSeconds}s to send messages...` 
+                  : activeWarning 
+                    ? "Acknowledge warning to continue..." 
+                    : "Type a message... (use @ to mention)"
+              }
+              className="flex-1 bg-transparent text-white placeholder-white/30 focus:outline-none text-sm disabled:cursor-not-allowed"
             />
             <button 
               onClick={() => sendMessage()}
-              disabled={!newMessage.trim() || !!activeWarning}
+              disabled={!newMessage.trim() || !!activeWarning || rateLimited}
               className="text-amber-400 hover:text-amber-300 transition-colors disabled:text-white/20 disabled:cursor-not-allowed"
             >
               <Icons.Send />
