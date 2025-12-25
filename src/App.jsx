@@ -659,13 +659,13 @@ const Spinner = ({ size = 'md' }) => {
 // ============================================
 // REPUTATION BADGE COMPONENT
 // ============================================
-const ReputationBadge = ({ wallet, showTooltip = true }) => {
+// Now shows colored username instead of emoji badges
+const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
   const [reputation, setReputation] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showHover, setShowHover] = useState(false);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
-  const [modifierPref, setModifierPref] = useState(null);
-  const badgeRef = useRef(null);
+  const nameRef = useRef(null);
   
   useEffect(() => {
     if (!wallet) return;
@@ -692,13 +692,6 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
           // Cache it
           localStorage.setItem(cacheKey, JSON.stringify({ data, timestamp: Date.now() }));
         }
-        
-        // Also fetch modifier preference
-        const prefResponse = await fetch(`${API_URL}/api/reputation/modifier?wallet=${wallet}`);
-        if (prefResponse.ok) {
-          const prefData = await prefResponse.json();
-          setModifierPref(prefData.modifier);
-        }
       } catch (error) {
         console.error('Failed to fetch reputation:', error);
       } finally {
@@ -710,8 +703,8 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
   }, [wallet]);
   
   const handleMouseEnter = (e) => {
-    if (!showTooltip) return;
-    const rect = badgeRef.current?.getBoundingClientRect();
+    if (!showTooltip || !reputation?.primaryBadge) return;
+    const rect = nameRef.current?.getBoundingClientRect();
     if (rect) {
       setHoverPosition({ 
         x: rect.left + rect.width / 2, 
@@ -721,79 +714,112 @@ const ReputationBadge = ({ wallet, showTooltip = true }) => {
     setShowHover(true);
   };
   
-  if (loading || !reputation?.primaryBadge) return null;
+  // Determine color class based on reputation
+  const getColorClass = () => {
+    if (!reputation?.primaryBadge) return 'text-white';
+    
+    const { primaryBadge, isEarlyAdopter } = reputation;
+    
+    // Early Adopter or Founding Member = Gold
+    if (isEarlyAdopter || primaryBadge.emoji === '👑') {
+      return 'text-amber-400';
+    }
+    // Diamond Hands = Purple
+    if (primaryBadge.emoji === '💎') {
+      return 'text-purple-400';
+    }
+    // OG = Cyan
+    if (primaryBadge.emoji === '🌳') {
+      return 'text-cyan-400';
+    }
+    // Veteran = Teal
+    if (primaryBadge.emoji === '🌿') {
+      return 'text-teal-400';
+    }
+    // Survivor = Emerald
+    if (primaryBadge.emoji === '🌾') {
+      return 'text-emerald-400';
+    }
+    // Believer = Green
+    if (primaryBadge.emoji === '🌱') {
+      return 'text-green-400';
+    }
+    // Holder = Lime
+    if (primaryBadge.emoji === '🍃') {
+      return 'text-lime-400';
+    }
+    
+    return 'text-white';
+  };
   
-  const { primaryBadge, modifier, availableModifiers, isEarlyAdopter } = reputation;
+  // Build all badges for tooltip
+  const getAllBadges = () => {
+    if (!reputation?.primaryBadge) return [];
+    
+    const { primaryBadge, availableModifiers, isEarlyAdopter } = reputation;
+    const badges = [];
+    
+    if (isEarlyAdopter) {
+      badges.push({ emoji: '🏆', name: 'Early Adopter', description: 'First 100 GUARD holders' });
+    }
+    if (primaryBadge) {
+      badges.push(primaryBadge);
+    }
+    if (availableModifiers) {
+      availableModifiers.forEach(mod => badges.push(mod));
+    }
+    
+    return badges;
+  };
   
-  // Build all available badges
-  const allBadges = [];
-  if (isEarlyAdopter) {
-    allBadges.push({ emoji: '🏆', name: 'Early Adopter', description: 'First 100 GUARD holders' });
-  }
-  if (primaryBadge) {
-    allBadges.push(primaryBadge);
-  }
-  if (availableModifiers) {
-    availableModifiers.forEach(mod => allBadges.push(mod));
-  }
+  const colorClass = getColorClass();
+  const allBadges = getAllBadges();
   
-  // Determine which badges to display (max 2)
-  let displayBadges = [];
-  if (modifierPref && modifierPref.includes(',')) {
-    // User has selected specific badges
-    const selectedEmojis = modifierPref.split(',');
-    displayBadges = allBadges.filter(b => selectedEmojis.includes(b.emoji)).slice(0, 2);
-  } else if (modifierPref) {
-    // Old format - single modifier preference, show primary + that modifier
-    displayBadges = [primaryBadge];
-    const selectedMod = availableModifiers?.find(m => m.emoji === modifierPref);
-    if (selectedMod) displayBadges.push(selectedMod);
-  } else {
-    // Default: first 2 badges
-    displayBadges = allBadges.slice(0, 2);
-  }
-  
-  return (
-    <>
-      <span 
-        ref={badgeRef}
-        className="inline-flex items-center gap-0.5 cursor-help"
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={() => setShowHover(false)}
-      >
-        {displayBadges.map(badge => (
-          <span key={badge.emoji} title={badge.name}>{badge.emoji}</span>
-        ))}
-      </span>
-      
-      {/* Tooltip */}
-      {showHover && showTooltip && ReactDOM.createPortal(
-        <div 
-          className="fixed z-[300] animate-fade-in"
-          style={{ 
-            left: hoverPosition.x, 
-            top: hoverPosition.y,
-            transform: 'translateX(-50%)'
-          }}
+  // If children provided, wrap them with color. Otherwise just return colored span
+  if (children) {
+    return (
+      <>
+        <span 
+          ref={nameRef}
+          className={`${colorClass} ${reputation?.primaryBadge ? 'cursor-help' : ''}`}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={() => setShowHover(false)}
         >
-          <div className="bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl p-3 max-w-xs">
-            <div className="space-y-2">
-              {displayBadges.map((badge, i) => (
-                <div key={badge.emoji} className={`flex items-center gap-2 ${i > 0 ? 'pt-1 border-t border-white/10' : ''}`}>
-                  <span className="text-lg">{badge.emoji}</span>
-                  <div>
-                    <p className="text-sm font-medium text-white">{badge.name}</p>
-                    <p className="text-xs text-white/50">{badge.description}</p>
+          {children}
+        </span>
+        
+        {/* Tooltip */}
+        {showHover && showTooltip && allBadges.length > 0 && ReactDOM.createPortal(
+          <div 
+            className="fixed z-[300] animate-fade-in pointer-events-none"
+            style={{ 
+              left: hoverPosition.x, 
+              top: hoverPosition.y,
+              transform: 'translateX(-50%)'
+            }}
+          >
+            <div className="bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl p-3 max-w-xs">
+              <div className="space-y-2">
+                {allBadges.map((badge, i) => (
+                  <div key={badge.emoji} className={`flex items-center gap-2 ${i > 0 ? 'pt-2 border-t border-white/10' : ''}`}>
+                    <span className="text-lg">{badge.emoji}</span>
+                    <div>
+                      <p className="text-sm font-medium text-white">{badge.name}</p>
+                      <p className="text-xs text-white/50">{badge.description}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
-    </>
-  );
+          </div>,
+          document.body
+        )}
+      </>
+    );
+  }
+  
+  // Legacy mode - just return nothing (badges removed)
+  return null;
 };
 
 // ============================================
@@ -1390,9 +1416,10 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
         <div className="flex items-center gap-2">
           <Avatar emoji={message.avatar || '🛡️'} size="sm" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate flex items-center gap-1">
-              {message.displayName || message.user}
-              <ReputationBadge wallet={message.wallet} showTooltip={false} />
+            <p className="text-sm font-medium truncate">
+              <ReputationBadge wallet={message.wallet} showTooltip={false}>
+                {message.displayName || message.user}
+              </ReputationBadge>
             </p>
             <p className="text-xs text-white/40 line-clamp-1 break-all">{message.isGif ? '📷 GIF' : message.content}</p>
           </div>
@@ -1409,8 +1436,11 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
               <Avatar emoji={reply.avatar || '🛡️'} size="xs" />
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xs font-medium truncate">{reply.displayName || reply.user}</span>
-                  <ReputationBadge wallet={reply.wallet} showTooltip={false} />
+                  <span className="text-xs font-medium truncate">
+                    <ReputationBadge wallet={reply.wallet} showTooltip={false}>
+                      {reply.displayName || reply.user}
+                    </ReputationBadge>
+                  </span>
                   <span className="text-xs text-white/20 flex-shrink-0">{formatTime(reply.timestamp)}</span>
                 </div>
                 {reply.isGif ? (
@@ -1780,8 +1810,9 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                 <Avatar emoji={message.avatar || '🛡️'} size="md" />
                 <div className="flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-medium">{message.displayName || message.user}</span>
-                    <ReputationBadge wallet={message.wallet} />
+                    <ReputationBadge wallet={message.wallet}>
+                      <span className="font-medium">{message.displayName || message.user}</span>
+                    </ReputationBadge>
                     {message.displayName && (
                       <span className="text-xs text-white/20 font-mono">{message.user}</span>
                     )}
@@ -1811,8 +1842,9 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
                   <Avatar emoji={reply.avatar || '🛡️'} size="sm" />
                   <div className="flex-1">
                     <div className="flex items-baseline gap-2">
-                      <span className="text-sm font-medium">{reply.displayName || reply.user}</span>
-                      <ReputationBadge wallet={reply.wallet} />
+                      <ReputationBadge wallet={reply.wallet}>
+                        <span className="text-sm font-medium">{reply.displayName || reply.user}</span>
+                      </ReputationBadge>
                       {reply.displayName && (
                         <span className="text-xs text-white/20 font-mono">{reply.user}</span>
                       )}
@@ -3361,10 +3393,11 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
                 <Avatar emoji={msg.avatar} size="sm" />
                 <div className="flex-1">
                   <div className="flex items-baseline gap-2">
-                    <span className="font-medium text-sm">
-                      {msg.displayName || msg.user}
-                    </span>
-                    <ReputationBadge wallet={msg.wallet} />
+                    <ReputationBadge wallet={msg.wallet}>
+                      <span className="font-medium text-sm">
+                        {msg.displayName || msg.user}
+                      </span>
+                    </ReputationBadge>
                     {msg.displayName && (
                       <span className="text-xs text-white/20 font-mono">{msg.user}</span>
                     )}
@@ -3999,9 +4032,10 @@ const UserList = ({ sessionToken }) => {
             <div key={user.wallet} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer">
               <Avatar emoji={getAvatarEmoji(user.wallet)} size="sm" status="online" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate flex items-center gap-1">
-                  {user.displayName || truncateAddress(user.wallet)}
-                  <ReputationBadge wallet={user.wallet} />
+                <p className="text-sm font-medium truncate">
+                  <ReputationBadge wallet={user.wallet}>
+                    {user.displayName || truncateAddress(user.wallet)}
+                  </ReputationBadge>
                 </p>
                 {user.displayName && (
                   <p className="text-xs text-white/30 font-mono truncate">{truncateAddress(user.wallet)}</p>
@@ -5851,82 +5885,41 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                       
                       return (
                         <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
-                          {/* Current badge display */}
+                          {/* Username color preview */}
                           <div className="p-4 bg-white/5 rounded-xl">
-                            <p className="text-xs text-white/50 mb-3">Your displayed badges:</p>
-                            <div className="flex items-center gap-2 p-3 bg-white/10 rounded-lg min-h-[52px]">
-                              {displayedBadges.length > 0 ? (
-                                <>
-                                  {displayedBadges.map(badge => (
-                                    <span key={badge.emoji} className="text-2xl" title={badge.name}>{badge.emoji}</span>
-                                  ))}
-                                  <span className="text-sm text-white/70 ml-2">
-                                    {displayedBadges.map(b => b.name).join(' + ')}
-                                  </span>
-                                </>
-                              ) : (
-                                <span className="text-sm text-white/40 italic">No badges selected</span>
-                              )}
+                            <p className="text-xs text-white/50 mb-3">Your username color:</p>
+                            <div className="flex items-center gap-3 p-3 bg-white/10 rounded-lg">
+                              <span className={`text-lg font-medium ${
+                                userReputation.isEarlyAdopter || userReputation.primaryBadge?.emoji === '👑' ? 'text-amber-400' :
+                                userReputation.primaryBadge?.emoji === '💎' ? 'text-purple-400' :
+                                userReputation.primaryBadge?.emoji === '🌳' ? 'text-cyan-400' :
+                                userReputation.primaryBadge?.emoji === '🌿' ? 'text-teal-400' :
+                                userReputation.primaryBadge?.emoji === '🌾' ? 'text-emerald-400' :
+                                userReputation.primaryBadge?.emoji === '🌱' ? 'text-green-400' :
+                                userReputation.primaryBadge?.emoji === '🍃' ? 'text-lime-400' : 'text-white'
+                              }`}>
+                                {displayName || truncateAddress(address)}
+                              </span>
+                              <span className="text-xs text-white/50">← How others see your name</span>
                             </div>
+                            <p className="text-xs text-white/40 mt-2">Hover over usernames in chat to see recognition details</p>
                           </div>
                           
-                          {/* MLM Warning */}
-                          {mlmWarning && (
-                            <div className="p-3 bg-amber-500/20 border border-amber-500/50 rounded-xl text-center animate-fade-in">
-                              <p className="text-sm text-amber-400">
-                                🚫 Whoa there, Triple Diamond Elite Ambassador! We're keeping it to 2 badges max so this chat doesn't look like an MLM convention.
-                              </p>
-                            </div>
-                          )}
-                          
-                          {/* Badge selector */}
-                          {allBadges.length > 2 && (
-                            <div className="p-4 bg-white/5 rounded-xl">
-                              <p className="text-sm font-medium mb-2">Choose up to 2 badges:</p>
-                              <p className="text-xs text-white/50 mb-3">You have {allBadges.length} badges! Tap to select/deselect.</p>
-                              <div className="flex flex-col gap-2">
-                                {allBadges.map((badge) => (
-                                  <button
-                                    key={badge.emoji}
-                                    onClick={() => toggleBadge(badge.emoji)}
-                                    disabled={savingBadge}
-                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
-                                      selectedBadges.includes(badge.emoji)
-                                        ? 'bg-amber-400/20 border border-amber-400/50'
-                                        : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                                    }`}
-                                  >
-                                    <span className="text-2xl">{badge.emoji}</span>
-                                    <div className="text-left flex-1">
-                                      <p className="text-sm font-medium">{badge.name}</p>
-                                      <p className="text-xs text-white/50">{badge.description}</p>
-                                    </div>
-                                    {selectedBadges.includes(badge.emoji) && (
-                                      <span className="text-amber-400">✓</span>
-                                    )}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Badge explanations - only show if 2 or fewer badges */}
-                          {allBadges.length <= 2 && (
-                            <div className="p-4 bg-white/5 rounded-xl">
-                              <p className="text-sm font-medium mb-3">Your badges:</p>
-                              <div className="space-y-3">
-                                {allBadges.map(badge => (
-                                  <div key={badge.emoji} className="flex items-start gap-3">
-                                    <span className="text-lg">{badge.emoji}</span>
-                                    <div>
-                                      <p className="text-sm font-medium">{badge.name}</p>
-                                      <p className="text-xs text-white/50">{badge.description}</p>
-                                    </div>
+                          {/* All badges list */}
+                          <div className="p-4 bg-white/5 rounded-xl">
+                            <p className="text-sm font-medium mb-3">Your recognition:</p>
+                            <div className="space-y-3">
+                              {allBadges.map(badge => (
+                                <div key={badge.emoji} className="flex items-start gap-3 p-2 bg-white/5 rounded-lg">
+                                  <span className="text-2xl">{badge.emoji}</span>
+                                  <div>
+                                    <p className="text-sm font-medium">{badge.name}</p>
+                                    <p className="text-xs text-white/50">{badge.description}</p>
                                   </div>
-                                ))}
-                              </div>
+                                </div>
+                              ))}
                             </div>
-                          )}
+                          </div>
                         </div>
                       );
                     })()}
