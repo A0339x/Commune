@@ -3065,13 +3065,31 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             
             {onboardingStep === 3 && (
               <div className="text-center">
+                <div className="text-5xl mb-6">🔗</div>
+                <h2 className="text-xl font-bold mb-3">Live Link Previews</h2>
+                <p className="text-white/60 mb-8">
+                  Hover over links to preview many websites <span className="text-amber-400">right inside the chat</span>. Browse and click through pages without leaving the conversation. Some sites (like Google, YouTube) will open in a new tab instead.
+                </p>
+                <div className="flex gap-3">
+                  <Button variant="ghost" onClick={() => setOnboardingStep(2)} className="flex-1">
+                    ← Back
+                  </Button>
+                  <Button onClick={() => setOnboardingStep(4)} className="flex-1">
+                    Next →
+                  </Button>
+                </div>
+              </div>
+            )}
+            
+            {onboardingStep === 4 && (
+              <div className="text-center">
                 <div className="text-5xl mb-6">⚙️</div>
                 <h2 className="text-xl font-bold mb-3">Make It Yours</h2>
                 <p className="text-white/60 mb-8">
                   Set your display name in Settings (top right) so others know who you are!
                 </p>
                 <div className="flex gap-3">
-                  <Button variant="ghost" onClick={() => setOnboardingStep(2)} className="flex-1">
+                  <Button variant="ghost" onClick={() => setOnboardingStep(3)} className="flex-1">
                     ← Back
                   </Button>
                   <Button 
@@ -3089,7 +3107,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             
             {/* Progress dots */}
             <div className="flex justify-center gap-2 mt-6">
-              {[0, 1, 2, 3].map(step => (
+              {[0, 1, 2, 3, 4].map(step => (
                 <div 
                   key={step}
                   className={`w-2 h-2 rounded-full transition-colors ${
@@ -3100,7 +3118,7 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
             </div>
             
             {/* Skip button */}
-            {onboardingStep < 3 && (
+            {onboardingStep < 4 && (
               <button
                 onClick={() => {
                   setShowWelcomeModal(false);
