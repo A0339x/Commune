@@ -1383,7 +1383,10 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
         <div className="flex items-center gap-2">
           <Avatar emoji={message.avatar || '🛡️'} size="sm" />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{message.displayName || message.user}</p>
+            <p className="text-sm font-medium truncate flex items-center gap-1">
+              {message.displayName || message.user}
+              <ReputationBadge wallet={message.wallet} showTooltip={false} />
+            </p>
             <p className="text-xs text-white/40 line-clamp-1 break-all">{message.isGif ? '📷 GIF' : message.content}</p>
           </div>
         </div>
@@ -1400,6 +1403,7 @@ const ThreadPreview = ({ message, replies, sessionToken, onClose, position, wsRe
               <div className="flex-1 min-w-0 overflow-hidden">
                 <div className="flex items-baseline gap-2">
                   <span className="text-xs font-medium truncate">{reply.displayName || reply.user}</span>
+                  <ReputationBadge wallet={reply.wallet} showTooltip={false} />
                   <span className="text-xs text-white/20 flex-shrink-0">{formatTime(reply.timestamp)}</span>
                 </div>
                 {reply.isGif ? (
@@ -5333,6 +5337,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [activeTab, setActiveTab] = useState('chat');
   const [showChatMenu, setShowChatMenu] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsTab, setSettingsTab] = useState('profile');
   const [displayName, setDisplayName] = useState('');
   const [newDisplayName, setNewDisplayName] = useState('');
   const [savingName, setSavingName] = useState(false);
@@ -5342,6 +5347,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
   const [userReputation, setUserReputation] = useState(null);
   const [selectedModifier, setSelectedModifier] = useState(null);
   const [savingBadge, setSavingBadge] = useState(false);
+  const [badgeRefreshKey, setBadgeRefreshKey] = useState(0);
   
   // Check if user is admin
   useEffect(() => {
@@ -5413,6 +5419,8 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
       setSelectedModifier(modifierEmoji);
       // Clear local cache to force refresh
       localStorage.removeItem(`reputation_${address.toLowerCase()}`);
+      // Trigger badge refresh across the app
+      setBadgeRefreshKey(prev => prev + 1);
     } catch (error) {
       console.error('Failed to save modifier preference:', error);
     } finally {
@@ -5649,7 +5657,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
           onClick={() => setShowSettings(false)}
         >
           <Card className="max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold">Settings</h2>
               <button 
                 onClick={() => setShowSettings(false)}
@@ -5659,154 +5667,188 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
               </button>
             </div>
             
-            <div className="space-y-4">
-              {/* Display Name */}
-              <div className="p-4 bg-white/5 rounded-xl">
-                <div className="flex items-center gap-3 mb-3">
-                  <Icons.User />
-                  <span className="font-medium">Display Name</span>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newDisplayName}
-                    onChange={(e) => setNewDisplayName(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && newDisplayName !== displayName) {
-                        saveDisplayName();
-                      }
-                    }}
-                    placeholder="Enter display name..."
-                    maxLength={20}
-                    className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
-                  />
-                  <Button 
-                    size="sm" 
-                    onClick={saveDisplayName}
-                    disabled={savingName || newDisplayName === displayName}
-                  >
-                    {savingName ? <Spinner size="sm" /> : 'Save'}
-                  </Button>
-                </div>
-                {nameError && (
-                  <p className="text-red-400 text-xs mt-2">{nameError}</p>
-                )}
-                {nameSuccess && (
-                  <p className="text-emerald-400 text-xs mt-2">Display name saved!</p>
-                )}
-                <p className="text-white/30 text-xs mt-2">Max 20 characters. Letters, numbers, spaces, underscores, dashes only.</p>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Icons.Mic />
-                  <span>Microphone</span>
-                </div>
-                <Badge variant="success">Enabled</Badge>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Icons.Video />
-                  <span>Camera</span>
-                </div>
-                <Badge variant="success">Enabled</Badge>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <Icons.Wallet />
-                  <span>Wallet</span>
-                </div>
-                <span className="font-mono text-sm text-white/50">{truncateAddress(address)}</span>
-              </div>
-              
-              <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <span>🛡️</span>
-                  <span>GUARD Balance</span>
-                </div>
-                <span className="font-medium text-amber-400">{tokenBalance}</span>
-              </div>
-              
-              {/* Badge Display */}
-              {userReputation?.primaryBadge && (
-                <div className="p-4 bg-white/5 rounded-xl">
-                  <div className="flex items-center gap-3 mb-3">
-                    <span>🏅</span>
-                    <span className="font-medium">Your Badges</span>
-                  </div>
-                  
-                  {/* Current badge display */}
-                  <div className="flex items-center gap-2 mb-4 p-3 bg-white/5 rounded-lg">
-                    {userReputation.isEarlyAdopter && <span className="text-xl" title="Early Adopter">🏆</span>}
-                    <span className="text-xl" title={userReputation.primaryBadge.name}>{userReputation.primaryBadge.emoji}</span>
-                    {userReputation.modifier && <span className="text-xl" title={userReputation.modifier.name}>{userReputation.modifier.emoji}</span>}
-                    <span className="text-sm text-white/70 ml-2">
-                      {userReputation.primaryBadge.name}
-                      {userReputation.modifier && ` + ${userReputation.modifier.name}`}
-                    </span>
-                  </div>
-                  
-                  {/* Modifier selector */}
-                  {userReputation.availableModifiers?.length > 1 && (
-                    <div>
-                      <p className="text-xs text-white/50 mb-2">Choose which modifier to display:</p>
-                      <div className="flex gap-2">
-                        {userReputation.availableModifiers.map((mod) => (
-                          <button
-                            key={mod.emoji}
-                            onClick={() => saveModifierPreference(mod.emoji)}
-                            disabled={savingBadge}
-                            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${
-                              selectedModifier === mod.emoji || (!selectedModifier && mod.emoji === userReputation.modifier?.emoji)
-                                ? 'bg-amber-400/20 border border-amber-400/50'
-                                : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                            }`}
-                          >
-                            <span className="text-lg">{mod.emoji}</span>
-                            <span className="text-sm">{mod.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Badge descriptions */}
-                  <div className="mt-4 space-y-2">
-                    {userReputation.isEarlyAdopter && (
-                      <p className="text-xs text-white/40">🏆 Early Adopter - First 100 GUARD holders</p>
-                    )}
-                    <p className="text-xs text-white/40">{userReputation.primaryBadge.emoji} {userReputation.primaryBadge.description}</p>
-                    {userReputation.modifier && (
-                      <p className="text-xs text-white/40">{userReputation.modifier.emoji} {userReputation.modifier.description}</p>
-                    )}
-                  </div>
-                </div>
-              )}
-              
-              {/* No badge message */}
-              {userReputation && !userReputation.primaryBadge && (
-                <div className="p-4 bg-white/5 rounded-xl">
-                  <div className="flex items-center gap-3 mb-2">
-                    <span>🏅</span>
-                    <span className="font-medium">Badges</span>
-                  </div>
-                  <p className="text-sm text-white/50">
-                    Hold GUARD tokens to earn reputation badges! Badges are based on how long you've held tokens.
-                  </p>
-                </div>
-              )}
+            {/* Tabs */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setSettingsTab('profile')}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                  settingsTab === 'profile'
+                    ? 'bg-amber-400/20 text-amber-400 border border-amber-400/50'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                <Icons.User className="inline w-4 h-4 mr-2" />
+                Profile
+              </button>
+              <button
+                onClick={() => setSettingsTab('badges')}
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-medium transition-all ${
+                  settingsTab === 'badges'
+                    ? 'bg-amber-400/20 text-amber-400 border border-amber-400/50'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10'
+                }`}
+              >
+                🏅 Badges
+              </button>
             </div>
             
-            <ConnectButton.Custom>
-              {({ openAccountModal }) => (
-                <Button variant="danger" className="w-full mt-6" onClick={openAccountModal}>
-                  <Icons.Disconnect />
-                  Disconnect Wallet
-                </Button>
-              )}
-            </ConnectButton.Custom>
+            {/* Profile Tab */}
+            {settingsTab === 'profile' && (
+              <div className="space-y-4">
+                {/* Display Name */}
+                <div className="p-4 bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Icons.User />
+                    <span className="font-medium">Display Name</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newDisplayName}
+                      onChange={(e) => setNewDisplayName(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && newDisplayName !== displayName) {
+                          saveDisplayName();
+                        }
+                      }}
+                      placeholder="Enter display name..."
+                      maxLength={20}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400/50"
+                    />
+                    <Button 
+                      size="sm" 
+                      onClick={saveDisplayName}
+                      disabled={savingName || newDisplayName === displayName}
+                    >
+                      {savingName ? <Spinner size="sm" /> : 'Save'}
+                    </Button>
+                  </div>
+                  {nameError && (
+                    <p className="text-red-400 text-xs mt-2">{nameError}</p>
+                  )}
+                  {nameSuccess && (
+                    <p className="text-emerald-400 text-xs mt-2">Display name saved!</p>
+                  )}
+                  <p className="text-white/30 text-xs mt-2">Max 20 characters. Letters, numbers, spaces, underscores, dashes only.</p>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <Icons.Wallet />
+                    <span>Wallet</span>
+                  </div>
+                  <span className="font-mono text-sm text-white/50">{truncateAddress(address)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl">
+                  <div className="flex items-center gap-3">
+                    <span>🛡️</span>
+                    <span>GUARD Balance</span>
+                  </div>
+                  <span className="font-medium text-amber-400">{tokenBalance}</span>
+                </div>
+                
+                <ConnectButton.Custom>
+                  {({ openAccountModal }) => (
+                    <Button variant="danger" className="w-full" onClick={openAccountModal}>
+                      <Icons.Disconnect />
+                      Disconnect Wallet
+                    </Button>
+                  )}
+                </ConnectButton.Custom>
+              </div>
+            )}
+            
+            {/* Badges Tab */}
+            {settingsTab === 'badges' && (
+              <div className="space-y-4">
+                {/* Badge Display */}
+                {userReputation?.primaryBadge ? (
+                  <>
+                    {/* Current badge display */}
+                    <div className="p-4 bg-white/5 rounded-xl">
+                      <p className="text-xs text-white/50 mb-3">Your current badges:</p>
+                      <div className="flex items-center gap-2 p-3 bg-white/10 rounded-lg">
+                        {userReputation.isEarlyAdopter && <span className="text-2xl" title="Early Adopter">🏆</span>}
+                        <span className="text-2xl" title={userReputation.primaryBadge.name}>{userReputation.primaryBadge.emoji}</span>
+                        {(selectedModifier || userReputation.modifier) && (
+                          <span className="text-2xl" title={(userReputation.availableModifiers?.find(m => m.emoji === selectedModifier) || userReputation.modifier)?.name}>
+                            {selectedModifier || userReputation.modifier?.emoji}
+                          </span>
+                        )}
+                        <span className="text-sm text-white/70 ml-2">
+                          {userReputation.isEarlyAdopter && 'Early Adopter + '}
+                          {userReputation.primaryBadge.name}
+                          {(selectedModifier || userReputation.modifier) && ` + ${(userReputation.availableModifiers?.find(m => m.emoji === selectedModifier) || userReputation.modifier)?.name}`}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Modifier selector */}
+                    {userReputation.availableModifiers?.length > 1 && (
+                      <div className="p-4 bg-white/5 rounded-xl">
+                        <p className="text-sm font-medium mb-2">Choose your modifier:</p>
+                        <p className="text-xs text-white/50 mb-3">You qualify for multiple modifiers. Pick which one to display!</p>
+                        <div className="flex flex-col gap-2">
+                          {userReputation.availableModifiers.map((mod) => (
+                            <button
+                              key={mod.emoji}
+                              onClick={() => saveModifierPreference(mod.emoji)}
+                              disabled={savingBadge}
+                              className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${
+                                selectedModifier === mod.emoji || (!selectedModifier && mod.emoji === userReputation.modifier?.emoji)
+                                  ? 'bg-amber-400/20 border border-amber-400/50'
+                                  : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                              }`}
+                            >
+                              <span className="text-2xl">{mod.emoji}</span>
+                              <div className="text-left">
+                                <p className="text-sm font-medium">{mod.name}</p>
+                                <p className="text-xs text-white/50">{mod.description}</p>
+                              </div>
+                              {(selectedModifier === mod.emoji || (!selectedModifier && mod.emoji === userReputation.modifier?.emoji)) && (
+                                <span className="ml-auto text-amber-400">✓</span>
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Badge explanations */}
+                    <div className="p-4 bg-white/5 rounded-xl">
+                      <p className="text-sm font-medium mb-3">Your badge details:</p>
+                      <div className="space-y-3">
+                        {userReputation.isEarlyAdopter && (
+                          <div className="flex items-start gap-3">
+                            <span className="text-lg">🏆</span>
+                            <div>
+                              <p className="text-sm font-medium">Early Adopter</p>
+                              <p className="text-xs text-white/50">First 100 GUARD holders ever</p>
+                            </div>
+                          </div>
+                        )}
+                        <div className="flex items-start gap-3">
+                          <span className="text-lg">{userReputation.primaryBadge.emoji}</span>
+                          <div>
+                            <p className="text-sm font-medium">{userReputation.primaryBadge.name}</p>
+                            <p className="text-xs text-white/50">{userReputation.primaryBadge.description}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="p-6 bg-white/5 rounded-xl text-center">
+                    <span className="text-4xl mb-4 block">🏅</span>
+                    <p className="text-sm text-white/70 mb-2">No badges yet</p>
+                    <p className="text-xs text-white/50">
+                      Hold GUARD tokens to earn reputation badges! Badges are based on how long you've been a holder.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </Card>
         </div>
       )}
