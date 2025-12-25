@@ -1211,8 +1211,52 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
           </div>
         </div>
         
-        {/* Replies */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Replies Area - relative container for GIF picker */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 relative">
+          {/* GIF Picker - overlays the replies area */}
+          {showGifPicker && (
+            <>
+              {/* Backdrop to close on click outside */}
+              <div 
+                className="fixed inset-0 z-10" 
+                onClick={() => setShowGifPicker(false)}
+              />
+              <div className="absolute inset-0 bg-[#12121a] p-3 z-20 flex flex-col">
+                <input
+                  type="text"
+                  value={gifSearch}
+                  onChange={(e) => handleGifSearchChange(e.target.value)}
+                  placeholder="Search GIFs..."
+                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50"
+                  autoFocus
+                />
+                <div className="flex-1 overflow-y-auto">
+                  {gifLoading ? (
+                    <div className="flex justify-center py-4"><Spinner size="sm" /></div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {(gifSearch ? gifResults : trendingGifs).map((gif) => (
+                        <img
+                          key={gif.id}
+                          src={gif.media_formats?.tinygif?.url}
+                          alt="GIF"
+                          onClick={() => sendGifReply(gif)}
+                          className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                        />
+                      ))}
+                    </div>
+                  )}
+                  {!gifLoading && gifSearch && gifResults.length === 0 && (
+                    <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
+                  )}
+                </div>
+                <div className="pt-2 border-t border-white/10 flex justify-end flex-shrink-0">
+                  <span className="text-xs text-white/30">Powered by Tenor</span>
+                </div>
+              </div>
+            </>
+          )}
+          
           {loading ? (
             <div className="flex items-center justify-center py-8">
               <Spinner />
@@ -1297,51 +1341,7 @@ const ThreadModal = ({ message, sessionToken, onClose, wsRef, walletAddress, onR
         </div>
         
         {/* Reply Input */}
-        <div className="p-4 border-t border-white/5 relative">
-          {/* GIF Picker - overlays the replies area */}
-          {showGifPicker && (
-            <>
-              {/* Backdrop to close on click outside */}
-              <div 
-                className="fixed inset-0 z-10" 
-                onClick={() => setShowGifPicker(false)}
-              />
-              <div className="absolute bottom-full left-0 right-0 mb-0 bg-[#12121a] border-t border-white/10 p-3 shadow-2xl z-20" style={{ height: '280px' }}>
-                <input
-                  type="text"
-                  value={gifSearch}
-                  onChange={(e) => handleGifSearchChange(e.target.value)}
-                  placeholder="Search GIFs..."
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm mb-2 focus:outline-none focus:border-amber-400/50"
-                  autoFocus
-                />
-                <div className="overflow-y-auto" style={{ height: '200px' }}>
-                  {gifLoading ? (
-                    <div className="flex justify-center py-4"><Spinner size="sm" /></div>
-                  ) : (
-                    <div className="grid grid-cols-2 gap-2">
-                      {(gifSearch ? gifResults : trendingGifs).map((gif) => (
-                        <img
-                          key={gif.id}
-                          src={gif.media_formats?.tinygif?.url}
-                          alt="GIF"
-                          onClick={() => sendGifReply(gif)}
-                          className="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                        />
-                      ))}
-                    </div>
-                  )}
-                  {!gifLoading && gifSearch && gifResults.length === 0 && (
-                    <p className="text-white/30 text-sm text-center py-4">No GIFs found</p>
-                  )}
-                </div>
-                <div className="pt-2 border-t border-white/10 flex justify-end">
-                  <span className="text-xs text-white/30">Powered by Tenor</span>
-                </div>
-              </div>
-            </>
-          )}
-          
+        <div className="p-4 border-t border-white/5">
           {rateLimited ? (
             <div className="flex items-center justify-center py-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
               <span className="text-amber-400/80 text-sm">🕵️ Sneaky! But threads count too. Wait {rateLimitSeconds}s</span>
