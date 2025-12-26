@@ -7067,26 +7067,25 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 6: Badges Sequence */}
       {scene === 6 && (
-        <div className={`text-center transition-opacity duration-1000 min-h-[350px] flex flex-col items-center justify-start pt-4 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`text-center transition-opacity duration-1000 min-h-[350px] flex flex-col items-center justify-center ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           
-          {/* Title - fixed height container */}
-          <div className="h-[60px] flex items-center justify-center">
-            <p className={`text-xl text-white/60 transition-opacity duration-1000 ${
-              subStage >= 1 && subStage <= 4 ? 'opacity-100' : 'opacity-0'
+          {/* Badge sequence content - shown during stages 1-4 */}
+          <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
+            subStage >= 1 && subStage <= 4 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
+          }`}>
+            {/* Title */}
+            <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
+              subStage >= 1 ? 'opacity-100' : 'opacity-0'
             }`}>
               You've earned your place
             </p>
-          </div>
-          
-          {/* Badge content area - fixed height to prevent jumping */}
-          <div className="h-[250px] w-full flex flex-col items-center justify-center relative">
             
-            {/* Badge sequence - ALWAYS RENDERED, visibility controlled by opacity */}
+            {/* Badge content */}
             {allBadges[currentBadgeIndex] && (
-              <div className={`flex flex-col items-center justify-center transition-opacity duration-700 absolute inset-0 ${
-                subStage === 2 || subStage === 3 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
+                subStage === 2 || subStage === 3 ? 'opacity-100' : 'opacity-0'
               }`}>
-                {/* Reason text - single line, no wrap */}
+                {/* Reason text - single line */}
                 <p className={`text-lg text-white/50 transition-opacity duration-700 mb-6 whitespace-nowrap ${
                   subStage >= 2 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
                 }`}>
@@ -7146,16 +7145,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 </div>
               </div>
             )}
-            
-            {/* Personality quote - ALWAYS RENDERED, visibility controlled by opacity */}
-            <div className={`flex flex-col items-center justify-center absolute inset-0 w-full px-4 transition-opacity duration-700 ${
-              subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none'
-            }`}>
-              <p className="text-white/50 text-sm mb-4">This is who you are</p>
-              <p className="text-xl text-white/90 italic max-w-lg leading-relaxed text-center">
-                "{getHolderPersonality()}"
-              </p>
-            </div>
+          </div>
+          
+          {/* Personality quote - wide hero style */}
+          <div className={`flex flex-col items-center justify-center w-full transition-opacity duration-1000 ${
+            subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
+          }`}>
+            <p className="text-white/50 text-sm mb-6">This is who you are</p>
+            <p className="text-2xl md:text-3xl text-white/90 italic max-w-2xl leading-relaxed text-center px-8">
+              "{getHolderPersonality()}"
+            </p>
           </div>
         </div>
       )}
