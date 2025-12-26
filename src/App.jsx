@@ -7071,34 +7071,32 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Badge content area - fixed height to prevent jumping */}
-          <div className="h-[250px] flex flex-col items-center justify-center relative">
+          <div className="h-[250px] w-full flex flex-col items-center justify-center">
             
-            {/* Badge sequence - ALWAYS RENDERED like timing/paper hands scenes */}
-            {allBadges[currentBadgeIndex] && (
-              <div className={`flex flex-col items-center h-full justify-center absolute inset-0 transition-opacity duration-700 ${
+            {/* Badge sequence - ALWAYS RENDERED, visibility controlled by opacity */}
+            {allBadges[currentBadgeIndex] && subStage !== 6 && (
+              <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
                 subStage >= 2 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
               }`}>
                 {/* Reason text */}
-                <div className="h-[50px] flex items-center justify-center mb-4">
-                  <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed ${
-                    subStage >= 2 ? 'opacity-100' : 'opacity-0'
-                  }`}>
-                    {(() => {
-                      const name = allBadges[currentBadgeIndex].name;
-                      const reason = allBadges[currentBadgeIndex].reason;
-                      if (name === 'Early Adopter') return 'One of the first 100 to believe';
-                      if (name === 'Founding Member') return 'Here from the very beginning';
-                      if (name === 'True Believer') return 'Bought over half your stack in the first 45 days';
-                      if (name === 'Steady Stacker') return 'Consistently building your position';
-                      if (name === 'Diamond Hands') return 'Held through everything';
-                      if (name === 'Whale') return 'A major force in the community';
-                      return reason.replace(/^For /i, '').replace(/\.$/, '');
-                    })()}
-                  </p>
-                </div>
+                <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed mb-6 ${
+                  subStage >= 2 ? 'opacity-100' : 'opacity-0'
+                }`}>
+                  {(() => {
+                    const name = allBadges[currentBadgeIndex].name;
+                    const reason = allBadges[currentBadgeIndex].reason;
+                    if (name === 'Early Adopter') return 'One of the first 100 to believe';
+                    if (name === 'Founding Member') return 'Here from the very beginning';
+                    if (name === 'True Believer') return 'Bought over half your stack in the first 45 days';
+                    if (name === 'Steady Stacker') return 'Consistently building your position';
+                    if (name === 'Diamond Hands') return 'Held through everything';
+                    if (name === 'Whale') return 'A major force in the community';
+                    return reason.replace(/^For /i, '').replace(/\.$/, '');
+                  })()}
+                </p>
                 
                 {/* Badge reveal */}
-                <div className={`h-[150px] flex flex-col items-center justify-center transition-opacity duration-700 ${
+                <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
                   subStage >= 3 ? 'opacity-100' : 'opacity-0'
                 }`}>
                   <span className={`text-8xl block mb-4 hover:scale-110 transition-transform duration-300 cursor-default ${
@@ -7142,14 +7140,14 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             )}
             
             {/* Personality quote - shown after all badges */}
-            <div className={`flex flex-col items-center justify-center h-full absolute inset-0 transition-opacity duration-700 ${
-              subStage === 6 ? 'opacity-100' : 'opacity-0'
-            }`}>
-              <p className="text-white/50 text-sm mb-4">This is who you are</p>
-              <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
-                "{getHolderPersonality()}"
-              </p>
-            </div>
+            {subStage === 6 && (
+              <div className="flex flex-col items-center justify-center transition-opacity duration-700 opacity-100">
+                <p className="text-white/50 text-sm mb-4">This is who you are</p>
+                <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
+                  "{getHolderPersonality()}"
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
