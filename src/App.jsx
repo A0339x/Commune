@@ -6829,12 +6829,12 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       {/* Scene 0: Title Sequence */}
       {scene === 0 && (
         <div className={`text-center transition-opacity duration-1000 ${subStage === 3 ? 'opacity-0' : 'opacity-100'}`}>
-          <h1 className={`text-5xl font-bold mb-4 transition-opacity duration-1000 ${
+          <h1 className={`text-5xl font-bold mb-4 transition-opacity duration-[2000ms] ease-in-out ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             <span className="text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.3)]">Your GUARD</span> Journey
           </h1>
-          <p className={`text-xl text-white/60 transition-opacity duration-1000 delay-300 ${
+          <p className={`text-xl text-white/60 transition-opacity duration-[1500ms] ease-in-out delay-500 ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             Here's your story in the community
