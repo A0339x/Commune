@@ -7054,13 +7054,11 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       {/* Scene 6: Badges Sequence */}
       {scene === 6 && (
         <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <h2 className={`text-2xl font-bold mb-12 transition-all duration-1000 ${
+          <p className={`text-xl text-white/60 mb-12 transition-all duration-1000 ${
             subStage >= 1 && subStage < 5 ? 'opacity-100' : 'opacity-0'
           }`}>
-            <span className="text-amber-400/80 tracking-wide">✨</span>
-            <span className="text-white/90 mx-2">Recognition earned</span>
-            <span className="text-amber-400/80 tracking-wide">✨</span>
-          </h2>
+            You've earned your place
+          </p>
           
           {subStage >= 2 && subStage < 5 && allBadges[currentBadgeIndex] && (() => {
             // Get badge-specific colors for the current badge
@@ -7074,6 +7072,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 case '🔒': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
                 case '⚡': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
                 case '🗳️': return 'drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]';
+                case '⭐': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
+                case '🔄': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
                 default: return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]';
               }
             };
@@ -7084,18 +7084,37 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 case '🌳': return 'text-cyan-400';
                 case '🌿': return 'text-teal-400';
                 case '🔒': return 'text-blue-400';
-                case '⚡': return 'text-yellow-400';
+                case '⚡': case '⭐': return 'text-yellow-400';
                 case '🗳️': return 'text-indigo-400';
+                case '🔄': return 'text-blue-400';
                 default: return 'text-amber-400';
               }
             };
+            
+            // Better written descriptions
+            const getBetterDescription = () => {
+              const name = allBadges[currentBadgeIndex].name;
+              const reason = allBadges[currentBadgeIndex].reason;
+              
+              // Rewrite common badge descriptions to be more elegant
+              if (name === 'Early Adopter') return 'One of the first 100 to believe';
+              if (name === 'Founding Member') return 'Here from the very beginning';
+              if (name === 'True Believer') return 'Never wavered, never sold';
+              if (name === 'Steady Stacker') return 'Consistently building your position';
+              if (name === 'Diamond Hands') return 'Held through everything';
+              if (name === 'Whale') return 'A major force in the community';
+              
+              // For others, clean up the reason text
+              return reason.replace(/^For /i, '').replace(/\.$/, '');
+            };
+            
             return (
               <div className="space-y-8">
-                {/* Reason text */}
-                <p className={`text-lg text-white/70 italic max-w-md mx-auto transition-all duration-700 leading-relaxed ${
+                {/* Reason text - no quotes, cleaner */}
+                <p className={`text-lg text-white/50 max-w-md mx-auto transition-all duration-700 leading-relaxed ${
                   subStage >= 2 && subStage < 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
                 }`}>
-                  "{allBadges[currentBadgeIndex].reason}"
+                  {getBetterDescription()}
                 </p>
                 
                 {/* Badge reveal */}
