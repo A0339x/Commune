@@ -7086,8 +7086,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               <div className={`flex flex-col items-center justify-center transition-opacity duration-700 absolute inset-0 ${
                 subStage === 2 || subStage === 3 ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}>
-                {/* Reason text */}
-                <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed mb-6 ${
+                {/* Reason text - single line, no wrap */}
+                <p className={`text-lg text-white/50 transition-opacity duration-700 mb-6 whitespace-nowrap ${
                   subStage >= 2 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
                 }`}>
                   {(() => {
@@ -7095,7 +7095,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                     const reason = allBadges[currentBadgeIndex].reason;
                     if (name === 'Early Adopter') return 'One of the first 100 to believe';
                     if (name === 'Founding Member') return 'Here from the very beginning';
-                    if (name === 'True Believer') return 'Bought over half your stack in the first 45 days';
+                    if (name === 'True Believer') return 'Over half your stack within 45 days of your first buy';
                     if (name === 'Steady Stacker') return 'Consistently building your position';
                     if (name === 'Diamond Hands') return 'Held through everything';
                     if (name === 'Whale') return 'A major force in the community';
@@ -7148,11 +7148,11 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             )}
             
             {/* Personality quote - ALWAYS RENDERED, visibility controlled by opacity */}
-            <div className={`flex flex-col items-center justify-center absolute inset-0 transition-opacity duration-700 ${
+            <div className={`flex flex-col items-center justify-center absolute inset-0 w-full px-4 transition-opacity duration-700 ${
               subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none'
             }`}>
               <p className="text-white/50 text-sm mb-4">This is who you are</p>
-              <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
+              <p className="text-xl text-white/90 italic max-w-lg leading-relaxed text-center">
                 "{getHolderPersonality()}"
               </p>
             </div>
