@@ -6690,13 +6690,15 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       // Loop through each badge
       for (let i = 0; i < allBadges.length; i++) {
+        // First set the badge index (content changes while hidden)
         setCurrentBadgeIndex(i);
-        setSubStage(2); // Show reason
+        await delay(50); // Tiny delay to ensure state update
+        setSubStage(2); // Fade in reason
         await delay(2000);
-        setSubStage(3); // Show badge
+        setSubStage(3); // Fade in badge
         await delay(2500);
-        setSubStage(4); // Fade badge out
-        await delay(1000);
+        setSubStage(4); // Fade everything out
+        await delay(800); // Wait for fade out animation to complete
       }
       
       // Show personality quote
@@ -7059,102 +7061,95 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       {scene === 6 && (
         <div className={`text-center transition-opacity duration-1000 min-h-[350px] flex flex-col items-center justify-start pt-4 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           
-          {/* Title - absolutely positioned to prevent any movement */}
+          {/* Title - fixed height container */}
           <div className="h-[60px] flex items-center justify-center">
-            <p className={`text-xl text-white/60 transition-opacity duration-1000 ${
-              subStage >= 1 && subStage < 5 && subStage !== 6 ? 'opacity-100' : 'opacity-0'
+            <p className={`text-xl text-white/60 transition-opacity duration-700 ${
+              subStage >= 1 && subStage <= 4 ? 'opacity-100' : 'opacity-0'
             }`}>
               You've earned your place
             </p>
           </div>
           
           {/* Badge content area - fixed height to prevent jumping */}
-          <div className="h-[250px] flex flex-col items-center justify-center">
+          <div className="h-[250px] flex flex-col items-center justify-center relative">
             
-            {/* Badge sequence */}
-            {subStage >= 2 && subStage <= 4 && allBadges[currentBadgeIndex] && (() => {
-              // Get badge-specific colors for the current badge
-              const getBadgeGlow = () => {
-                switch (allBadges[currentBadgeIndex].emoji) {
-                  case '🏆': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
-                  case '👑': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
-                  case '💎': return 'drop-shadow-[0_0_40px_rgba(192,132,252,0.6)]';
-                  case '🌳': return 'drop-shadow-[0_0_40px_rgba(34,211,238,0.6)]';
-                  case '🌿': return 'drop-shadow-[0_0_40px_rgba(45,212,191,0.6)]';
-                  case '🔒': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
-                  case '⚡': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
-                  case '🗳️': return 'drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]';
-                  case '⭐': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
-                  case '🔄': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
-                  default: return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]';
-                }
-              };
-              const getBadgeTextColor = () => {
-                switch (allBadges[currentBadgeIndex].emoji) {
-                  case '🏆': case '👑': return 'text-amber-400';
-                  case '💎': return 'text-purple-400';
-                  case '🌳': return 'text-cyan-400';
-                  case '🌿': return 'text-teal-400';
-                  case '🔒': return 'text-blue-400';
-                  case '⚡': case '⭐': return 'text-yellow-400';
-                  case '🗳️': return 'text-indigo-400';
-                  case '🔄': return 'text-blue-400';
-                  default: return 'text-amber-400';
-                }
-              };
-              
-              // Better written descriptions
-              const getBetterDescription = () => {
-                const name = allBadges[currentBadgeIndex].name;
-                const reason = allBadges[currentBadgeIndex].reason;
-                
-                // Rewrite common badge descriptions to be more elegant
-                if (name === 'Early Adopter') return 'One of the first 100 to believe';
-                if (name === 'Founding Member') return 'Here from the very beginning';
-                if (name === 'True Believer') return 'Bought over half your stack in the first 45 days';
-                if (name === 'Steady Stacker') return 'Consistently building your position';
-                if (name === 'Diamond Hands') return 'Held through everything';
-                if (name === 'Whale') return 'A major force in the community';
-                
-                // For others, clean up the reason text
-                return reason.replace(/^For /i, '').replace(/\.$/, '');
-              };
-              
-              return (
-                <div className="flex flex-col items-center h-full justify-center">
-                  {/* Reason text - fixed height container */}
-                  <div className="h-[50px] flex items-center justify-center mb-4">
-                    <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed ${
-                      subStage >= 2 && subStage < 4 ? 'opacity-100' : 'opacity-0'
-                    }`}>
-                      {getBetterDescription()}
-                    </p>
-                  </div>
-                  
-                  {/* Badge reveal - fixed height container */}
-                  <div className={`h-[150px] flex flex-col items-center justify-center transition-opacity duration-700 ${
-                    subStage >= 3 && subStage < 4 ? 'opacity-100' : 'opacity-0'
+            {/* Badge sequence - ALWAYS RENDERED like timing/paper hands scenes */}
+            {allBadges[currentBadgeIndex] && (
+              <div className={`flex flex-col items-center h-full justify-center absolute inset-0 transition-opacity duration-700 ${
+                subStage >= 2 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
+              }`}>
+                {/* Reason text */}
+                <div className="h-[50px] flex items-center justify-center mb-4">
+                  <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed ${
+                    subStage >= 2 ? 'opacity-100' : 'opacity-0'
                   }`}>
-                    <span className={`text-8xl block mb-4 ${getBadgeGlow()} hover:scale-110 transition-transform duration-300 cursor-default`}>
-                      {allBadges[currentBadgeIndex].emoji}
-                    </span>
-                    <p className={`text-2xl font-bold ${getBadgeTextColor()} tracking-wide`}>
-                      {allBadges[currentBadgeIndex].name}
-                    </p>
-                  </div>
+                    {(() => {
+                      const name = allBadges[currentBadgeIndex].name;
+                      const reason = allBadges[currentBadgeIndex].reason;
+                      if (name === 'Early Adopter') return 'One of the first 100 to believe';
+                      if (name === 'Founding Member') return 'Here from the very beginning';
+                      if (name === 'True Believer') return 'Bought over half your stack in the first 45 days';
+                      if (name === 'Steady Stacker') return 'Consistently building your position';
+                      if (name === 'Diamond Hands') return 'Held through everything';
+                      if (name === 'Whale') return 'A major force in the community';
+                      return reason.replace(/^For /i, '').replace(/\.$/, '');
+                    })()}
+                  </p>
                 </div>
-              );
-            })()}
-            
-            {/* Personality quote - shown after all badges */}
-            {subStage === 6 && (
-              <div className="flex flex-col items-center justify-center h-full animate-fade-in">
-                <p className="text-white/50 text-sm mb-4">This is who you are</p>
-                <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
-                  "{getHolderPersonality()}"
-                </p>
+                
+                {/* Badge reveal */}
+                <div className={`h-[150px] flex flex-col items-center justify-center transition-opacity duration-700 ${
+                  subStage >= 3 ? 'opacity-100' : 'opacity-0'
+                }`}>
+                  <span className={`text-8xl block mb-4 hover:scale-110 transition-transform duration-300 cursor-default ${
+                    (() => {
+                      switch (allBadges[currentBadgeIndex].emoji) {
+                        case '🏆': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
+                        case '👑': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
+                        case '💎': return 'drop-shadow-[0_0_40px_rgba(192,132,252,0.6)]';
+                        case '🌳': return 'drop-shadow-[0_0_40px_rgba(34,211,238,0.6)]';
+                        case '🌿': return 'drop-shadow-[0_0_40px_rgba(45,212,191,0.6)]';
+                        case '🔒': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
+                        case '⚡': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
+                        case '🗳️': return 'drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]';
+                        case '⭐': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
+                        case '🔄': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
+                        default: return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]';
+                      }
+                    })()
+                  }`}>
+                    {allBadges[currentBadgeIndex].emoji}
+                  </span>
+                  <p className={`text-2xl font-bold tracking-wide ${
+                    (() => {
+                      switch (allBadges[currentBadgeIndex].emoji) {
+                        case '🏆': case '👑': return 'text-amber-400';
+                        case '💎': return 'text-purple-400';
+                        case '🌳': return 'text-cyan-400';
+                        case '🌿': return 'text-teal-400';
+                        case '🔒': return 'text-blue-400';
+                        case '⚡': case '⭐': return 'text-yellow-400';
+                        case '🗳️': return 'text-indigo-400';
+                        case '🔄': return 'text-blue-400';
+                        default: return 'text-amber-400';
+                      }
+                    })()
+                  }`}>
+                    {allBadges[currentBadgeIndex].name}
+                  </p>
+                </div>
               </div>
             )}
+            
+            {/* Personality quote - shown after all badges */}
+            <div className={`flex flex-col items-center justify-center h-full absolute inset-0 transition-opacity duration-700 ${
+              subStage === 6 ? 'opacity-100' : 'opacity-0'
+            }`}>
+              <p className="text-white/50 text-sm mb-4">This is who you are</p>
+              <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
+                "{getHolderPersonality()}"
+              </p>
+            </div>
           </div>
         </div>
       )}
