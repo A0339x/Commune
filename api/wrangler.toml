@@ -1,0 +1,25 @@
+name = "commune-api"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+# Durable Objects for WebSocket chat
+[durable_objects]
+bindings = [
+  { name = "CHATROOM", class_name = "ChatRoom" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["ChatRoom"]
+
+# KV Namespaces for storage
+[[kv_namespaces]]
+binding = "SESSIONS"
+id = "6813217b81424498a24c16159b8276cc"
+
+[[kv_namespaces]]
+binding = "MESSAGES"
+id = "37010e1232074807afd9ca83d34162d3"
+
+[vars]
+ENVIRONMENT = "production"
