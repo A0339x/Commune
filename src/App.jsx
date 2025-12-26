@@ -6691,34 +6691,34 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       // Loop through each badge
       for (let i = 0; i < allBadges.length; i++) {
-        // Set subStage to 0 first to ensure everything is hidden
-        setSubStage(0);
-        await delay(100); // Wait for fade out
-        // Now change the badge index (content changes while hidden)
+        // Change badge index while at subStage 4 or 1 (badge content hidden)
         setCurrentBadgeIndex(i);
         await delay(50); // Tiny delay to ensure state update
         setSubStage(2); // Fade in reason
         await delay(2000);
         setSubStage(3); // Fade in badge
         await delay(2500);
-        setSubStage(4); // Fade everything out
-        await delay(800); // Wait for fade out animation to complete
+        // Only fade out badge content if there are more badges or personality quote
+        if (i < allBadges.length - 1) {
+          setSubStage(1); // Keep title, hide badge content
+          await delay(700); // Wait for fade out animation
+        }
       }
       
-      // Fade out badge content first
-      setSubStage(4);
-      await delay(800);
+      // Fade out last badge
+      setSubStage(1);
+      await delay(700);
       
-      // Show personality quote
-      setSubStage(6); // Personality quote
+      // Show personality quote (title fades out here since subStage 6)
+      setSubStage(6);
       await delay(4000);
       
-      // Fade out
+      // Fade out entire scene
       setSubStage(5);
       await delay(1500);
       
       // Move to username color scene
-      setScene(7); // Username
+      setScene(7);
       setSubStage(0);
     };
     
@@ -7158,7 +7158,6 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             </div>
           </div>
         </div>
-      )}
       )}
       
       {/* Scene 7: Username Color Reveal */}
