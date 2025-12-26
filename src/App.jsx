@@ -7114,20 +7114,20 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Main Stats Card */}
-          <div className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-5">
+          <div className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-5 hover:border-amber-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10">
             
             {/* Quick Stats Row */}
             <div className="grid grid-cols-3 gap-4 text-center">
-              <div>
-                <p className="text-2xl font-bold text-amber-400">{priceStats?.totalBuys || '?'}</p>
+              <div className="group cursor-default p-2 rounded-lg hover:bg-white/5 transition-all duration-200 hover:-translate-y-1">
+                <p className="text-2xl font-bold text-amber-400 group-hover:scale-110 transition-transform duration-200">{priceStats?.totalBuys || '?'}</p>
                 <p className="text-white/40 text-xs">Purchases</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{formatNumber(priceStats?.currentBalance || 0)}</p>
+              <div className="group cursor-default p-2 rounded-lg hover:bg-white/5 transition-all duration-200 hover:-translate-y-1">
+                <p className="text-2xl font-bold text-white group-hover:scale-110 transition-transform duration-200">{formatNumber(priceStats?.currentBalance || 0)}</p>
                 <p className="text-white/40 text-xs">GUARD Now</p>
               </div>
-              <div>
-                <p className="text-2xl font-bold text-green-400">{priceStats?.dcaScore || 0}%</p>
+              <div className="group cursor-default p-2 rounded-lg hover:bg-white/5 transition-all duration-200 hover:-translate-y-1">
+                <p className="text-2xl font-bold text-green-400 group-hover:scale-110 transition-transform duration-200">{priceStats?.dcaScore || 0}%</p>
                 <p className="text-white/40 text-xs">DCA Score</p>
               </div>
             </div>
@@ -7135,9 +7135,9 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             <div className="border-t border-white/10" />
             
             {/* Journey Timeline */}
-            <div className="text-center">
+            <div className="text-center group cursor-default">
               <p className="text-white/50 text-sm mb-1">Journey started</p>
-              <p className="text-lg font-bold text-amber-400">{formatDate(guardData.firstBuy)}</p>
+              <p className="text-lg font-bold text-amber-400 group-hover:text-amber-300 transition-colors duration-200">{formatDate(guardData.firstBuy)}</p>
               <p className="text-white/40 text-sm mt-1">
                 <span className="text-white font-medium">{getHoldingDuration()}</span> of holding strong
               </p>
@@ -7150,16 +7150,20 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               <>
                 <div className="grid grid-cols-2 gap-4">
                   {priceStats?.bestBuy && (
-                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
-                      <p className="text-green-400 text-xs mb-1">🎯 Best Buy</p>
-                      <p className="text-lg font-bold text-green-400">{formatPrice(priceStats.bestBuy.price)}</p>
+                    <div className="group bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center cursor-default transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-green-500/20 hover:border-green-500/40 hover:bg-green-500/15">
+                      <p className="text-green-400 text-xs mb-1">
+                        <span className="inline-block group-hover:animate-bounce">🎯</span> Best Buy
+                      </p>
+                      <p className="text-lg font-bold text-green-400 group-hover:text-green-300 transition-colors">{formatPrice(priceStats.bestBuy.price)}</p>
                       <p className="text-white/30 text-xs">{formatNiceDate(priceStats.bestBuy.date)}</p>
                     </div>
                   )}
                   {priceStats?.worstBuy && (
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-center">
-                      <p className="text-red-400 text-xs mb-1">😅 Worst Buy</p>
-                      <p className="text-lg font-bold text-red-400">{formatPrice(priceStats.worstBuy.price)}</p>
+                    <div className="group bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-center cursor-default transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-red-500/20 hover:border-red-500/40 hover:bg-red-500/15">
+                      <p className="text-red-400 text-xs mb-1">
+                        <span className="inline-block group-hover:animate-pulse">😅</span> Worst Buy
+                      </p>
+                      <p className="text-lg font-bold text-red-400 group-hover:text-red-300 transition-colors">{formatPrice(priceStats.worstBuy.price)}</p>
                       <p className="text-white/30 text-xs">{formatNiceDate(priceStats.worstBuy.date)}</p>
                     </div>
                   )}
@@ -7170,20 +7174,20 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             
             {/* Buying Style & Streak */}
             <div className="flex justify-center gap-4 flex-wrap text-center">
-              <div className="bg-white/5 rounded-lg px-4 py-2">
-                <span className="text-2xl">{buyingStyleInfo.emoji}</span>
-                <p className="text-sm font-medium text-amber-400">{buyingStyleInfo.label}</p>
+              <div className="group bg-white/5 rounded-lg px-4 py-2 cursor-default transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 hover:shadow-md">
+                <span className="text-2xl inline-block group-hover:scale-125 group-hover:rotate-12 transition-transform duration-300">{buyingStyleInfo.emoji}</span>
+                <p className="text-sm font-medium text-amber-400 group-hover:text-amber-300 transition-colors">{buyingStyleInfo.label}</p>
               </div>
               {priceStats?.monthlyStreak?.longest > 1 && (
-                <div className="bg-white/5 rounded-lg px-4 py-2">
-                  <span className="text-2xl">🔥</span>
-                  <p className="text-sm font-medium text-white">{priceStats.monthlyStreak.longest} mo streak</p>
+                <div className="group bg-white/5 rounded-lg px-4 py-2 cursor-default transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 hover:shadow-md">
+                  <span className="text-2xl inline-block group-hover:scale-125 group-hover:animate-pulse transition-transform duration-300">🔥</span>
+                  <p className="text-sm font-medium text-white group-hover:text-orange-300 transition-colors">{priceStats.monthlyStreak.longest} mo streak</p>
                 </div>
               )}
               {priceStats?.favoriteDayOfWeek && (
-                <div className="bg-white/5 rounded-lg px-4 py-2">
-                  <span className="text-2xl">📅</span>
-                  <p className="text-sm font-medium text-white">{priceStats.favoriteDayOfWeek}s</p>
+                <div className="group bg-white/5 rounded-lg px-4 py-2 cursor-default transition-all duration-300 hover:-translate-y-1 hover:bg-white/10 hover:shadow-md">
+                  <span className="text-2xl inline-block group-hover:scale-125 group-hover:-rotate-12 transition-transform duration-300">📅</span>
+                  <p className="text-sm font-medium text-white group-hover:text-blue-300 transition-colors">{priceStats.favoriteDayOfWeek}s</p>
                 </div>
               )}
             </div>
@@ -7197,7 +7201,11 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                   <p className="text-white/50 text-sm mb-3">Milestones crossed</p>
                   <div className="flex justify-center gap-2 flex-wrap">
                     {priceStats.milestonesHit.map((m, i) => (
-                      <span key={i} className="bg-white/10 rounded-full px-3 py-1 text-sm">
+                      <span 
+                        key={i} 
+                        className="bg-white/10 rounded-full px-3 py-1 text-sm cursor-default transition-all duration-300 hover:bg-amber-500/20 hover:scale-110 hover:-translate-y-0.5 hover:shadow-md hover:shadow-amber-500/20"
+                        style={{ transitionDelay: `${i * 50}ms` }}
+                      >
                         <span className="text-amber-400">{formatNumber(m.milestone)}</span>
                       </span>
                     ))}
@@ -7211,22 +7219,27 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             {priceStats?.paperHandsMoments?.length > 0 && (
               <>
                 <div className="text-center">
-                  <p className="text-white/50 text-sm mb-3">🧻 Paper Hands Moments</p>
+                  <p className="text-white/50 text-sm mb-3">
+                    <span className="inline-block hover:animate-spin transition-transform cursor-default">🧻</span> Paper Hands Moments
+                  </p>
                   <div className="space-y-2">
                     {priceStats.paperHandsMoments.map((moment, i) => (
-                      <div key={i} className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex justify-between items-center">
+                      <div 
+                        key={i} 
+                        className="group bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex justify-between items-center cursor-default transition-all duration-300 hover:-translate-y-1 hover:bg-red-500/15 hover:border-red-500/40 hover:shadow-lg hover:shadow-red-500/10"
+                      >
                         <div className="text-left">
-                          <p className="text-white/70 text-sm">{formatNiceDate(moment.sellDate)}</p>
+                          <p className="text-white/70 text-sm group-hover:text-white/90 transition-colors">{formatNiceDate(moment.sellDate)}</p>
                           <p className="text-white/40 text-xs">{formatNumber(Math.round(moment.sellAmount))} GUARD @ {formatPrice(moment.sellPrice)}</p>
                         </div>
                         <div className="text-right">
-                          <p className="text-red-400 font-bold">+{moment.missedGainPercent}%</p>
+                          <p className="text-red-400 font-bold group-hover:text-red-300 group-hover:scale-110 transition-all duration-200 inline-block">+{moment.missedGainPercent}%</p>
                           <p className="text-white/30 text-xs">missed</p>
                         </div>
                       </div>
                     ))}
                   </div>
-                  <p className="text-white/30 text-xs mt-2 italic">But you came back stronger 💪</p>
+                  <p className="text-white/30 text-xs mt-2 italic">But you came back stronger <span className="inline-block hover:scale-150 transition-transform cursor-default">💪</span></p>
                 </div>
                 <div className="border-t border-white/10" />
               </>
@@ -7250,41 +7263,48 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             <div className="border-t border-white/10" />
             
             {/* Personality */}
-            <div className="text-center">
-              <p className="text-lg text-white/90 italic">
+            <div className="text-center group cursor-default">
+              <p className="text-lg text-white/90 italic group-hover:text-white transition-colors duration-300">
                 "{getHolderPersonality()}"
               </p>
             </div>
           </div>
           
           {/* Username Preview */}
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-            <p className="text-white/50 text-sm mb-2">In chat, your name will glow:</p>
-            <p className={`text-xl font-bold ${
+          <div className="group bg-white/5 border border-white/10 rounded-xl p-4 text-center transition-all duration-300 hover:bg-white/8 hover:border-white/20 hover:-translate-y-1 hover:shadow-lg cursor-default">
+            <p className="text-white/50 text-sm mb-2 group-hover:text-white/70 transition-colors">In chat, your name will glow:</p>
+            <p className={`text-xl font-bold transition-all duration-500 group-hover:scale-110 ${
               guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑' 
-                ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' 
+                ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] group-hover:drop-shadow-[0_0_16px_rgba(251,191,36,0.8)]' 
                 : guardData.primaryBadge?.emoji === '💎' 
-                  ? 'text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]'
+                  ? 'text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.5)] group-hover:drop-shadow-[0_0_14px_rgba(192,132,252,0.7)]'
                   : guardData.primaryBadge?.emoji === '🌳'
-                    ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]'
-                    : 'text-white'
+                    ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.4)] group-hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.6)]'
+                    : 'text-white group-hover:text-white/90'
             }`}>
               {address.slice(0, 6)}...{address.slice(-4)}
             </p>
-            <p className="text-white/30 text-xs mt-2">
+            <p className="text-white/30 text-xs mt-2 group-hover:text-white/50 transition-colors">
               Hover over your name to see your achievements
             </p>
           </div>
           
-          {/* Enter Button */}
+          {/* Enter Button - with glow effect */}
           <button
             onClick={onEnterCommunity}
-            className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold rounded-xl transition-all transform hover:scale-[1.02] shadow-lg shadow-amber-500/25"
+            className="group relative w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold rounded-xl transition-all duration-300 transform hover:scale-[1.03] hover:-translate-y-1 shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/40 overflow-hidden"
           >
-            🎉 Let's Go! Enter the Community
+            {/* Animated border beam effect */}
+            <span className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <span className="absolute inset-[-2px] rounded-xl bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-300 animate-pulse" style={{ filter: 'blur(4px)' }}></span>
+            </span>
+            <span className="relative flex items-center justify-center gap-2">
+              <span className="group-hover:animate-bounce">🎉</span> 
+              Let's Go! Enter the Community
+            </span>
           </button>
           
-          <p className="text-center text-white/30 text-sm">
+          <p className="text-center text-white/30 text-sm hover:text-white/50 transition-colors cursor-default">
             Your friends are waiting
           </p>
         </div>
