@@ -6449,13 +6449,34 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
 };
 
 // ============================================
-// WRAPPED PRESENTATION - Cinematic reveal
+// WRAPPED PRESENTATION - Cinematic reveal with Price Stats
 // ============================================
 const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuration, getHolderPersonality, onEnterCommunity }) => {
   const [scene, setScene] = useState(0);
   const [subStage, setSubStage] = useState(0);
   const [flipDate, setFlipDate] = useState(null);
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0);
+  const [priceStats, setPriceStats] = useState(null);
+  const [currentMilestoneIndex, setCurrentMilestoneIndex] = useState(0);
+  
+  // Fetch price stats on mount
+  // TODO: Remove hardcoded wallet after testing - currently shows stats for a power user
+  const TEST_WALLET = '0xCF635Aa2C062FB6b7F943e157232bBBCBC8436d3'; // Remove this line after testing
+  useEffect(() => {
+    const fetchPriceStats = async () => {
+      try {
+        const walletToFetch = TEST_WALLET || address; // Change back to just 'address' after testing
+        const response = await fetch(`${API_URL}/api/user-price-stats?wallet=${walletToFetch}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPriceStats(data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch price stats:', error);
+      }
+    };
+    fetchPriceStats();
+  }, [address]);
   
   // Build badges array
   const allBadges = [];
@@ -6483,59 +6504,145 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     });
   }
   
-  // Scene progression
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+  
+  // Helper to format large numbers
+  const formatNumber = (num) => {
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(0) + 'K';
+    return num?.toLocaleString() || '0';
+  };
+  
+  // Helper to format price
+  const formatPrice = (price) => {
+    const p = parseFloat(price);
+    if (p < 0.01) return '$' + p.toFixed(4);
+    if (p < 1) return '$' + p.toFixed(3);
+    return '$' + p.toFixed(2);
+  };
+  
+  // Helper to format date nicely
+  const formatNiceDate = (dateStr) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+  
+  // Scene 0: Title sequence
   useEffect(() => {
-    const scenes = [
-      // Scene 0: Title sequence
-      { duration: 2000, action: () => setSubStage(1) },  // Show title
-      { duration: 2000, action: () => setSubStage(2) },  // Show subtitle
-      { duration: 2500, action: () => setSubStage(3) },  // Fade out
-      { duration: 1000, action: () => { setScene(1); setSubStage(0); } },  // Next scene
-      
-      // Scene 1: Date flip sequence
-      { duration: 1500, action: () => setSubStage(1) },  // "Your journey began..."
-      { duration: 1500, action: () => { setSubStage(2); startDateFlip(); } },  // Show today, start flip
-      { duration: 3500, action: () => setSubStage(3) },  // Show duration
-      { duration: 3000, action: () => setSubStage(4) },  // Fade out
-      { duration: 1000, action: () => { setScene(2); setSubStage(0); setCurrentBadgeIndex(0); } },  // Next scene
-      
-      // Scene 2: Badges sequence - handled dynamically
-    ];
+    if (scene !== 0) return;
     
-    let timeoutId;
-    let currentStep = 0;
-    
-    const runSequence = () => {
-      if (scene === 0 || scene === 1) {
-        // Run preset sequences for scenes 0 and 1
-        const sceneOffset = scene === 0 ? 0 : 4;
-        const sceneSteps = scene === 0 ? 4 : 5;
-        
-        if (currentStep < sceneSteps) {
-          const step = scenes[sceneOffset + currentStep];
-          timeoutId = setTimeout(() => {
-            step.action();
-            currentStep++;
-            runSequence();
-          }, step.duration);
-        }
-      }
+    const titleSequence = async () => {
+      await delay(500);
+      setSubStage(1); // Show title
+      await delay(2000);
+      setSubStage(2); // Show subtitle
+      await delay(2500);
+      setSubStage(3); // Fade out
+      await delay(1000);
+      setScene(1);
+      setSubStage(0);
     };
     
-    runSequence();
-    
-    return () => clearTimeout(timeoutId);
+    titleSequence();
   }, [scene]);
   
-  // Badge sequence for Scene 2
+  // Scene 1: Date flip sequence
+  useEffect(() => {
+    if (scene !== 1) return;
+    
+    const dateSequence = async () => {
+      await delay(500);
+      setSubStage(1); // "Your journey began..."
+      await delay(1500);
+      setSubStage(2); // Start date flip
+      startDateFlip();
+      await delay(3500);
+      setSubStage(3); // Show duration
+      await delay(3000);
+      setSubStage(4); // Fade out
+      await delay(1000);
+      setScene(2);
+      setSubStage(0);
+    };
+    
+    dateSequence();
+  }, [scene]);
+  
+  // Scene 2: The Accumulator - total buys, biggest buy
   useEffect(() => {
     if (scene !== 2) return;
     
-    let timeoutId;
+    const accumulatorSequence = async () => {
+      await delay(500);
+      setSubStage(1); // "You kept coming back"
+      await delay(2000);
+      setSubStage(2); // Show total buys counter
+      await delay(2500);
+      setSubStage(3); // Show biggest buy
+      await delay(3000);
+      setSubStage(4); // Fade out
+      await delay(1000);
+      setScene(3);
+      setSubStage(0);
+    };
+    
+    accumulatorSequence();
+  }, [scene]);
+  
+  // Scene 3: Timing Game - best vs worst buy
+  useEffect(() => {
+    if (scene !== 3) return;
+    
+    const timingSequence = async () => {
+      await delay(500);
+      setSubStage(1); // "Let's talk timing..."
+      await delay(2000);
+      setSubStage(2); // Show best buy
+      await delay(3000);
+      setSubStage(3); // Show worst buy
+      await delay(3000);
+      setSubStage(4); // Show multiplier difference
+      await delay(2500);
+      setSubStage(5); // Fade out
+      await delay(1000);
+      setScene(4);
+      setSubStage(0);
+    };
+    
+    timingSequence();
+  }, [scene]);
+  
+  // Scene 4: Your Style - DCA score, streak, favorite day
+  useEffect(() => {
+    if (scene !== 4) return;
+    
+    const styleSequence = async () => {
+      await delay(500);
+      setSubStage(1); // "Your buying style"
+      await delay(2000);
+      setSubStage(2); // Show style badge
+      await delay(2500);
+      setSubStage(3); // Show streak
+      await delay(2500);
+      setSubStage(4); // Show day/time preference
+      await delay(3000);
+      setSubStage(5); // Fade out
+      await delay(1000);
+      setScene(5);
+      setSubStage(0);
+      setCurrentBadgeIndex(0);
+    };
+    
+    styleSequence();
+  }, [scene]);
+  
+  // Scene 5: Badges sequence
+  useEffect(() => {
+    if (scene !== 5) return;
     
     const badgeSequence = async () => {
-      // Show "Recognition earned" title
-      setSubStage(1);
+      setSubStage(1); // Show "Recognition earned" title
       await delay(1500);
       
       // Loop through each badge
@@ -6545,35 +6652,25 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         await delay(2000);
         setSubStage(3); // Show badge
         await delay(2500);
-        setSubStage(4); // Fade badge out (keep title)
+        setSubStage(4); // Fade badge out
         await delay(1000);
       }
       
-      // Fade out recognition title
+      // Fade out
       setSubStage(5);
       await delay(1500);
       
-      // Show personality quote
-      setSubStage(6);
-      await delay(4000);
-      
-      // Fade out quote
-      setSubStage(7);
-      await delay(1500);
-      
       // Move to username color scene
-      setScene(3);
+      setScene(6);
       setSubStage(0);
     };
     
     badgeSequence();
-    
-    return () => clearTimeout(timeoutId);
   }, [scene, allBadges.length]);
   
-  // Username color scene (Scene 3)
+  // Scene 6: Username color reveal
   useEffect(() => {
-    if (scene !== 3) return;
+    if (scene !== 6) return;
     
     const usernameSequence = async () => {
       await delay(1000);
@@ -6587,16 +6684,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       await delay(1500);
       
       // Move to final summary
-      setScene(4);
+      setScene(7);
       setSubStage(0);
     };
     
     usernameSequence();
   }, [scene]);
   
-  // Final scene sequence (now Scene 4)
+  // Scene 7: Final summary
   useEffect(() => {
-    if (scene !== 4) return;
+    if (scene !== 7) return;
     
     const finalSequence = async () => {
       await delay(500);
@@ -6606,17 +6703,13 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     finalSequence();
   }, [scene]);
   
-  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-  
   // Date flip animation
   const startDateFlip = () => {
     const today = new Date();
     const targetDate = new Date(guardData.firstBuy);
     
-    // Start with today
     setFlipDate(today);
     
-    // Animate backwards
     const totalDuration = 2500;
     const steps = 20;
     const stepDuration = totalDuration / steps;
@@ -6648,6 +6741,30 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   };
   
   const flipDateParts = formatFlipDate(flipDate);
+  
+  // Calculate timing multiplier
+  const getTimingMultiplier = () => {
+    if (!priceStats?.bestBuy?.price || !priceStats?.worstBuy?.price) return null;
+    const best = parseFloat(priceStats.bestBuy.price);
+    const worst = parseFloat(priceStats.worstBuy.price);
+    return Math.round(worst / best);
+  };
+  
+  // Get buying style emoji and description
+  const getBuyingStyleInfo = () => {
+    const style = priceStats?.buyingStyle;
+    switch (style) {
+      case 'consistent_dca': return { emoji: '📊', label: 'Consistent DCA', desc: 'You bought like clockwork' };
+      case 'moderate_dca': return { emoji: '📈', label: 'Moderate DCA', desc: 'Steady accumulation' };
+      case 'accumulator': return { emoji: '🎯', label: 'Accumulator', desc: 'Strategic buying when it felt right' };
+      case 'one_time': return { emoji: '💫', label: 'One-Timer', desc: 'You saw it and went all in' };
+      case 'occasional': return { emoji: '🌙', label: 'Occasional Buyer', desc: 'Quality over quantity' };
+      default: return { emoji: '💎', label: 'GUARD Holder', desc: 'Part of the community' };
+    }
+  };
+  
+  const buyingStyleInfo = getBuyingStyleInfo();
+  const timingMultiplier = getTimingMultiplier();
   
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
@@ -6681,15 +6798,12 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className={`flex justify-center gap-3 mb-8 transition-all duration-700 ${
             subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
           }`}>
-            {/* Day */}
             <div className="bg-[#1a1a2e] rounded-lg p-4 min-w-[80px] shadow-xl border border-white/10">
               <span className="text-4xl font-bold text-white font-mono">{flipDateParts.day}</span>
             </div>
-            {/* Month */}
             <div className="bg-[#1a1a2e] rounded-lg p-4 min-w-[100px] shadow-xl border border-white/10">
               <span className="text-4xl font-bold text-white font-mono">{flipDateParts.month}</span>
             </div>
-            {/* Year */}
             <div className="bg-[#1a1a2e] rounded-lg p-4 shadow-xl border border-white/10">
               <span className="text-4xl font-bold text-amber-400 font-mono">{flipDateParts.year}</span>
             </div>
@@ -6703,9 +6817,146 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         </div>
       )}
       
-      {/* Scene 2: Badges Sequence */}
+      {/* Scene 2: The Accumulator - total buys, biggest buy */}
       {scene === 2 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 7 ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
+          }`}>
+            You kept coming back...
+          </p>
+          
+          {/* Total buys counter */}
+          <div className={`mb-8 transition-all duration-700 ${
+            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+          }`}>
+            <span className="text-7xl font-bold text-amber-400 font-mono">
+              {priceStats?.totalBuys || guardData.transactionCount || '?'}
+            </span>
+            <p className="text-xl text-white/70 mt-2">separate purchases</p>
+          </div>
+          
+          {/* Biggest buy */}
+          {priceStats?.biggestBuy && (
+            <div className={`transition-all duration-700 ${
+              subStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            }`}>
+              <p className="text-white/50 mb-2">Your biggest single buy</p>
+              <div className="bg-gradient-to-r from-amber-500/20 to-purple-500/20 border border-amber-500/30 rounded-xl p-4 inline-block">
+                <span className="text-3xl font-bold text-white">{formatNumber(priceStats.biggestBuy.amount)}</span>
+                <span className="text-xl text-amber-400 ml-2">GUARD</span>
+                <p className="text-white/40 text-sm mt-1">{formatNiceDate(priceStats.biggestBuy.date)}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Scene 3: Timing Game - best vs worst buy */}
+      {scene === 3 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-10 transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
+          }`}>
+            Let's talk timing...
+          </p>
+          
+          <div className="flex justify-center gap-8 flex-wrap">
+            {/* Best buy */}
+            {priceStats?.bestBuy && (
+              <div className={`transition-all duration-700 ${
+                subStage >= 2 ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
+              }`}>
+                <div className="bg-green-500/20 border border-green-500/30 rounded-xl p-6 min-w-[180px]">
+                  <p className="text-green-400 text-sm mb-2">🎯 Best Timing</p>
+                  <span className="text-3xl font-bold text-green-400">{formatPrice(priceStats.bestBuy.price)}</span>
+                  <p className="text-white/50 text-sm mt-2">{formatNiceDate(priceStats.bestBuy.date)}</p>
+                  <p className="text-white/30 text-xs mt-1">{formatNumber(priceStats.bestBuy.amount)} GUARD</p>
+                </div>
+              </div>
+            )}
+            
+            {/* Worst buy */}
+            {priceStats?.worstBuy && (
+              <div className={`transition-all duration-700 ${
+                subStage >= 3 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
+              }`}>
+                <div className="bg-red-500/20 border border-red-500/30 rounded-xl p-6 min-w-[180px]">
+                  <p className="text-red-400 text-sm mb-2">😅 Worst Timing</p>
+                  <span className="text-3xl font-bold text-red-400">{formatPrice(priceStats.worstBuy.price)}</span>
+                  <p className="text-white/50 text-sm mt-2">{formatNiceDate(priceStats.worstBuy.date)}</p>
+                  <p className="text-white/30 text-xs mt-1">{formatNumber(priceStats.worstBuy.amount)} GUARD</p>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Multiplier difference */}
+          {timingMultiplier && timingMultiplier > 1 && (
+            <p className={`text-lg text-white/60 mt-8 transition-all duration-700 ${
+              subStage >= 4 ? 'opacity-100' : 'opacity-0'
+            }`}>
+              That's a <span className="text-amber-400 font-bold">{timingMultiplier}x</span> difference! 
+              <span className="text-white/40 ml-2">Hey, we've all been there 😅</span>
+            </p>
+          )}
+        </div>
+      )}
+      
+      {/* Scene 4: Your Style - DCA score, streak, favorite day */}
+      {scene === 4 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
+          }`}>
+            Your buying style
+          </p>
+          
+          {/* Style badge */}
+          <div className={`mb-8 transition-all duration-700 ${
+            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+          }`}>
+            <span className="text-6xl block mb-3">{buyingStyleInfo.emoji}</span>
+            <p className="text-2xl font-bold text-amber-400">{buyingStyleInfo.label}</p>
+            <p className="text-white/50 mt-1">{buyingStyleInfo.desc}</p>
+            {priceStats?.dcaScore > 0 && (
+              <p className="text-white/30 text-sm mt-2">{priceStats.dcaScore}% consistency score</p>
+            )}
+          </div>
+          
+          {/* Streak */}
+          {priceStats?.monthlyStreak?.longest > 1 && (
+            <div className={`mb-6 transition-all duration-700 ${
+              subStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            }`}>
+              <p className="text-white/50 mb-2">Longest buying streak</p>
+              <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2">
+                <span className="text-2xl">🔥</span>
+                <span className="text-xl font-bold text-white">{priceStats.monthlyStreak.longest} months</span>
+                <span className="text-white/40 text-sm">in a row</span>
+              </div>
+              <p className="text-white/30 text-xs mt-2">
+                {priceStats.monthlyStreak.start} → {priceStats.monthlyStreak.end}
+              </p>
+            </div>
+          )}
+          
+          {/* Day/time preference */}
+          <div className={`transition-all duration-700 ${
+            subStage >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          }`}>
+            <p className="text-white/40">
+              You're a <span className="text-white font-medium">{priceStats?.favoriteDayOfWeek || 'weekday'}</span>
+              {' '}
+              <span className="text-amber-400">{priceStats?.buyTimePreference?.replace('_', ' ') || 'buyer'}</span>
+            </p>
+          </div>
+        </div>
+      )}
+      
+      {/* Scene 5: Badges Sequence */}
+      {scene === 5 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           <h2 className={`text-2xl font-bold text-white/80 mb-12 transition-all duration-1000 ${
             subStage >= 1 && subStage < 5 ? 'opacity-100' : 'opacity-0'
           }`}>
@@ -6730,22 +6981,11 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               </div>
             </div>
           )}
-          
-          {/* Personality quote after badges */}
-          {subStage >= 6 && subStage < 8 && (
-            <div className={`transition-all duration-1000 ${
-              subStage === 7 ? 'opacity-0' : 'opacity-100'
-            }`}>
-              <p className="text-2xl text-white/90 italic max-w-lg mx-auto leading-relaxed">
-                "{getHolderPersonality()}"
-              </p>
-            </div>
-          )}
         </div>
       )}
       
-      {/* Scene 3: Username Color Reveal */}
-      {scene === 3 && (
+      {/* Scene 6: Username Color Reveal */}
+      {scene === 6 && (
         <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
           {/* Message about color */}
           <p className={`text-xl text-white/60 mb-12 max-w-md mx-auto transition-all duration-1000 ${
@@ -6784,8 +7024,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         </div>
       )}
       
-      {/* Scene 4: Final Summary */}
-      {scene === 4 && (
+      {/* Scene 7: Final Summary */}
+      {scene === 7 && (
         <div className={`space-y-6 w-full transition-all duration-1500 ${
           subStage >= 1 ? 'opacity-100' : 'opacity-0'
         }`}>
@@ -6798,20 +7038,53 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Main Stats Card */}
-          <div className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-6">
+          <div className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-5">
             
-            {/* First Purchase */}
-            {guardData.firstBuy && (
-              <div className="text-center">
-                <p className="text-white/50 text-sm mb-1">Your journey began on</p>
-                <p className="text-2xl font-bold text-amber-400">{formatDate(guardData.firstBuy)}</p>
-                <p className="text-white/40 text-sm mt-1">
-                  That's <span className="text-white font-medium">{getHoldingDuration()}</span> of holding strong
-                </p>
+            {/* Quick Stats Row */}
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-amber-400">{priceStats?.totalBuys || '?'}</p>
+                <p className="text-white/40 text-xs">Purchases</p>
               </div>
-            )}
+              <div>
+                <p className="text-2xl font-bold text-white">{formatNumber(priceStats?.currentBalance || 0)}</p>
+                <p className="text-white/40 text-xs">GUARD Now</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-400">{priceStats?.dcaScore || 0}%</p>
+                <p className="text-white/40 text-xs">DCA Score</p>
+              </div>
+            </div>
             
             <div className="border-t border-white/10" />
+            
+            {/* Journey Timeline */}
+            <div className="text-center">
+              <p className="text-white/50 text-sm mb-1">Journey started</p>
+              <p className="text-lg font-bold text-amber-400">{formatDate(guardData.firstBuy)}</p>
+              <p className="text-white/40 text-sm mt-1">
+                <span className="text-white font-medium">{getHoldingDuration()}</span> of holding strong
+              </p>
+            </div>
+            
+            <div className="border-t border-white/10" />
+            
+            {/* Milestones */}
+            {priceStats?.milestonesHit?.length > 0 && (
+              <>
+                <div className="text-center">
+                  <p className="text-white/50 text-sm mb-3">Milestones crossed</p>
+                  <div className="flex justify-center gap-2 flex-wrap">
+                    {priceStats.milestonesHit.map((m, i) => (
+                      <span key={i} className="bg-white/10 rounded-full px-3 py-1 text-sm">
+                        <span className="text-amber-400">{formatNumber(m.milestone)}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <div className="border-t border-white/10" />
+              </>
+            )}
             
             {/* Badges Earned */}
             <div className="text-center">
