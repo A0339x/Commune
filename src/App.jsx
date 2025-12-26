@@ -6685,6 +6685,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     if (scene !== 6) return;
     
     const badgeSequence = async () => {
+      await delay(500); // Initial delay so title can fade in
       setSubStage(1); // Show "You've earned your place" title
       await delay(1500);
       
@@ -7063,7 +7064,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           
           {/* Title - fixed height container */}
           <div className="h-[60px] flex items-center justify-center">
-            <p className={`text-xl text-white/60 transition-opacity duration-700 ${
+            <p className={`text-xl text-white/60 transition-opacity duration-1000 ${
               subStage >= 1 && subStage <= 4 ? 'opacity-100' : 'opacity-0'
             }`}>
               You've earned your place
