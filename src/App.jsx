@@ -6606,16 +6606,42 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       await delay(2500);
       setSubStage(5); // Fade out
       await delay(1000);
-      setScene(4);
+      // Go to Paper Hands scene if they have moments, otherwise skip to Style
+      if (priceStats?.paperHandsMoments?.length > 0) {
+        setScene(4); // Paper Hands
+      } else {
+        setScene(5); // Skip to Style
+      }
       setSubStage(0);
     };
     
     timingSequence();
-  }, [scene]);
+  }, [scene, priceStats]);
   
-  // Scene 4: Your Style - DCA score, streak, favorite day
+  // Scene 4: Paper Hands Moments 😅
   useEffect(() => {
     if (scene !== 4) return;
+    
+    const paperHandsSequence = async () => {
+      await delay(500);
+      setSubStage(1); // "About those sells..."
+      await delay(2500);
+      setSubStage(2); // Show first paper hands moment
+      await delay(4000);
+      setSubStage(3); // Show "but you came back" message
+      await delay(3000);
+      setSubStage(4); // Fade out
+      await delay(1000);
+      setScene(5); // Go to Style
+      setSubStage(0);
+    };
+    
+    paperHandsSequence();
+  }, [scene]);
+  
+  // Scene 5: Your Style - DCA score, streak, favorite day
+  useEffect(() => {
+    if (scene !== 5) return;
     
     const styleSequence = async () => {
       await delay(500);
@@ -6629,7 +6655,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       await delay(3000);
       setSubStage(5); // Fade out
       await delay(1000);
-      setScene(5);
+      setScene(6); // Badges
       setSubStage(0);
       setCurrentBadgeIndex(0);
     };
@@ -6637,9 +6663,9 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     styleSequence();
   }, [scene]);
   
-  // Scene 5: Badges sequence
+  // Scene 6: Badges sequence
   useEffect(() => {
-    if (scene !== 5) return;
+    if (scene !== 6) return;
     
     const badgeSequence = async () => {
       setSubStage(1); // Show "Recognition earned" title
@@ -6661,16 +6687,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       await delay(1500);
       
       // Move to username color scene
-      setScene(6);
+      setScene(7); // Username
       setSubStage(0);
     };
     
     badgeSequence();
   }, [scene, allBadges.length]);
   
-  // Scene 6: Username color reveal
+  // Scene 7: Username color reveal
   useEffect(() => {
-    if (scene !== 6) return;
+    if (scene !== 7) return;
     
     const usernameSequence = async () => {
       await delay(1000);
@@ -6684,16 +6710,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       await delay(1500);
       
       // Move to final summary
-      setScene(7);
+      setScene(8); // Final
       setSubStage(0);
     };
     
     usernameSequence();
   }, [scene]);
   
-  // Scene 7: Final summary
+  // Scene 8: Final summary
   useEffect(() => {
-    if (scene !== 7) return;
+    if (scene !== 8) return;
     
     const finalSequence = async () => {
       await delay(500);
@@ -6903,8 +6929,58 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         </div>
       )}
       
-      {/* Scene 4: Your Style - DCA score, streak, favorite day */}
-      {scene === 4 && (
+      {/* Scene 4: Paper Hands Moments 😅 */}
+      {scene === 4 && priceStats?.paperHandsMoments?.length > 0 && (
+        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
+          }`}>
+            About those sells... 😬
+          </p>
+          
+          {/* Paper hands moment card */}
+          <div className={`transition-all duration-700 ${
+            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+          }`}>
+            <div className="bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30 rounded-2xl p-6 max-w-sm mx-auto">
+              <span className="text-5xl block mb-4">🧻</span>
+              <p className="text-white/50 text-sm mb-2">You sold on {formatNiceDate(priceStats.paperHandsMoments[0].sellDate)}</p>
+              <p className="text-2xl font-bold text-white mb-1">
+                {formatNumber(Math.round(priceStats.paperHandsMoments[0].sellAmount))} GUARD
+              </p>
+              <p className="text-white/40 text-sm mb-4">
+                at {formatPrice(priceStats.paperHandsMoments[0].sellPrice)}
+              </p>
+              
+              <div className="border-t border-white/10 pt-4">
+                <p className="text-white/50 text-sm">Then it pumped to</p>
+                <p className="text-3xl font-bold text-red-400">
+                  +{priceStats.paperHandsMoments[0].missedGainPercent}%
+                </p>
+                <p className="text-white/30 text-xs mt-1">
+                  peaked {formatPrice(priceStats.paperHandsMoments[0].recoveryPrice)}
+                </p>
+              </div>
+            </div>
+            
+            {priceStats.paperHandsMoments.length > 1 && (
+              <p className="text-white/30 text-sm mt-4">
+                ...and {priceStats.paperHandsMoments.length - 1} more time{priceStats.paperHandsMoments.length > 2 ? 's' : ''} 😅
+              </p>
+            )}
+          </div>
+          
+          {/* Redemption message */}
+          <p className={`text-lg text-white/60 mt-8 transition-all duration-700 ${
+            subStage >= 3 ? 'opacity-100' : 'opacity-0'
+          }`}>
+            But hey, <span className="text-amber-400 font-medium">you came back stronger</span> 💪
+          </p>
+        </div>
+      )}
+      
+      {/* Scene 5: Your Style - DCA score, streak, favorite day */}
+      {scene === 5 && (
         <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
@@ -6954,8 +7030,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         </div>
       )}
       
-      {/* Scene 5: Badges Sequence */}
-      {scene === 5 && (
+      {/* Scene 6: Badges Sequence */}
+      {scene === 6 && (
         <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           <h2 className={`text-2xl font-bold text-white/80 mb-12 transition-all duration-1000 ${
             subStage >= 1 && subStage < 5 ? 'opacity-100' : 'opacity-0'
@@ -6984,8 +7060,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         </div>
       )}
       
-      {/* Scene 6: Username Color Reveal */}
-      {scene === 6 && (
+      {/* Scene 7: Username Color Reveal */}
+      {scene === 7 && (
         <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
           {/* Message about color */}
           <p className={`text-xl text-white/60 mb-12 max-w-md mx-auto transition-all duration-1000 ${
@@ -7024,8 +7100,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         </div>
       )}
       
-      {/* Scene 7: Final Summary */}
-      {scene === 7 && (
+      {/* Scene 8: Final Summary */}
+      {scene === 8 && (
         <div className={`space-y-6 w-full transition-all duration-1500 ${
           subStage >= 1 ? 'opacity-100' : 'opacity-0'
         }`}>
