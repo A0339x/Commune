@@ -6199,6 +6199,23 @@ const BadgeWithTooltip = ({ emoji, name, description }) => {
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const badgeRef = useRef(null);
   
+  // Get badge-specific colors
+  const getBadgeColors = () => {
+    switch (emoji) {
+      case '🏆': return { bg: 'from-amber-500/20 to-yellow-500/20', border: 'border-amber-500/40', glow: 'shadow-amber-500/30', text: 'text-amber-400' };
+      case '👑': return { bg: 'from-amber-500/20 to-orange-500/20', border: 'border-amber-500/40', glow: 'shadow-amber-500/30', text: 'text-amber-400' };
+      case '💎': return { bg: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/40', glow: 'shadow-purple-500/30', text: 'text-purple-400' };
+      case '🌳': return { bg: 'from-cyan-500/20 to-teal-500/20', border: 'border-cyan-500/40', glow: 'shadow-cyan-500/30', text: 'text-cyan-400' };
+      case '🌿': return { bg: 'from-teal-500/20 to-green-500/20', border: 'border-teal-500/40', glow: 'shadow-teal-500/30', text: 'text-teal-400' };
+      case '🔒': return { bg: 'from-blue-500/20 to-indigo-500/20', border: 'border-blue-500/40', glow: 'shadow-blue-500/30', text: 'text-blue-400' };
+      case '⚡': return { bg: 'from-yellow-500/20 to-orange-500/20', border: 'border-yellow-500/40', glow: 'shadow-yellow-500/30', text: 'text-yellow-400' };
+      case '🗳️': return { bg: 'from-indigo-500/20 to-purple-500/20', border: 'border-indigo-500/40', glow: 'shadow-indigo-500/30', text: 'text-indigo-400' };
+      default: return { bg: 'from-white/10 to-white/5', border: 'border-white/20', glow: 'shadow-white/10', text: 'text-white/80' };
+    }
+  };
+  
+  const colors = getBadgeColors();
+  
   const handleMouseEnter = () => {
     const rect = badgeRef.current?.getBoundingClientRect();
     if (rect) {
@@ -6214,12 +6231,12 @@ const BadgeWithTooltip = ({ emoji, name, description }) => {
     <>
       <div 
         ref={badgeRef}
-        className="flex flex-col items-center cursor-help group"
+        className={`group flex flex-col items-center cursor-pointer p-3 rounded-xl bg-gradient-to-br ${colors.bg} border ${colors.border} transition-all duration-300 hover:-translate-y-2 hover:shadow-lg ${colors.glow} hover:scale-105`}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={() => setShowTooltip(false)}
       >
-        <span className="text-4xl mb-1 transition-transform group-hover:scale-110">{emoji}</span>
-        <span className="text-xs text-white/60">{name}</span>
+        <span className="text-4xl mb-2 transition-all duration-300 group-hover:scale-125 group-hover:drop-shadow-lg">{emoji}</span>
+        <span className={`text-xs font-medium ${colors.text} text-center leading-tight`}>{name}</span>
       </div>
       
       {showTooltip && ReactDOM.createPortal(
@@ -6231,12 +6248,12 @@ const BadgeWithTooltip = ({ emoji, name, description }) => {
             transform: 'translate(-50%, -100%)'
           }}
         >
-          <div className="bg-[#1a1a25] border border-white/20 rounded-xl shadow-xl p-3 max-w-xs mb-2">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{emoji}</span>
+          <div className={`bg-gradient-to-br from-[#1a1a25] to-[#0f0f18] border ${colors.border} rounded-xl shadow-2xl ${colors.glow} p-4 max-w-xs mb-2 backdrop-blur-sm`}>
+            <div className="flex items-start gap-3">
+              <span className="text-3xl drop-shadow-lg">{emoji}</span>
               <div>
-                <p className="text-sm font-medium text-white">{name}</p>
-                <p className="text-xs text-white/50">{description}</p>
+                <p className={`text-sm font-bold ${colors.text} mb-1`}>{name}</p>
+                <p className="text-xs text-white/60 leading-relaxed">{description}</p>
               </div>
             </div>
           </div>
@@ -7037,30 +7054,64 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       {/* Scene 6: Badges Sequence */}
       {scene === 6 && (
         <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <h2 className={`text-2xl font-bold text-white/80 mb-12 transition-all duration-1000 ${
+          <h2 className={`text-2xl font-bold mb-12 transition-all duration-1000 ${
             subStage >= 1 && subStage < 5 ? 'opacity-100' : 'opacity-0'
           }`}>
-            Recognition earned
+            <span className="text-amber-400/80 tracking-wide">✨</span>
+            <span className="text-white/90 mx-2">Recognition earned</span>
+            <span className="text-amber-400/80 tracking-wide">✨</span>
           </h2>
           
-          {subStage >= 2 && subStage < 5 && allBadges[currentBadgeIndex] && (
-            <div className="space-y-8">
-              {/* Reason text */}
-              <p className={`text-lg text-white/60 italic max-w-md mx-auto transition-all duration-700 ${
-                subStage >= 2 && subStage < 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-              }`}>
-                "{allBadges[currentBadgeIndex].reason}"
-              </p>
-              
-              {/* Badge reveal */}
-              <div className={`transition-all duration-700 ${
-                subStage >= 3 && subStage < 4 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
-              }`}>
-                <span className="text-8xl block mb-4 drop-shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:scale-110 transition-transform duration-300 cursor-default">{allBadges[currentBadgeIndex].emoji}</span>
-                <p className="text-xl font-bold text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]">{allBadges[currentBadgeIndex].name}</p>
+          {subStage >= 2 && subStage < 5 && allBadges[currentBadgeIndex] && (() => {
+            // Get badge-specific colors for the current badge
+            const getBadgeGlow = () => {
+              switch (allBadges[currentBadgeIndex].emoji) {
+                case '🏆': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
+                case '👑': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
+                case '💎': return 'drop-shadow-[0_0_40px_rgba(192,132,252,0.6)]';
+                case '🌳': return 'drop-shadow-[0_0_40px_rgba(34,211,238,0.6)]';
+                case '🌿': return 'drop-shadow-[0_0_40px_rgba(45,212,191,0.6)]';
+                case '🔒': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
+                case '⚡': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
+                case '🗳️': return 'drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]';
+                default: return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]';
+              }
+            };
+            const getBadgeTextColor = () => {
+              switch (allBadges[currentBadgeIndex].emoji) {
+                case '🏆': case '👑': return 'text-amber-400';
+                case '💎': return 'text-purple-400';
+                case '🌳': return 'text-cyan-400';
+                case '🌿': return 'text-teal-400';
+                case '🔒': return 'text-blue-400';
+                case '⚡': return 'text-yellow-400';
+                case '🗳️': return 'text-indigo-400';
+                default: return 'text-amber-400';
+              }
+            };
+            return (
+              <div className="space-y-8">
+                {/* Reason text */}
+                <p className={`text-lg text-white/70 italic max-w-md mx-auto transition-all duration-700 leading-relaxed ${
+                  subStage >= 2 && subStage < 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+                }`}>
+                  "{allBadges[currentBadgeIndex].reason}"
+                </p>
+                
+                {/* Badge reveal */}
+                <div className={`transition-all duration-700 ${
+                  subStage >= 3 && subStage < 4 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+                }`}>
+                  <span className={`text-8xl block mb-4 ${getBadgeGlow()} hover:scale-110 transition-transform duration-300 cursor-default`}>
+                    {allBadges[currentBadgeIndex].emoji}
+                  </span>
+                  <p className={`text-2xl font-bold ${getBadgeTextColor()} tracking-wide`}>
+                    {allBadges[currentBadgeIndex].name}
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       )}
       
@@ -7251,8 +7302,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             
             {/* Badges Earned */}
             <div className="text-center">
-              <p className="text-white/50 text-sm mb-3">Recognition earned</p>
-              <div className="flex justify-center gap-4 flex-wrap">
+              <p className="text-amber-400/80 text-sm font-medium mb-4 tracking-wide uppercase">✨ Recognition Earned</p>
+              <div className="flex justify-center gap-3 flex-wrap">
                 {allBadges.map((badge, i) => (
                   <BadgeWithTooltip 
                     key={i}
