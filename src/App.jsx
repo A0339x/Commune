@@ -6818,14 +6818,14 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 0: Title Sequence */}
       {scene === 0 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 3 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <h1 className={`text-5xl font-bold mb-4 transition-all duration-1000 ${
-            subStage >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+        <div className={`text-center transition-opacity duration-1000 ${subStage === 3 ? 'opacity-0' : 'opacity-100'}`}>
+          <h1 className={`text-5xl font-bold mb-4 transition-opacity duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             <span className="text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.3)]">Your GUARD</span> Journey
           </h1>
-          <p className={`text-xl text-white/60 transition-all duration-1000 delay-300 ${
-            subStage >= 2 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          <p className={`text-xl text-white/60 transition-opacity duration-1000 delay-300 ${
+            subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             Here's your story in the community
           </p>
@@ -6834,16 +6834,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 1: Date Flip Sequence */}
       {scene === 1 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Your journey began...
           </p>
           
           {/* Flip Clock Style Date */}
-          <div className={`flex justify-center gap-3 mb-8 transition-all duration-700 ${
-            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-95'
+          <div className={`flex justify-center gap-3 mb-8 transition-opacity duration-700 ${
+            subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             <div className="group bg-[#1a1a2e] rounded-lg p-4 min-w-[80px] shadow-xl border border-white/10 transition-all duration-300 hover:border-amber-500/30 hover:-translate-y-1 hover:shadow-amber-500/20">
               <span className="text-4xl font-bold text-white font-mono group-hover:text-amber-400 transition-colors">{flipDateParts.day}</span>
@@ -6856,8 +6856,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             </div>
           </div>
           
-          <p className={`text-lg text-white/50 transition-all duration-1000 ${
-            subStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          <p className={`text-lg text-white/50 transition-opacity duration-1000 ${
+            subStage >= 3 ? 'opacity-100' : 'opacity-0'
           }`}>
             That's <span className="text-amber-400 font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">{getHoldingDuration()}</span> of holding strong
           </p>
@@ -6866,16 +6866,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 2: The Accumulator - total buys, biggest buy */}
       {scene === 2 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             You kept coming back...
           </p>
           
           {/* Total buys counter */}
-          <div className={`mb-8 transition-all duration-700 ${
-            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+          <div className={`mb-8 transition-opacity duration-700 ${
+            subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             <span className="text-7xl font-bold text-amber-400 font-mono drop-shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:drop-shadow-[0_0_40px_rgba(251,191,36,0.6)] transition-all duration-300 cursor-default">
               {priceStats?.totalBuys || guardData.transactionCount || '?'}
@@ -6885,8 +6885,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           
           {/* Biggest buy */}
           {priceStats?.biggestBuy && (
-            <div className={`transition-all duration-700 ${
-              subStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            <div className={`transition-opacity duration-700 ${
+              subStage >= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               <p className="text-white/50 mb-2">Your biggest single buy</p>
               <div className="group bg-gradient-to-r from-amber-500/20 to-purple-500/20 border border-amber-500/30 rounded-xl p-4 inline-block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-500/20 hover:border-amber-500/50 cursor-default">
@@ -6901,8 +6901,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 3: Timing Game - best vs worst buy */}
       {scene === 3 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <p className={`text-xl text-white/60 mb-10 transition-all duration-1000 ${
+        <div className={`text-center transition-opacity duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-10 transition-opacity duration-1000 ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Let's talk timing...
@@ -6911,8 +6911,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className="flex justify-center gap-8 flex-wrap">
             {/* Best buy */}
             {priceStats?.bestBuy && (
-              <div className={`transition-all duration-700 ${
-                subStage >= 2 ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
+              <div className={`transition-opacity duration-700 ${
+                subStage >= 2 ? 'opacity-100' : 'opacity-0'
               }`}>
                 <div className="group bg-green-500/20 border border-green-500/30 rounded-xl p-6 min-w-[180px] cursor-default transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-green-500/20 hover:border-green-500/50 hover:bg-green-500/25">
                   <p className="text-green-400 text-sm mb-2">
@@ -6927,8 +6927,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             
             {/* Worst buy */}
             {priceStats?.worstBuy && (
-              <div className={`transition-all duration-700 ${
-                subStage >= 3 ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
+              <div className={`transition-opacity duration-700 ${
+                subStage >= 3 ? 'opacity-100' : 'opacity-0'
               }`}>
                 <div className="group bg-red-500/20 border border-red-500/30 rounded-xl p-6 min-w-[180px] cursor-default transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-red-500/20 hover:border-red-500/50 hover:bg-red-500/25">
                   <p className="text-red-400 text-sm mb-2">
@@ -6944,7 +6944,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           
           {/* Multiplier difference */}
           {timingMultiplier && timingMultiplier > 1 && (
-            <p className={`text-lg text-white/60 mt-8 transition-all duration-700 ${
+            <p className={`text-lg text-white/60 mt-8 transition-opacity duration-700 ${
               subStage >= 4 ? 'opacity-100' : 'opacity-0'
             }`}>
               That's a <span className="text-amber-400 font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">{timingMultiplier}x</span> difference! 
@@ -6956,16 +6956,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 4: Paper Hands Moments 😅 */}
       {scene === 4 && priceStats?.paperHandsMoments?.length > 0 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             About those sells... <span className="inline-block animate-pulse">😬</span>
           </p>
           
           {/* Paper hands moment card */}
-          <div className={`transition-all duration-700 ${
-            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+          <div className={`transition-opacity duration-700 ${
+            subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             <div className="group bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30 rounded-2xl p-6 max-w-sm mx-auto cursor-default transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-red-500/20 hover:border-red-500/50">
               <span className="text-5xl block mb-4 group-hover:animate-bounce">🧻</span>
@@ -6996,7 +6996,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Redemption message */}
-          <p className={`text-lg text-white/60 mt-8 transition-all duration-700 ${
+          <p className={`text-lg text-white/60 mt-8 transition-opacity duration-700 ${
             subStage >= 3 ? 'opacity-100' : 'opacity-0'
           }`}>
             But hey, <span className="text-amber-400 font-medium drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">you came back stronger</span> <span className="inline-block hover:scale-125 transition-transform cursor-default">💪</span>
@@ -7006,16 +7006,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 5: Your Style - DCA score, streak, favorite day */}
       {scene === 5 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 5 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-all duration-1000 ${
+        <div className={`text-center transition-opacity duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Your buying style
           </p>
           
           {/* Style badge */}
-          <div className={`mb-8 transition-all duration-700 ${
-            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+          <div className={`mb-8 transition-opacity duration-700 ${
+            subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             <span className="text-6xl block mb-3 hover:scale-125 hover:rotate-12 transition-transform duration-300 cursor-default">{buyingStyleInfo.emoji}</span>
             <p className="text-2xl font-bold text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]">{buyingStyleInfo.label}</p>
@@ -7027,8 +7027,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           
           {/* Streak */}
           {priceStats?.monthlyStreak?.longest > 1 && (
-            <div className={`mb-6 transition-all duration-700 ${
-              subStage >= 3 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+            <div className={`mb-6 transition-opacity duration-700 ${
+              subStage >= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               <p className="text-white/50 mb-2">Longest buying streak</p>
               <div className="group inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 cursor-default transition-all duration-300 hover:bg-white/10 hover:border-orange-500/30 hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/10">
@@ -7043,8 +7043,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           )}
           
           {/* Day/time preference */}
-          <div className={`transition-all duration-700 ${
-            subStage >= 4 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          <div className={`transition-opacity duration-700 ${
+            subStage >= 4 ? 'opacity-100' : 'opacity-0'
           }`}>
             <p className="text-white/40">
               You're a <span className="text-white font-medium hover:text-amber-400 transition-colors cursor-default">{priceStats?.favoriteDayOfWeek || 'weekday'}</span>
@@ -7057,7 +7057,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 6: Badges Sequence */}
       {scene === 6 && (
-        <div className={`text-center transition-all duration-1000 min-h-[350px] flex flex-col items-center justify-start pt-4 ${subStage === 5 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        <div className={`text-center transition-opacity duration-1000 min-h-[350px] flex flex-col items-center justify-start pt-4 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           
           {/* Title - absolutely positioned to prevent any movement */}
           <div className="h-[60px] flex items-center justify-center">
@@ -7132,8 +7132,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                   </div>
                   
                   {/* Badge reveal - fixed height container */}
-                  <div className={`h-[150px] flex flex-col items-center justify-center transition-all duration-700 ${
-                    subStage >= 3 && subStage < 4 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+                  <div className={`h-[150px] flex flex-col items-center justify-center transition-opacity duration-700 ${
+                    subStage >= 3 && subStage < 4 ? 'opacity-100' : 'opacity-0'
                   }`}>
                     <span className={`text-8xl block mb-4 ${getBadgeGlow()} hover:scale-110 transition-transform duration-300 cursor-default`}>
                       {allBadges[currentBadgeIndex].emoji}
@@ -7161,17 +7161,17 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 7: Username Color Reveal */}
       {scene === 7 && (
-        <div className={`text-center transition-all duration-1000 ${subStage === 4 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
           {/* Message about color */}
-          <p className={`text-xl text-white/60 mb-12 max-w-md mx-auto transition-all duration-1000 ${
-            subStage >= 1 ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+          <p className={`text-xl text-white/60 mb-12 max-w-md mx-auto transition-opacity duration-1000 ${
+            subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Your recognition gives you a special presence in chat
           </p>
           
           {/* Username reveal */}
-          <div className={`transition-all duration-1000 ${
-            subStage >= 2 ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+          <div className={`transition-opacity duration-1000 ${
+            subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             <p className={`text-4xl font-bold transition-all duration-1500 cursor-default hover:scale-110 ${
               subStage >= 3 
@@ -7190,7 +7190,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             </p>
             
             {/* Hint text */}
-            <p className={`text-sm text-white/40 mt-6 transition-all duration-1000 ${
+            <p className={`text-sm text-white/40 mt-6 transition-opacity duration-1000 ${
               subStage >= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               Hover over your name to reveal your achievements
