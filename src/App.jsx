@@ -6705,17 +6705,17 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         }
       }
       
-      // Fade out last badge
-      setSubStage(1);
-      await delay(700);
+      // Fade out last badge AND title together
+      setSubStage(4); // This will hide both title and badge
+      await delay(1200); // Wait for everything to fade out completely
       
-      // Show personality quote (title fades out here since subStage 6)
+      // Show personality quote (everything else is now hidden)
       setSubStage(6);
-      await delay(4000);
+      await delay(5000); // Show quote for 5 seconds
       
       // Fade out entire scene
       setSubStage(5);
-      await delay(1000); // Reduced from 1500 - just enough for fade
+      await delay(1000); // Just enough for fade
       
       // Move to username color scene
       setScene(7);
@@ -7069,13 +7069,13 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       {scene === 6 && (
         <div className={`text-center transition-opacity duration-1000 min-h-[350px] flex flex-col items-center justify-center ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           
-          {/* Badge sequence content - shown during stages 1-4 */}
-          <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
-            subStage >= 1 && subStage <= 4 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
+          {/* Badge sequence content - shown during stages 1-3, fades at 4 */}
+          <div className={`flex flex-col items-center justify-center transition-opacity duration-1000 ${
+            subStage >= 1 && subStage <= 3 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
             {/* Title */}
             <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
-              subStage >= 1 ? 'opacity-100' : 'opacity-0'
+              subStage >= 1 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               You've earned your place
             </p>
@@ -7148,7 +7148,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Personality quote - wide hero style */}
-          <div className={`flex flex-col items-center justify-center w-full transition-opacity duration-1500 ${
+          <div className={`flex flex-col items-center justify-center w-full transition-opacity duration-[2000ms] ease-in-out ${
             subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
             <p className="text-2xl md:text-3xl text-white/90 italic max-w-2xl leading-relaxed text-center px-8">
