@@ -6691,7 +6691,10 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       // Loop through each badge
       for (let i = 0; i < allBadges.length; i++) {
-        // First set the badge index (content changes while hidden)
+        // Set subStage to 0 first to ensure everything is hidden
+        setSubStage(0);
+        await delay(100); // Wait for fade out
+        // Now change the badge index (content changes while hidden)
         setCurrentBadgeIndex(i);
         await delay(50); // Tiny delay to ensure state update
         setSubStage(2); // Fade in reason
@@ -6701,6 +6704,10 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         setSubStage(4); // Fade everything out
         await delay(800); // Wait for fade out animation to complete
       }
+      
+      // Fade out badge content first
+      setSubStage(4);
+      await delay(800);
       
       // Show personality quote
       setSubStage(6); // Personality quote
@@ -7072,16 +7079,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Badge content area - fixed height to prevent jumping */}
-          <div className="h-[250px] w-full flex flex-col items-center justify-center">
+          <div className="h-[250px] w-full flex flex-col items-center justify-center relative">
             
             {/* Badge sequence - ALWAYS RENDERED, visibility controlled by opacity */}
-            {allBadges[currentBadgeIndex] && subStage !== 6 && (
-              <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
-                subStage >= 2 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
+            {allBadges[currentBadgeIndex] && (
+              <div className={`flex flex-col items-center justify-center transition-opacity duration-700 absolute inset-0 ${
+                subStage === 2 || subStage === 3 ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}>
                 {/* Reason text */}
                 <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed mb-6 ${
-                  subStage >= 2 ? 'opacity-100' : 'opacity-0'
+                  subStage >= 2 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
                 }`}>
                   {(() => {
                     const name = allBadges[currentBadgeIndex].name;
@@ -7098,7 +7105,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 
                 {/* Badge reveal */}
                 <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
-                  subStage >= 3 ? 'opacity-100' : 'opacity-0'
+                  subStage === 3 ? 'opacity-100' : 'opacity-0'
                 }`}>
                   <span className={`text-8xl block mb-4 hover:scale-110 transition-transform duration-300 cursor-default ${
                     (() => {
@@ -7140,17 +7147,18 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               </div>
             )}
             
-            {/* Personality quote - shown after all badges */}
-            {subStage === 6 && (
-              <div className="flex flex-col items-center justify-center transition-opacity duration-700 opacity-100">
-                <p className="text-white/50 text-sm mb-4">This is who you are</p>
-                <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
-                  "{getHolderPersonality()}"
-                </p>
-              </div>
-            )}
+            {/* Personality quote - ALWAYS RENDERED, visibility controlled by opacity */}
+            <div className={`flex flex-col items-center justify-center absolute inset-0 transition-opacity duration-700 ${
+              subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none'
+            }`}>
+              <p className="text-white/50 text-sm mb-4">This is who you are</p>
+              <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
+                "{getHolderPersonality()}"
+              </p>
+            </div>
           </div>
         </div>
+      )}
       )}
       
       {/* Scene 7: Username Color Reveal */}
@@ -7167,21 +7175,31 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className={`transition-opacity duration-1000 ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
-            <p className={`text-4xl font-bold transition-all duration-1500 cursor-default hover:scale-110 ${
-              subStage >= 3 
-                ? guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑'
-                  ? 'text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.7)] hover:drop-shadow-[0_0_30px_rgba(251,191,36,0.9)]'
+            {/* Username with color overlay for smooth transition */}
+            <div className="relative inline-block">
+              {/* Base white text */}
+              <p className={`text-4xl font-bold cursor-default hover:scale-110 transition-all duration-500 ${
+                subStage >= 3 ? 'text-white/0' : 'text-white'
+              }`}>
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </p>
+              {/* Colored text overlay */}
+              <p className={`text-4xl font-bold cursor-default absolute inset-0 transition-all duration-1000 hover:scale-110 ${
+                subStage >= 3 ? 'opacity-100' : 'opacity-0'
+              } ${
+                guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑'
+                  ? 'text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.7)]'
                   : guardData.primaryBadge?.emoji === '💎'
-                    ? 'text-purple-400 drop-shadow-[0_0_18px_rgba(192,132,252,0.6)] hover:drop-shadow-[0_0_28px_rgba(192,132,252,0.8)]'
+                    ? 'text-purple-400 drop-shadow-[0_0_18px_rgba(192,132,252,0.6)]'
                     : guardData.primaryBadge?.emoji === '🌳'
-                      ? 'text-cyan-400 drop-shadow-[0_0_16px_rgba(34,211,238,0.5)] hover:drop-shadow-[0_0_26px_rgba(34,211,238,0.7)]'
+                      ? 'text-cyan-400 drop-shadow-[0_0_16px_rgba(34,211,238,0.5)]'
                       : guardData.primaryBadge?.emoji === '🌿'
-                        ? 'text-teal-400 drop-shadow-[0_0_14px_rgba(45,212,191,0.4)] hover:drop-shadow-[0_0_24px_rgba(45,212,191,0.6)]'
+                        ? 'text-teal-400 drop-shadow-[0_0_14px_rgba(45,212,191,0.4)]'
                         : 'text-white'
-                : 'text-white'
-            }`}>
-              {address.slice(0, 6)}...{address.slice(-4)}
-            </p>
+              }`}>
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </p>
+            </div>
             
             {/* Hint text */}
             <p className={`text-sm text-white/40 mt-6 transition-opacity duration-1000 ${
