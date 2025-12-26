@@ -19,6 +19,17 @@ import {
   hasRequiredTokens,
   generateNonce,
 } from './config/web3';
+import {
+  TRANSITIONS,
+  SCENE_TIMING,
+  TYPOGRAPHY,
+  COLORS,
+  CARDS,
+  LAYOUT,
+  getBadgeColors,
+  getUsernameColor,
+  getTransitionClasses,
+} from './presentationConfig';
 
 // ============================================
 // QUERY CLIENT
@@ -6548,15 +6559,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 0: Title sequence
   useEffect(() => {
     if (scene !== 0) return;
+    const t = SCENE_TIMING.scene0_title;
     
     const titleSequence = async () => {
-      await delay(500);
+      await delay(t.initialDelay);
       setSubStage(1); // Show title
-      await delay(2000);
+      await delay(t.titleDisplay);
       setSubStage(2); // Show subtitle
-      await delay(2500);
+      await delay(t.subtitleDisplay);
       setSubStage(3); // Fade out
-      await delay(1000);
+      await delay(t.fadeOut);
       setScene(1);
       setSubStage(0);
     };
@@ -6567,18 +6579,19 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 1: Date flip sequence
   useEffect(() => {
     if (scene !== 1) return;
+    const t = SCENE_TIMING.scene1_date;
     
     const dateSequence = async () => {
-      await delay(500);
+      await delay(t.initialDelay);
       setSubStage(1); // "Your journey began..."
-      await delay(1500);
+      await delay(t.titleDisplay);
       setSubStage(2); // Start date flip
       startDateFlip();
-      await delay(3500);
+      await delay(t.dateFlipDuration);
       setSubStage(3); // Show duration
-      await delay(3000);
+      await delay(t.durationDisplay);
       setSubStage(4); // Fade out
-      await delay(1000);
+      await delay(t.fadeOut);
       setScene(2);
       setSubStage(0);
     };
@@ -6589,17 +6602,18 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 2: The Accumulator - total buys, biggest buy
   useEffect(() => {
     if (scene !== 2) return;
+    const t = SCENE_TIMING.scene2_accumulator;
     
     const accumulatorSequence = async () => {
-      await delay(500);
+      await delay(t.initialDelay);
       setSubStage(1); // "You kept coming back"
-      await delay(2000);
+      await delay(t.titleDisplay);
       setSubStage(2); // Show total buys counter
-      await delay(2500);
+      await delay(t.countDisplay);
       setSubStage(3); // Show biggest buy
-      await delay(3000);
+      await delay(t.biggestBuyDisplay);
       setSubStage(4); // Fade out
-      await delay(1000);
+      await delay(t.fadeOut);
       setScene(3);
       setSubStage(0);
     };
@@ -6610,19 +6624,20 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 3: Timing Game - best vs worst buy
   useEffect(() => {
     if (scene !== 3) return;
+    const t = SCENE_TIMING.scene3_timing;
     
     const timingSequence = async () => {
-      await delay(500);
+      await delay(t.initialDelay);
       setSubStage(1); // "Let's talk timing..."
-      await delay(2000);
+      await delay(t.titleDisplay);
       setSubStage(2); // Show best buy
-      await delay(3000);
+      await delay(t.bestBuyDisplay);
       setSubStage(3); // Show worst buy
-      await delay(3000);
+      await delay(t.worstBuyDisplay);
       setSubStage(4); // Show multiplier difference
-      await delay(2500);
+      await delay(t.multiplierDisplay);
       setSubStage(5); // Fade out
-      await delay(1000);
+      await delay(t.fadeOut);
       // Go to Paper Hands scene if they have moments, otherwise skip to Style
       if (priceStats?.paperHandsMoments?.length > 0) {
         setScene(4); // Paper Hands
@@ -6638,17 +6653,18 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 4: Paper Hands Moments 😅
   useEffect(() => {
     if (scene !== 4) return;
+    const t = SCENE_TIMING.scene4_paperHands;
     
     const paperHandsSequence = async () => {
-      await delay(500);
+      await delay(t.initialDelay);
       setSubStage(1); // "About those sells..."
-      await delay(2500);
+      await delay(t.titleDisplay);
       setSubStage(2); // Show first paper hands moment
-      await delay(4000);
+      await delay(t.cardDisplay);
       setSubStage(3); // Show "but you came back" message
-      await delay(3000);
+      await delay(t.redemptionDisplay);
       setSubStage(4); // Fade out
-      await delay(1000);
+      await delay(t.fadeOut);
       setScene(5); // Go to Style
       setSubStage(0);
     };
@@ -6659,19 +6675,20 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 5: Your Style - DCA score, streak, favorite day
   useEffect(() => {
     if (scene !== 5) return;
+    const t = SCENE_TIMING.scene5_style;
     
     const styleSequence = async () => {
-      await delay(500);
+      await delay(t.initialDelay);
       setSubStage(1); // "Your buying style"
-      await delay(2000);
+      await delay(t.titleDisplay);
       setSubStage(2); // Show style badge
-      await delay(2500);
+      await delay(t.badgeDisplay);
       setSubStage(3); // Show streak
-      await delay(2500);
+      await delay(t.streakDisplay);
       setSubStage(4); // Show day/time preference
-      await delay(3000);
+      await delay(t.preferenceDisplay);
       setSubStage(5); // Fade out
-      await delay(1000);
+      await delay(t.fadeOut);
       setScene(6); // Badges
       setSubStage(0);
       setCurrentBadgeIndex(0);
@@ -6683,39 +6700,40 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 6: Badges sequence
   useEffect(() => {
     if (scene !== 6) return;
+    const t = SCENE_TIMING.scene6_badges;
     
     const badgeSequence = async () => {
-      await delay(500); // Initial delay so title can fade in
+      await delay(t.initialDelay);
       setSubStage(1); // Show "You've earned your place" title
-      await delay(1500);
+      await delay(t.titleDisplay);
       
       // Loop through each badge
       for (let i = 0; i < allBadges.length; i++) {
         // Change badge index while at subStage 4 or 1 (badge content hidden)
         setCurrentBadgeIndex(i);
-        await delay(50); // Tiny delay to ensure state update
+        await delay(TRANSITIONS.elementDelay.short);
         setSubStage(2); // Fade in reason
-        await delay(2000);
+        await delay(t.reasonDisplay);
         setSubStage(3); // Fade in badge
-        await delay(2500);
+        await delay(t.badgeReveal);
         // Only fade out badge content if there are more badges or personality quote
         if (i < allBadges.length - 1) {
           setSubStage(1); // Keep title, hide badge content
-          await delay(700); // Wait for fade out animation
+          await delay(t.badgeTransition);
         }
       }
       
       // Fade out last badge AND title together
       setSubStage(4); // This will hide both title and badge
-      await delay(1200); // Wait for everything to fade out completely
+      await delay(t.titleFadeOut);
       
       // Show personality quote (everything else is now hidden)
       setSubStage(6);
-      await delay(5000); // Show quote for 5 seconds
+      await delay(t.quoteDisplay);
       
       // Fade out entire scene
       setSubStage(5);
-      await delay(1000); // Just enough for fade
+      await delay(t.fadeOut);
       
       // Move to username color scene
       setScene(7);
@@ -6728,17 +6746,18 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 7: Username color reveal
   useEffect(() => {
     if (scene !== 7) return;
+    const t = SCENE_TIMING.scene7_username;
     
     const usernameSequence = async () => {
-      await delay(300); // Reduced from 1000 - start faster after scene change
+      await delay(t.initialDelay);
       setSubStage(1); // Show message about color
-      await delay(2500);
+      await delay(t.messageDisplay);
       setSubStage(2); // Show username in white
-      await delay(2000);
+      await delay(t.usernameReveal);
       setSubStage(3); // Transition to colored/glowing
-      await delay(3000);
+      await delay(t.colorTransition);
       setSubStage(4); // Fade out
-      await delay(1500);
+      await delay(t.fadeOut);
       
       // Move to final summary
       setScene(8); // Final
@@ -6751,9 +6770,10 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Scene 8: Final summary
   useEffect(() => {
     if (scene !== 8) return;
+    const t = SCENE_TIMING.scene8_summary;
     
     const finalSequence = async () => {
-      await delay(500);
+      await delay(t.initialDelay);
       setSubStage(1); // Fade in complete wrapped
     };
     
@@ -6828,13 +6848,13 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 0: Title Sequence */}
       {scene === 0 && (
-        <div className={`text-center transition-opacity duration-1000 ${subStage === 3 ? 'opacity-0' : 'opacity-100'}`}>
-          <h1 className={`text-5xl font-bold mb-4 transition-opacity duration-[2000ms] ease-in-out ${
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${subStage === 3 ? 'opacity-0' : 'opacity-100'}`}>
+          <h1 className={`${TYPOGRAPHY.heroTitle} mb-4 transition-opacity ${TRANSITIONS.fadeVerySlow} ${TRANSITIONS.easing} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
-            <span className="text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.3)]">Your GUARD</span> Journey
+            <span className={`${TYPOGRAPHY.heroTitleAccent}`}>Your GUARD</span> Journey
           </h1>
-          <p className={`text-xl text-white/60 transition-opacity duration-[1500ms] ease-in-out delay-500 ${
+          <p className={`${TYPOGRAPHY.heroSubtitle} transition-opacity ${TRANSITIONS.fadeSlow} ${TRANSITIONS.easing} delay-500 ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             Here's your story in the community
@@ -6844,65 +6864,65 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 1: Date Flip Sequence */}
       {scene === 1 && (
-        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`${TYPOGRAPHY.sceneTitle} mb-8 transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Your journey began...
           </p>
           
           {/* Flip Clock Style Date */}
-          <div className={`flex justify-center gap-3 mb-8 transition-opacity duration-700 ${
+          <div className={`flex justify-center gap-3 mb-8 transition-opacity ${TRANSITIONS.fadeFast} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
-            <div className="group bg-[#1a1a2e] rounded-lg p-4 min-w-[80px] shadow-xl border border-white/10 transition-all duration-300 hover:border-amber-500/30 hover:-translate-y-1 hover:shadow-amber-500/20">
+            <div className={`group ${CARDS.dateCard} min-w-[80px] transition-all duration-300 ${CARDS.dateCardHover}`}>
               <span className="text-4xl font-bold text-white font-mono group-hover:text-amber-400 transition-colors">{flipDateParts.day}</span>
             </div>
-            <div className="group bg-[#1a1a2e] rounded-lg p-4 min-w-[100px] shadow-xl border border-white/10 transition-all duration-300 hover:border-amber-500/30 hover:-translate-y-1 hover:shadow-amber-500/20">
+            <div className={`group ${CARDS.dateCard} min-w-[100px] transition-all duration-300 ${CARDS.dateCardHover}`}>
               <span className="text-4xl font-bold text-white font-mono group-hover:text-amber-400 transition-colors">{flipDateParts.month}</span>
             </div>
-            <div className="group bg-[#1a1a2e] rounded-lg p-4 shadow-xl border border-white/10 transition-all duration-300 hover:border-amber-500/30 hover:-translate-y-1 hover:shadow-amber-500/20">
-              <span className="text-4xl font-bold text-amber-400 font-mono group-hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.5)] transition-all">{flipDateParts.year}</span>
+            <div className={`group ${CARDS.dateCard} transition-all duration-300 ${CARDS.dateCardHover}`}>
+              <span className={`text-4xl font-bold ${COLORS.primary} font-mono group-hover:${COLORS.primaryGlow} transition-all`}>{flipDateParts.year}</span>
             </div>
           </div>
           
-          <p className={`text-lg text-white/50 transition-opacity duration-1000 ${
+          <p className={`text-lg text-white/50 transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 3 ? 'opacity-100' : 'opacity-0'
           }`}>
-            That's <span className="text-amber-400 font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">{getHoldingDuration()}</span> of holding strong
+            That's <span className={`${COLORS.primary} font-bold ${COLORS.primaryGlow}`}>{getHoldingDuration()}</span> of holding strong
           </p>
         </div>
       )}
       
       {/* Scene 2: The Accumulator - total buys, biggest buy */}
       {scene === 2 && (
-        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`${TYPOGRAPHY.sceneTitle} mb-8 transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             You kept coming back...
           </p>
           
           {/* Total buys counter */}
-          <div className={`mb-8 transition-opacity duration-700 ${
+          <div className={`mb-8 transition-opacity ${TRANSITIONS.fadeFast} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
-            <span className="text-7xl font-bold text-amber-400 font-mono drop-shadow-[0_0_30px_rgba(251,191,36,0.4)] hover:drop-shadow-[0_0_40px_rgba(251,191,36,0.6)] transition-all duration-300 cursor-default">
+            <span className={`${TYPOGRAPHY.statNumber} ${COLORS.primaryGlowStrong} hover:${COLORS.primaryGlowHover} transition-all duration-300 cursor-default`}>
               {priceStats?.totalBuys || guardData.transactionCount || '?'}
             </span>
-            <p className="text-xl text-white/70 mt-2">separate purchases</p>
+            <p className={TYPOGRAPHY.statLabel}>separate purchases</p>
           </div>
           
           {/* Biggest buy */}
           {priceStats?.biggestBuy && (
-            <div className={`transition-opacity duration-700 ${
+            <div className={`transition-opacity ${TRANSITIONS.fadeFast} ${
               subStage >= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               <p className="text-white/50 mb-2">Your biggest single buy</p>
-              <div className="group bg-gradient-to-r from-amber-500/20 to-purple-500/20 border border-amber-500/30 rounded-xl p-4 inline-block transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-amber-500/20 hover:border-amber-500/50 cursor-default">
-                <span className="text-3xl font-bold text-white group-hover:text-amber-100 transition-colors">{formatNumber(priceStats.biggestBuy.amount)}</span>
-                <span className="text-xl text-amber-400 ml-2 group-hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.5)] transition-all">GUARD</span>
-                <p className="text-white/40 text-sm mt-1 group-hover:text-white/60 transition-colors">{formatNiceDate(priceStats.biggestBuy.date)}</p>
+              <div className={`group ${CARDS.statCard} inline-block transition-all duration-300 ${CARDS.statCardHover} cursor-default`}>
+                <span className={`${TYPOGRAPHY.cardTitle} group-hover:text-amber-100 transition-colors`}>{formatNumber(priceStats.biggestBuy.amount)}</span>
+                <span className={`text-xl ${COLORS.primary} ml-2 group-hover:${COLORS.primaryGlow} transition-all`}>GUARD</span>
+                <p className={`${TYPOGRAPHY.cardDetail} mt-1 group-hover:text-white/60 transition-colors`}>{formatNiceDate(priceStats.biggestBuy.date)}</p>
               </div>
             </div>
           )}
@@ -6911,8 +6931,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 3: Timing Game - best vs worst buy */}
       {scene === 3 && (
-        <div className={`text-center transition-opacity duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
-          <p className={`text-xl text-white/60 mb-10 transition-opacity duration-1000 ${
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`${TYPOGRAPHY.sceneTitle} mb-10 transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Let's talk timing...
@@ -6921,32 +6941,32 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className="flex justify-center gap-8 flex-wrap">
             {/* Best buy */}
             {priceStats?.bestBuy && (
-              <div className={`transition-opacity duration-700 ${
+              <div className={`transition-opacity ${TRANSITIONS.fadeFast} ${
                 subStage >= 2 ? 'opacity-100' : 'opacity-0'
               }`}>
-                <div className="group bg-green-500/20 border border-green-500/30 rounded-xl p-6 min-w-[180px] cursor-default transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-green-500/20 hover:border-green-500/50 hover:bg-green-500/25">
-                  <p className="text-green-400 text-sm mb-2">
+                <div className={`group ${COLORS.bestTiming.bg} border ${COLORS.bestTiming.border} ${CARDS.timingCard} cursor-default transition-all duration-300 ${CARDS.timingCardHover} ${COLORS.bestTiming.shadow} ${COLORS.bestTiming.hoverBorder} ${COLORS.bestTiming.hoverBg}`}>
+                  <p className={`${COLORS.bestTiming.text} ${TYPOGRAPHY.timingLabel} mb-2`}>
                     <span className="inline-block group-hover:animate-bounce">🎯</span> Best Timing
                   </p>
-                  <span className="text-3xl font-bold text-green-400 group-hover:text-green-300 group-hover:drop-shadow-[0_0_10px_rgba(74,222,128,0.5)] transition-all">{formatPrice(priceStats.bestBuy.price)}</span>
-                  <p className="text-white/50 text-sm mt-2 group-hover:text-white/70 transition-colors">{formatNiceDate(priceStats.bestBuy.date)}</p>
-                  <p className="text-white/30 text-xs mt-1">{formatNumber(priceStats.bestBuy.amount)} GUARD</p>
+                  <span className={`${TYPOGRAPHY.timingPrice} ${COLORS.bestTiming.text} group-hover:text-green-300 group-hover:${COLORS.bestTiming.glow} transition-all`}>{formatPrice(priceStats.bestBuy.price)}</span>
+                  <p className={`${TYPOGRAPHY.cardSubtitle} mt-2 group-hover:text-white/70 transition-colors`}>{formatNiceDate(priceStats.bestBuy.date)}</p>
+                  <p className={TYPOGRAPHY.cardSmallDetail}>{formatNumber(priceStats.bestBuy.amount)} GUARD</p>
                 </div>
               </div>
             )}
             
             {/* Worst buy */}
             {priceStats?.worstBuy && (
-              <div className={`transition-opacity duration-700 ${
+              <div className={`transition-opacity ${TRANSITIONS.fadeFast} ${
                 subStage >= 3 ? 'opacity-100' : 'opacity-0'
               }`}>
-                <div className="group bg-red-500/20 border border-red-500/30 rounded-xl p-6 min-w-[180px] cursor-default transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-red-500/20 hover:border-red-500/50 hover:bg-red-500/25">
-                  <p className="text-red-400 text-sm mb-2">
+                <div className={`group ${COLORS.worstTiming.bg} border ${COLORS.worstTiming.border} ${CARDS.timingCard} cursor-default transition-all duration-300 ${CARDS.timingCardHover} ${COLORS.worstTiming.shadow} ${COLORS.worstTiming.hoverBorder} ${COLORS.worstTiming.hoverBg}`}>
+                  <p className={`${COLORS.worstTiming.text} ${TYPOGRAPHY.timingLabel} mb-2`}>
                     <span className="inline-block group-hover:animate-pulse">😅</span> Worst Timing
                   </p>
-                  <span className="text-3xl font-bold text-red-400 group-hover:text-red-300 group-hover:drop-shadow-[0_0_10px_rgba(248,113,113,0.5)] transition-all">{formatPrice(priceStats.worstBuy.price)}</span>
-                  <p className="text-white/50 text-sm mt-2 group-hover:text-white/70 transition-colors">{formatNiceDate(priceStats.worstBuy.date)}</p>
-                  <p className="text-white/30 text-xs mt-1">{formatNumber(priceStats.worstBuy.amount)} GUARD</p>
+                  <span className={`${TYPOGRAPHY.timingPrice} ${COLORS.worstTiming.text} group-hover:text-red-300 group-hover:${COLORS.worstTiming.glow} transition-all`}>{formatPrice(priceStats.worstBuy.price)}</span>
+                  <p className={`${TYPOGRAPHY.cardSubtitle} mt-2 group-hover:text-white/70 transition-colors`}>{formatNiceDate(priceStats.worstBuy.date)}</p>
+                  <p className={TYPOGRAPHY.cardSmallDetail}>{formatNumber(priceStats.worstBuy.amount)} GUARD</p>
                 </div>
               </div>
             )}
@@ -6954,10 +6974,10 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           
           {/* Multiplier difference */}
           {timingMultiplier && timingMultiplier > 1 && (
-            <p className={`text-lg text-white/60 mt-8 transition-opacity duration-700 ${
+            <p className={`${TYPOGRAPHY.multiplierText} mt-8 transition-opacity ${TRANSITIONS.fadeFast} ${
               subStage >= 4 ? 'opacity-100' : 'opacity-0'
             }`}>
-              That's a <span className="text-amber-400 font-bold drop-shadow-[0_0_8px_rgba(251,191,36,0.4)]">{timingMultiplier}x</span> difference! 
+              That's a <span className={`${TYPOGRAPHY.multiplierAccent} ${COLORS.primaryGlow}`}>{timingMultiplier}x</span> difference! 
               <span className="text-white/40 ml-2">Hey, we've all been there 😅</span>
             </p>
           )}
@@ -6966,100 +6986,100 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 4: Paper Hands Moments 😅 */}
       {scene === 4 && priceStats?.paperHandsMoments?.length > 0 && (
-        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`${TYPOGRAPHY.sceneTitle} mb-8 transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             About those sells... <span className="inline-block animate-pulse">😬</span>
           </p>
           
           {/* Paper hands moment card */}
-          <div className={`transition-opacity duration-700 ${
+          <div className={`transition-opacity ${TRANSITIONS.fadeFast} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
-            <div className="group bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/30 rounded-2xl p-6 max-w-sm mx-auto cursor-default transition-all duration-300 hover:-translate-y-2 hover:shadow-xl hover:shadow-red-500/20 hover:border-red-500/50">
+            <div className={`group ${COLORS.paperHands.bgGradient} border ${COLORS.paperHands.border} ${CARDS.paperHandsCard} cursor-default transition-all duration-300 ${CARDS.paperHandsCardHover}`}>
               <span className="text-5xl block mb-4 group-hover:animate-bounce">🧻</span>
-              <p className="text-white/50 text-sm mb-2">You sold on {formatNiceDate(priceStats.paperHandsMoments[0].sellDate)}</p>
+              <p className={`${TYPOGRAPHY.cardSubtitle} mb-2`}>You sold on {formatNiceDate(priceStats.paperHandsMoments[0].sellDate)}</p>
               <p className="text-2xl font-bold text-white mb-1 group-hover:text-white/90 transition-colors">
                 {formatNumber(Math.round(priceStats.paperHandsMoments[0].sellAmount))} GUARD
               </p>
-              <p className="text-white/40 text-sm mb-4">
+              <p className={`${TYPOGRAPHY.cardDetail} mb-4`}>
                 at {formatPrice(priceStats.paperHandsMoments[0].sellPrice)}
               </p>
               
               <div className="border-t border-white/10 pt-4">
-                <p className="text-white/50 text-sm">Then it pumped to</p>
-                <p className="text-3xl font-bold text-red-400 group-hover:text-red-300 group-hover:drop-shadow-[0_0_15px_rgba(248,113,113,0.5)] transition-all">
+                <p className={TYPOGRAPHY.cardSubtitle}>Then it pumped to</p>
+                <p className={`${TYPOGRAPHY.timingPrice} ${COLORS.paperHands.text} group-hover:text-red-300 group-hover:${COLORS.paperHands.glow} transition-all`}>
                   +{priceStats.paperHandsMoments[0].missedGainPercent}%
                 </p>
-                <p className="text-white/30 text-xs mt-1">
+                <p className={`${TYPOGRAPHY.cardSmallDetail} mt-1`}>
                   peaked {formatPrice(priceStats.paperHandsMoments[0].recoveryPrice)}
                 </p>
               </div>
             </div>
             
             {priceStats.paperHandsMoments.length > 1 && (
-              <p className="text-white/30 text-sm mt-4 hover:text-white/50 transition-colors cursor-default">
+              <p className={`${TYPOGRAPHY.cardSmallDetail} mt-4 hover:text-white/50 transition-colors cursor-default`}>
                 ...and {priceStats.paperHandsMoments.length - 1} more time{priceStats.paperHandsMoments.length > 2 ? 's' : ''} 😅
               </p>
             )}
           </div>
           
           {/* Redemption message */}
-          <p className={`text-lg text-white/60 mt-8 transition-opacity duration-700 ${
+          <p className={`text-lg text-white/60 mt-8 transition-opacity ${TRANSITIONS.fadeFast} ${
             subStage >= 3 ? 'opacity-100' : 'opacity-0'
           }`}>
-            But hey, <span className="text-amber-400 font-medium drop-shadow-[0_0_8px_rgba(251,191,36,0.3)]">you came back stronger</span> <span className="inline-block hover:scale-125 transition-transform cursor-default">💪</span>
+            But hey, <span className={`${COLORS.primary} font-medium ${COLORS.primaryGlow}`}>you came back stronger</span> <span className="inline-block hover:scale-125 transition-transform cursor-default">💪</span>
           </p>
         </div>
       )}
       
       {/* Scene 5: Your Style - DCA score, streak, favorite day */}
       {scene === 5 && (
-        <div className={`text-center transition-opacity duration-1000 ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
-          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+          <p className={`${TYPOGRAPHY.sceneTitle} mb-8 transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Your buying style
           </p>
           
           {/* Style badge */}
-          <div className={`mb-8 transition-opacity duration-700 ${
+          <div className={`mb-8 transition-opacity ${TRANSITIONS.fadeFast} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             <span className="text-6xl block mb-3 hover:scale-125 hover:rotate-12 transition-transform duration-300 cursor-default">{buyingStyleInfo.emoji}</span>
-            <p className="text-2xl font-bold text-amber-400 drop-shadow-[0_0_10px_rgba(251,191,36,0.3)]">{buyingStyleInfo.label}</p>
+            <p className={`text-2xl font-bold ${COLORS.primary} ${COLORS.primaryGlow}`}>{buyingStyleInfo.label}</p>
             <p className="text-white/50 mt-1">{buyingStyleInfo.desc}</p>
             {priceStats?.dcaScore > 0 && (
-              <p className="text-white/30 text-sm mt-2">{priceStats.dcaScore}% consistency score</p>
+              <p className={TYPOGRAPHY.cardSmallDetail}>{priceStats.dcaScore}% consistency score</p>
             )}
           </div>
           
           {/* Streak */}
           {priceStats?.monthlyStreak?.longest > 1 && (
-            <div className={`mb-6 transition-opacity duration-700 ${
+            <div className={`mb-6 transition-opacity ${TRANSITIONS.fadeFast} ${
               subStage >= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               <p className="text-white/50 mb-2">Longest buying streak</p>
-              <div className="group inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2 cursor-default transition-all duration-300 hover:bg-white/10 hover:border-orange-500/30 hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/10">
+              <div className={`group ${CARDS.stylePill} cursor-default transition-all duration-300 ${CARDS.stylePillHover}`}>
                 <span className="text-2xl group-hover:animate-pulse">🔥</span>
                 <span className="text-xl font-bold text-white group-hover:text-orange-300 transition-colors">{priceStats.monthlyStreak.longest} months</span>
                 <span className="text-white/40 text-sm">in a row</span>
               </div>
-              <p className="text-white/30 text-xs mt-2">
+              <p className={`${TYPOGRAPHY.cardSmallDetail} mt-2`}>
                 {priceStats.monthlyStreak.start} → {priceStats.monthlyStreak.end}
               </p>
             </div>
           )}
           
           {/* Day/time preference */}
-          <div className={`transition-opacity duration-700 ${
+          <div className={`transition-opacity ${TRANSITIONS.fadeFast} ${
             subStage >= 4 ? 'opacity-100' : 'opacity-0'
           }`}>
             <p className="text-white/40">
               You're a <span className="text-white font-medium hover:text-amber-400 transition-colors cursor-default">{priceStats?.favoriteDayOfWeek || 'weekday'}</span>
               {' '}
-              <span className="text-amber-400 hover:drop-shadow-[0_0_8px_rgba(251,191,36,0.5)] transition-all cursor-default">{priceStats?.buyTimePreference?.replace('_', ' ') || 'buyer'}</span>
+              <span className={`${COLORS.primary} hover:${COLORS.primaryGlow} transition-all cursor-default`}>{priceStats?.buyTimePreference?.replace('_', ' ') || 'buyer'}</span>
             </p>
           </div>
         </div>
@@ -7067,14 +7087,14 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 6: Badges Sequence */}
       {scene === 6 && (
-        <div className={`text-center transition-opacity duration-1000 min-h-[350px] flex flex-col items-center justify-center ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${LAYOUT.badgeSceneMinHeight} flex flex-col items-center justify-center ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           
           {/* Badge sequence content - shown during stages 1-3, fades at 4 */}
-          <div className={`flex flex-col items-center justify-center transition-opacity duration-1000 ${
+          <div className={`flex flex-col items-center justify-center transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 && subStage <= 3 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
             {/* Title */}
-            <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
+            <p className={`${TYPOGRAPHY.sceneTitle} mb-8 transition-opacity ${TRANSITIONS.fadeDefault} ${
               subStage >= 1 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               You've earned your place
@@ -7082,11 +7102,11 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             
             {/* Badge content */}
             {allBadges[currentBadgeIndex] && (
-              <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
+              <div className={`flex flex-col items-center justify-center transition-opacity ${TRANSITIONS.fadeFast} ${
                 subStage === 2 || subStage === 3 ? 'opacity-100' : 'opacity-0'
               }`}>
                 {/* Reason text - single line */}
-                <p className={`text-lg text-white/50 transition-opacity duration-700 mb-6 whitespace-nowrap ${
+                <p className={`${TYPOGRAPHY.badgeReason} transition-opacity ${TRANSITIONS.fadeFast} mb-6 ${
                   subStage >= 2 && subStage <= 3 ? 'opacity-100' : 'opacity-0'
                 }`}>
                   {(() => {
@@ -7103,42 +7123,16 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 </p>
                 
                 {/* Badge reveal */}
-                <div className={`flex flex-col items-center justify-center transition-opacity duration-700 ${
+                <div className={`flex flex-col items-center justify-center transition-opacity ${TRANSITIONS.fadeFast} ${
                   subStage === 3 ? 'opacity-100' : 'opacity-0'
                 }`}>
-                  <span className={`text-8xl block mb-4 hover:scale-110 transition-transform duration-300 cursor-default ${
-                    (() => {
-                      switch (allBadges[currentBadgeIndex].emoji) {
-                        case '🏆': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
-                        case '👑': return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]';
-                        case '💎': return 'drop-shadow-[0_0_40px_rgba(192,132,252,0.6)]';
-                        case '🌳': return 'drop-shadow-[0_0_40px_rgba(34,211,238,0.6)]';
-                        case '🌿': return 'drop-shadow-[0_0_40px_rgba(45,212,191,0.6)]';
-                        case '🔒': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
-                        case '⚡': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
-                        case '🗳️': return 'drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]';
-                        case '⭐': return 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]';
-                        case '🔄': return 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]';
-                        default: return 'drop-shadow-[0_0_40px_rgba(251,191,36,0.4)]';
-                      }
-                    })()
+                  <span className={`${TYPOGRAPHY.badgeEmoji} block mb-4 hover:scale-110 transition-transform duration-300 cursor-default ${
+                    getBadgeColors(allBadges[currentBadgeIndex].emoji).glow
                   }`}>
                     {allBadges[currentBadgeIndex].emoji}
                   </span>
-                  <p className={`text-2xl font-bold tracking-wide ${
-                    (() => {
-                      switch (allBadges[currentBadgeIndex].emoji) {
-                        case '🏆': case '👑': return 'text-amber-400';
-                        case '💎': return 'text-purple-400';
-                        case '🌳': return 'text-cyan-400';
-                        case '🌿': return 'text-teal-400';
-                        case '🔒': return 'text-blue-400';
-                        case '⚡': case '⭐': return 'text-yellow-400';
-                        case '🗳️': return 'text-indigo-400';
-                        case '🔄': return 'text-blue-400';
-                        default: return 'text-amber-400';
-                      }
-                    })()
+                  <p className={`${TYPOGRAPHY.badgeName} ${
+                    getBadgeColors(allBadges[currentBadgeIndex].emoji).text
                   }`}>
                     {allBadges[currentBadgeIndex].name}
                   </p>
@@ -7148,10 +7142,10 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Personality quote - wide hero style */}
-          <div className={`flex flex-col items-center justify-center w-full transition-opacity duration-[2000ms] ease-in-out ${
+          <div className={`flex flex-col items-center justify-center w-full transition-opacity ${TRANSITIONS.fadeVerySlow} ${TRANSITIONS.easing} ${
             subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
-            <p className="text-2xl md:text-3xl text-white/90 italic max-w-2xl leading-relaxed text-center px-8">
+            <p className={TYPOGRAPHY.personalityQuote}>
               "{getHolderPersonality()}"
             </p>
           </div>
@@ -7160,46 +7154,36 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 7: Username Color Reveal */}
       {scene === 7 && (
-        <div className={`text-center transition-opacity duration-1000 ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${subStage === 4 ? 'opacity-0' : 'opacity-100'}`}>
           {/* Message about color */}
-          <p className={`text-xl text-white/60 mb-12 max-w-md mx-auto transition-opacity duration-1000 ${
+          <p className={`${TYPOGRAPHY.sceneTitle} mb-12 max-w-md mx-auto transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
             Your recognition gives you a special presence in chat
           </p>
           
           {/* Username reveal */}
-          <div className={`transition-opacity duration-1000 ${
+          <div className={`transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
             {/* Username with color overlay for smooth transition */}
             <div className="relative inline-block">
               {/* Base white text */}
-              <p className={`text-4xl font-bold cursor-default hover:scale-110 transition-all duration-500 ${
+              <p className={`${TYPOGRAPHY.username} cursor-default hover:scale-110 transition-all duration-500 ${
                 subStage >= 3 ? 'text-white/0' : 'text-white'
               }`}>
                 {address.slice(0, 6)}...{address.slice(-4)}
               </p>
               {/* Colored text overlay */}
-              <p className={`text-4xl font-bold cursor-default absolute inset-0 transition-all duration-1000 hover:scale-110 ${
+              <p className={`${TYPOGRAPHY.username} cursor-default absolute inset-0 transition-all ${TRANSITIONS.fadeDefault} hover:scale-110 ${
                 subStage >= 3 ? 'opacity-100' : 'opacity-0'
-              } ${
-                guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑'
-                  ? 'text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.7)]'
-                  : guardData.primaryBadge?.emoji === '💎'
-                    ? 'text-purple-400 drop-shadow-[0_0_18px_rgba(192,132,252,0.6)]'
-                    : guardData.primaryBadge?.emoji === '🌳'
-                      ? 'text-cyan-400 drop-shadow-[0_0_16px_rgba(34,211,238,0.5)]'
-                      : guardData.primaryBadge?.emoji === '🌿'
-                        ? 'text-teal-400 drop-shadow-[0_0_14px_rgba(45,212,191,0.4)]'
-                        : 'text-white'
-              }`}>
+              } ${getUsernameColor(guardData)}`}>
                 {address.slice(0, 6)}...{address.slice(-4)}
               </p>
             </div>
             
             {/* Hint text */}
-            <p className={`text-sm text-white/40 mt-6 transition-opacity duration-1000 ${
+            <p className={`${TYPOGRAPHY.usernameHint} mt-6 transition-opacity ${TRANSITIONS.fadeDefault} ${
               subStage >= 3 ? 'opacity-100' : 'opacity-0'
             }`}>
               Hover over your name to reveal your achievements
@@ -7210,24 +7194,24 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 8: Final Summary */}
       {scene === 8 && (
-        <div className={`space-y-6 w-full transition-all duration-1500 ${
+        <div className={`space-y-6 w-full transition-all ${TRANSITIONS.fadeSlow} ${
           subStage >= 1 ? 'opacity-100' : 'opacity-0'
         }`}>
           {/* Header */}
           <div className="text-center">
             <h1 className="text-3xl font-bold mb-2">
-              <span className="text-amber-400">Your GUARD</span> Journey
+              <span className={COLORS.primary}>Your GUARD</span> Journey
             </h1>
             <p className="text-white/50">Here's your story in the community</p>
           </div>
           
           {/* Main Stats Card */}
-          <div className="bg-gradient-to-br from-amber-500/20 to-purple-500/20 border border-white/10 rounded-2xl p-6 space-y-5 hover:border-amber-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10">
+          <div className={`${CARDS.statCard} rounded-2xl p-6 space-y-5 hover:border-amber-500/30 transition-all duration-300 hover:shadow-lg hover:shadow-amber-500/10`}>
             
             {/* Quick Stats Row */}
             <div className="grid grid-cols-3 gap-4 text-center">
               <div className="group cursor-default p-2 rounded-lg hover:bg-white/5 transition-all duration-200 hover:-translate-y-1">
-                <p className="text-2xl font-bold text-amber-400 group-hover:scale-110 transition-transform duration-200">{priceStats?.totalBuys || '?'}</p>
+                <p className={`text-2xl font-bold ${COLORS.primary} group-hover:scale-110 transition-transform duration-200`}>{priceStats?.totalBuys || '?'}</p>
                 <p className="text-white/40 text-xs">Purchases</p>
               </div>
               <div className="group cursor-default p-2 rounded-lg hover:bg-white/5 transition-all duration-200 hover:-translate-y-1">
@@ -7235,7 +7219,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 <p className="text-white/40 text-xs">GUARD Now</p>
               </div>
               <div className="group cursor-default p-2 rounded-lg hover:bg-white/5 transition-all duration-200 hover:-translate-y-1">
-                <p className="text-2xl font-bold text-green-400 group-hover:scale-110 transition-transform duration-200">{priceStats?.dcaScore || 0}%</p>
+                <p className={`text-2xl font-bold ${COLORS.bestTiming.text} group-hover:scale-110 transition-transform duration-200`}>{priceStats?.dcaScore || 0}%</p>
                 <p className="text-white/40 text-xs">DCA Score</p>
               </div>
             </div>
