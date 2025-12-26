@@ -7057,17 +7057,19 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 6: Badges Sequence */}
       {scene === 6 && (
-        <div className={`text-center transition-all duration-1000 min-h-[300px] flex flex-col items-center justify-center ${subStage === 5 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        <div className={`text-center transition-all duration-1000 min-h-[350px] flex flex-col items-center justify-start pt-4 ${subStage === 5 ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
           
-          {/* Title - fixed position, just fades */}
-          <p className={`text-xl text-white/60 mb-8 transition-opacity duration-1000 ${
-            subStage >= 1 && subStage < 5 && subStage !== 6 ? 'opacity-100' : 'opacity-0'
-          }`}>
-            You've earned your place
-          </p>
+          {/* Title - absolutely positioned to prevent any movement */}
+          <div className="h-[60px] flex items-center justify-center">
+            <p className={`text-xl text-white/60 transition-opacity duration-1000 ${
+              subStage >= 1 && subStage < 5 && subStage !== 6 ? 'opacity-100' : 'opacity-0'
+            }`}>
+              You've earned your place
+            </p>
+          </div>
           
           {/* Badge content area - fixed height to prevent jumping */}
-          <div className="min-h-[200px] flex flex-col items-center justify-center">
+          <div className="h-[250px] flex flex-col items-center justify-center">
             
             {/* Badge sequence */}
             {subStage >= 2 && subStage <= 4 && allBadges[currentBadgeIndex] && (() => {
@@ -7109,7 +7111,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 // Rewrite common badge descriptions to be more elegant
                 if (name === 'Early Adopter') return 'One of the first 100 to believe';
                 if (name === 'Founding Member') return 'Here from the very beginning';
-                if (name === 'True Believer') return 'Never wavered, never sold';
+                if (name === 'True Believer') return 'Bought over half your stack in the first 45 days';
                 if (name === 'Steady Stacker') return 'Consistently building your position';
                 if (name === 'Diamond Hands') return 'Held through everything';
                 if (name === 'Whale') return 'A major force in the community';
@@ -7119,16 +7121,18 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               };
               
               return (
-                <div className="flex flex-col items-center">
-                  {/* Reason text - no quotes, cleaner */}
-                  <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed mb-8 ${
-                    subStage >= 2 && subStage < 4 ? 'opacity-100' : 'opacity-0'
-                  }`}>
-                    {getBetterDescription()}
-                  </p>
+                <div className="flex flex-col items-center h-full justify-center">
+                  {/* Reason text - fixed height container */}
+                  <div className="h-[50px] flex items-center justify-center mb-4">
+                    <p className={`text-lg text-white/50 max-w-md mx-auto transition-opacity duration-700 leading-relaxed ${
+                      subStage >= 2 && subStage < 4 ? 'opacity-100' : 'opacity-0'
+                    }`}>
+                      {getBetterDescription()}
+                    </p>
+                  </div>
                   
-                  {/* Badge reveal */}
-                  <div className={`transition-all duration-700 ${
+                  {/* Badge reveal - fixed height container */}
+                  <div className={`h-[150px] flex flex-col items-center justify-center transition-all duration-700 ${
                     subStage >= 3 && subStage < 4 ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
                   }`}>
                     <span className={`text-8xl block mb-4 ${getBadgeGlow()} hover:scale-110 transition-transform duration-300 cursor-default`}>
@@ -7144,7 +7148,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             
             {/* Personality quote - shown after all badges */}
             {subStage === 6 && (
-              <div className="flex flex-col items-center animate-fade-in">
+              <div className="flex flex-col items-center justify-center h-full animate-fade-in">
                 <p className="text-white/50 text-sm mb-4">This is who you are</p>
                 <p className="text-xl text-white/90 italic max-w-md leading-relaxed">
                   "{getHolderPersonality()}"
