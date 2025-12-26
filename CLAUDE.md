@@ -1,4 +1,8 @@
-# CLAUDE.md - Project Context for CLI
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
 
 ## Project Overview
 
@@ -8,6 +12,29 @@
 - **API:** https://commune-api.gregoryesman.workers.dev
 - **Token:** GUARD (0xF606bd19b1E61574ED625d9ea96C841D4E247A32) on BSC
 - **Access threshold:** 10,000 GUARD tokens
+
+---
+
+## Development Commands
+
+### Frontend (React + Vite + Tailwind)
+```bash
+cd frontend
+npm install          # Install dependencies
+npm run dev          # Start dev server (http://localhost:3000)
+npm run build        # Production build
+npm run preview      # Preview production build
+npm run lint         # ESLint check
+```
+
+### API (Cloudflare Worker)
+```bash
+cd api
+npm install          # Install wrangler
+wrangler dev         # Local development
+wrangler deploy      # Deploy to Cloudflare
+wrangler tail        # View live logs
+```
 
 ---
 
@@ -162,9 +189,33 @@ TENOR_API_KEY        # GIF API for chat
 
 ---
 
+## Architecture Notes
+
+### Frontend Flow
+1. **Token Gate:** Connect wallet → Verify GUARD balance → Sign message → Access community
+2. **Wrapped Presentation:** 9 scenes with timed transitions, conditional rendering based on wallet data
+
+### API Storage Strategy
+- **Durable Object storage:** Instant consistency for active chat
+- **KV backup:** Eventually consistent, persistent long-term storage
+- Both are written to; reads try DO first, fall back to KV
+
+### Key Patterns
+- **Presentation vs Content:** `presentationConfig.js` is LOCKED (timing/colors). `App.jsx` is DYNAMIC (content logic)
+- **Pre-computed data:** `holder-profiles.json` has 321 profiles pre-queried from Moralis to avoid API calls
+
+---
+
+## Workflow Rules
+
+- **Always push to GitHub after modifications** - After making any code changes, automatically commit and push to the repository. This triggers the Cloudflare Pages auto-deploy for frontend changes.
+
+---
+
 ## Important Notes
 
 - **Price history** comes from Dune API (cached in Cloudflare)
 - **Transaction data** comes from Moralis (holder-profiles.json is pre-cached)
 - **76% of holders are "Comeback Kids"** - paper handed but came back, this is the majority story arc
 - **Presentation timing is LOCKED** - only modify content, not animations/transitions
+- **ChatRoom uses Durable Objects** for WebSocket connections with KV as persistent backup
