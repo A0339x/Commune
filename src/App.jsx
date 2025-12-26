@@ -7145,6 +7145,51 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             
             <div className="border-t border-white/10" />
             
+            {/* Timing Stats */}
+            {(priceStats?.bestBuy || priceStats?.worstBuy) && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  {priceStats?.bestBuy && (
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 text-center">
+                      <p className="text-green-400 text-xs mb-1">🎯 Best Buy</p>
+                      <p className="text-lg font-bold text-green-400">{formatPrice(priceStats.bestBuy.price)}</p>
+                      <p className="text-white/30 text-xs">{formatNiceDate(priceStats.bestBuy.date)}</p>
+                    </div>
+                  )}
+                  {priceStats?.worstBuy && (
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-center">
+                      <p className="text-red-400 text-xs mb-1">😅 Worst Buy</p>
+                      <p className="text-lg font-bold text-red-400">{formatPrice(priceStats.worstBuy.price)}</p>
+                      <p className="text-white/30 text-xs">{formatNiceDate(priceStats.worstBuy.date)}</p>
+                    </div>
+                  )}
+                </div>
+                <div className="border-t border-white/10" />
+              </>
+            )}
+            
+            {/* Buying Style & Streak */}
+            <div className="flex justify-center gap-4 flex-wrap text-center">
+              <div className="bg-white/5 rounded-lg px-4 py-2">
+                <span className="text-2xl">{buyingStyleInfo.emoji}</span>
+                <p className="text-sm font-medium text-amber-400">{buyingStyleInfo.label}</p>
+              </div>
+              {priceStats?.monthlyStreak?.longest > 1 && (
+                <div className="bg-white/5 rounded-lg px-4 py-2">
+                  <span className="text-2xl">🔥</span>
+                  <p className="text-sm font-medium text-white">{priceStats.monthlyStreak.longest} mo streak</p>
+                </div>
+              )}
+              {priceStats?.favoriteDayOfWeek && (
+                <div className="bg-white/5 rounded-lg px-4 py-2">
+                  <span className="text-2xl">📅</span>
+                  <p className="text-sm font-medium text-white">{priceStats.favoriteDayOfWeek}s</p>
+                </div>
+              )}
+            </div>
+            
+            <div className="border-t border-white/10" />
+            
             {/* Milestones */}
             {priceStats?.milestonesHit?.length > 0 && (
               <>
@@ -7157,6 +7202,31 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                       </span>
                     ))}
                   </div>
+                </div>
+                <div className="border-t border-white/10" />
+              </>
+            )}
+            
+            {/* Paper Hands Moments */}
+            {priceStats?.paperHandsMoments?.length > 0 && (
+              <>
+                <div className="text-center">
+                  <p className="text-white/50 text-sm mb-3">🧻 Paper Hands Moments</p>
+                  <div className="space-y-2">
+                    {priceStats.paperHandsMoments.map((moment, i) => (
+                      <div key={i} className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex justify-between items-center">
+                        <div className="text-left">
+                          <p className="text-white/70 text-sm">{formatNiceDate(moment.sellDate)}</p>
+                          <p className="text-white/40 text-xs">{formatNumber(Math.round(moment.sellAmount))} GUARD @ {formatPrice(moment.sellPrice)}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-red-400 font-bold">+{moment.missedGainPercent}%</p>
+                          <p className="text-white/30 text-xs">missed</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-white/30 text-xs mt-2 italic">But you came back stronger 💪</p>
                 </div>
                 <div className="border-t border-white/10" />
               </>
