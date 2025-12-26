@@ -6715,7 +6715,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       // Fade out entire scene
       setSubStage(5);
-      await delay(1500);
+      await delay(1000); // Reduced from 1500 - just enough for fade
       
       // Move to username color scene
       setScene(7);
@@ -6730,7 +6730,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     if (scene !== 7) return;
     
     const usernameSequence = async () => {
-      await delay(1000);
+      await delay(300); // Reduced from 1000 - start faster after scene change
       setSubStage(1); // Show message about color
       await delay(2500);
       setSubStage(2); // Show username in white
@@ -7148,10 +7148,9 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           </div>
           
           {/* Personality quote - wide hero style */}
-          <div className={`flex flex-col items-center justify-center w-full transition-opacity duration-1000 ${
+          <div className={`flex flex-col items-center justify-center w-full transition-opacity duration-1500 ${
             subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
-            <p className="text-white/50 text-sm mb-6">This is who you are</p>
             <p className="text-2xl md:text-3xl text-white/90 italic max-w-2xl leading-relaxed text-center px-8">
               "{getHolderPersonality()}"
             </p>
