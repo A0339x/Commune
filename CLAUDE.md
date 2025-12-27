@@ -209,7 +209,7 @@ TENOR_API_KEY        # GIF API for chat
 ## Workflow Rules
 
 - **Always push to GitHub after modifications** - After making any code changes, automatically commit and push to the repository. This triggers the Cloudflare Pages auto-deploy for frontend changes.
-- **Do not mention Claude in commits** - Commit messages should not reference Claude, AI, or include the "Generated with Claude Code" footer. Write commit messages as if a human developer wrote them.
+- **Do not mention Claude in commits** - Commit messages should not reference Claude, AI, include the "Generated with Claude Code" footer, or any "Co-Authored-By" lines. Just the user's name should appear. Write commit messages as if a human developer wrote them.
 - **Maintain SESSION-SUMMARY.md automatically** - Keep the session summary up to date throughout the conversation:
   - When a task is completed, add it to "What We Accomplished"
   - When a new action item is discovered, add it to "Next Steps"
