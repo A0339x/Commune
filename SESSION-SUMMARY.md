@@ -1,10 +1,11 @@
-# Session Summary - Dec 26, 2025
+# Session Summary - Dec 27, 2025
 
 ## What We Accomplished
 
 ### 1. Updated CLAUDE.md for Claude Code
 - Added Claude Code header and development commands
 - Added workflow rules: always push to GitHub, no Claude mentions in commits
+- Added rule to maintain SESSION-SUMMARY.md automatically throughout conversation
 - Preserved existing project context
 
 ### 2. Overhauled Badge System (BADGE-SPEC.md)
@@ -59,36 +60,82 @@ Changed from 24hr cache to permanent cache with incremental updates:
 
 ### 6. Created contentConfig.js
 `frontend/src/contentConfig.js` - Dynamic content for Wrapped presentation:
-
-**Scene Titles** - Dynamic based on badge tier:
-- Founding Member: "Legend Status" / "Day One"
-- OG: "OG Territory" / "You were early"
-- Regular: "Your GUARD Journey"
-
-**Personality Quotes** - ~50 quotes across all badge types:
-- Primary badges: 4-5 quotes each
-- Modifiers: 3-5 quotes each
-- Priority: Modifier quotes shown first (Whale > Diamond Grip > Iron Will > etc.)
-
-**Other Features:**
-- Buying style definitions (DCA Master, Steady Stacker, etc.)
+- Scene titles dynamic based on badge tier
+- Buying style definitions
 - Badge reason text for Scene 6
-- Scene skip logic (skip Paper Hands for Diamond Grip holders)
-- Stat formatters (number, price, date, duration)
-- Edge case handling (extreme trader, single-badge holders)
+- Scene skip logic
+- Stat formatters
+- Edge case handling
+
+### 7. Quote System Redesign (COMPLETED)
+Changed from single-badge quotes to **combination-based story quotes**.
+
+**Key file:** `QUOTE-DRAFTS.md` - Contains 25 story quotes covering 78% of users (251/321)
+
+**Quote design principles:**
+- Each quote tells the user's full journey based on their badge combination
+- References specific emotional events (Feb drop, April test, May crash, October despair, long decline)
+- Euphoria period = price going UP, not "chaos" - "watching your money multiply felt incredible"
+- No judgment for selling - "we all felt that", "who wouldn't?", "totally normal"
+- **Celebrates profit-taking** - "that takes discipline", "that's not easy", "smart timing"
+- Smooth transitions from story to community - "we've been doing our own things"
+- Ends with connection invitation - "What have you been up to?", "What's been keeping you busy?"
+- Welcome language for new members - "now so are you", "glad you found us"
+- Hope through community, NOT promises about future - no "building in background" references
+- Goal: therapeutic closure + invitation to reconnect
+
+**Key emotional timeline referenced in quotes:**
+- **January-February 2022:** First jump to $1.40 - first profit-taking opportunity
+- **February 2022:** First scare - some got spooked
+- **April 2022:** Second test - some learned from Feb
+- **April 12-28, 2022:** April run - price climbing again, second profit-taking opportunity
+- **April 29 - May 8, 2022:** Smart exit window - last chance to take profits before crash
+- **May 9, 2022:** The crash - 50% overnight, dreams disappeared
+- **June-October 2022:** Uncertainty - nobody knew what would happen
+- **October-December 2022:** Hope lost - another 50% drop
+- **December 2022 onwards:** Long decline
+
+**Profit-taking vs Panic Selling Analysis (Dec 27):**
+- Analyzed profit-taking by combo using `frontend/scripts/profit-vs-panic.cjs`
+- Key finding: Of 114 early holders:
+  - **8 people (7%)** = Pure profit-takers (sold during runs, NEVER during drops)
+  - **88 people (77%)** = Sold during BOTH runs AND drops
+  - **8 people (7%)** = Pure panic sellers
+  - **7 people (6%)** = Never sold
+- Conclusion: Most selling was panic selling, not calculated profit-taking
+- Updated quotes to be honest about panic selling rather than celebrating "profit-taking"
+
+**New Badge: 🧘 Emotional Mastery (Dec 27):**
+- Added to BADGE-SPEC.md
+- Criteria: Sold during smart windows (runs), NEVER during panic windows (drops)
+- Smart windows: First jump (Jan 1 - Feb 4), April run (Apr 12-28), Pre-crash (Apr 29 - May 8)
+- Panic windows: Feb drop (Feb 5-19), Apr drop (Apr 2-11), May crash (May 9 - Jun 21), Oct drop (Oct 31 - Dec 3)
+- Only **8 people** qualify - the rarest modifier badge
+- Added to regenerate-badges.cjs, contentConfig.js
+
+**Comeback Kid note:** Ranges from 1-1785 sells (avg 42), so don't say "sold once" - use "sold some", "wavered", "paper hands moments"
 
 ## Files Changed
-- `CLAUDE.md` - Project context
+- `CLAUDE.md` - Project context + workflow rules
 - `BADGE-SPEC.md` - Badge definitions
 - `frontend/holder-profiles.json` - Regenerated with new badges
 - `frontend/price-history.json` - Cached price data
 - `frontend/scripts/regenerate-badges.cjs` - Badge calculation script
-- `frontend/src/contentConfig.js` - Dynamic scene content and quotes
-- `frontend/CONTENT-BRAINSTORM.md` - Scene content planning (needs update for new badges)
+- `frontend/scripts/analyze-timing.cjs` - Timing analysis helper (can delete)
+- `frontend/src/contentConfig.js` - Dynamic scene content
+- `QUOTE-DRAFTS.md` - 25 combination-based story quotes
+- `QUOTE-DRAFTS-edit.md` - User's feedback on quotes (can delete after integrating)
 - `api/src/index.js` - Price history caching changes
 
 ## Next Steps
-1. Review/modify quotes in `contentConfig.js`
-2. Update `App.jsx` to use contentConfig.js
-3. Deploy API with `cd api && wrangler deploy`
-4. Update `CONTENT-BRAINSTORM.md` to reflect new badge system
+1. **User to review `QUOTE-DRAFTS.md`** - Make any final tweaks to the 25 quotes
+2. **Write fallback quotes** - Cover remaining 70 users (60 rare combinations)
+3. **Update `contentConfig.js`** - Implement combination-based quote system
+4. **Update `App.jsx`** - Use contentConfig.js for quotes
+5. **Deploy API** - `cd api && wrangler deploy`
+6. **Update `CONTENT-BRAINSTORM.md`** - Reflect new badge system
+
+## Current State
+- Quote drafts are in `QUOTE-DRAFTS.md`, ready for final review
+- User wanted quotes to feel therapeutic - acknowledging the emotional journey, providing closure, inviting community reconnection
+- User emphasized: hope comes from PEOPLE not promises, ask "what have you been up to?", make people feel seen

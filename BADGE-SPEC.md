@@ -46,6 +46,7 @@ User earns multiple to display alongside their primary badge.
 | 📈    | Accumulator    | Made 10+ separate purchases                                         | ✅               |
 | 🔄    | Steady Stacker | Bought in 6+ different months                                       | ✅               |
 | 🏆    | Comeback Kid   | Had paper hands moment but rebuilt position                         | ✅               |
+| 🧘    | Emotional Mastery | Took profits during runs, never panic sold during drops          | ✅               |
 | 🧻    | Paper Hands    | Sold during 2+ major dips (20%+ drops)                              | ❌ (opt-in only) |
 
 ### Modifier Priority Order
@@ -54,13 +55,14 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 
 1. 🐋 Whale
 2. 💪 Diamond Grip
-3. ⭐ True Believer
-4. 🦾 Iron Will
-5. 🏗️ Builder
-6. 📈 Accumulator
-7. 🔄 Steady Stacker
-8. 🏆 Comeback Kid
-9. 🧻 Paper Hands *(never default - opt-in only)*
+3. 🧘 Emotional Mastery
+4. ⭐ True Believer
+5. 🦾 Iron Will
+6. 🏗️ Builder
+7. 📈 Accumulator
+8. 🔄 Steady Stacker
+9. 🏆 Comeback Kid
+10. 🧻 Paper Hands *(never default - opt-in only)*
 
 ---
 
@@ -97,10 +99,23 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 - **Note**: Regular DCA behavior
 
 ### 🏆 Comeback Kid
-- **Requirement**: 
+- **Requirement**:
   - Had at least one "paper hands moment" (sold during dip, price recovered 50%+)
   - Rebuilt position after selling
 - **Note**: Redemption arc
+
+### 🧘 Emotional Mastery
+- **Requirement**:
+  - Sold during at least one "smart window" (price running up):
+    - First jump: Jan 1 - Feb 4, 2022
+    - April run: Apr 12-28, 2022
+    - Pre-crash: Apr 29 - May 8, 2022
+  - AND never sold during any "panic window" (price crashing):
+    - Feb drop: Feb 5-19, 2022
+    - Apr drop: Apr 2-11, 2022
+    - May crash: May 9 - Jun 21, 2022
+    - Oct drop: Oct 31 - Dec 3, 2022
+- **Note**: Only 8 people qualify. True emotional discipline - sold when times were good, held when times were bad.
 
 ### 🧻 Paper Hands
 - **Requirement**: Sold during 2+ major dips (20%+ drops)

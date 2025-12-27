@@ -210,6 +210,13 @@ TENOR_API_KEY        # GIF API for chat
 
 - **Always push to GitHub after modifications** - After making any code changes, automatically commit and push to the repository. This triggers the Cloudflare Pages auto-deploy for frontend changes.
 - **Do not mention Claude in commits** - Commit messages should not reference Claude, AI, or include the "Generated with Claude Code" footer. Write commit messages as if a human developer wrote them.
+- **Maintain SESSION-SUMMARY.md automatically** - Keep the session summary up to date throughout the conversation:
+  - When a task is completed, add it to "What We Accomplished"
+  - When a new action item is discovered, add it to "Next Steps"
+  - When something is completed that wasn't on the list, still add it to accomplished
+  - Update after each significant milestone, not just at end of session
+  - This serves as a living progress tracker and handoff document
+- **Auto-update before context limit** - When context remaining drops below 10%, automatically update SESSION-SUMMARY.md with current progress so the next session can continue seamlessly
 
 ---
 

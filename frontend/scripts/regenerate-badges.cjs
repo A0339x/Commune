@@ -18,6 +18,20 @@ const path = require('path');
 // BADGE SPEC CONSTANTS
 // ============================================
 
+// Emotional Mastery windows
+const SMART_WINDOWS = [
+  { name: 'First jump', start: '2022-01-01', end: '2022-02-04' },
+  { name: 'April run', start: '2022-04-12', end: '2022-04-28' },
+  { name: 'Pre-crash', start: '2022-04-29', end: '2022-05-08' },
+];
+
+const PANIC_WINDOWS = [
+  { name: 'Feb drop', start: '2022-02-05', end: '2022-02-19' },
+  { name: 'Apr drop', start: '2022-04-02', end: '2022-04-11' },
+  { name: 'May crash', start: '2022-05-09', end: '2022-06-21' },
+  { name: 'Oct drop', start: '2022-10-31', end: '2022-12-03' },
+];
+
 // Primary badge date ranges (from - to)
 const PRIMARY_BADGE_TIERS = [
   { name: 'Founding Member', emoji: '👑', before: '2021-07-29', permanent: true },
@@ -160,6 +174,38 @@ function countDipSells(profile, dips) {
   }
 
   return dipSells;
+}
+
+// Check if sold during a specific window
+function soldInWindow(profile, window) {
+  const sells = profile.sells || [];
+  for (const sell of sells) {
+    const sellDate = normalizeDate(sell.date);
+    if (sellDate >= window.start && sellDate <= window.end) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Check for Emotional Mastery - sold during smart windows, NEVER during panic windows
+function hasEmotionalMastery(profile) {
+  // Must have been holder before Feb 2022 to be eligible
+  const firstBuy = normalizeDate(profile.firstBuyDate);
+  if (!firstBuy || firstBuy >= '2022-02-05') return false;
+
+  const sells = profile.sells || [];
+  if (sells.length === 0) return false;
+
+  // Check if sold during at least one smart window
+  const soldDuringSmart = SMART_WINDOWS.some(w => soldInWindow(profile, w));
+  if (!soldDuringSmart) return false;
+
+  // Check if NEVER sold during any panic window
+  const soldDuringPanic = PANIC_WINDOWS.some(w => soldInWindow(profile, w));
+  if (soldDuringPanic) return false;
+
+  return true;
 }
 
 // Check for paper hands moment (sold during dip, price recovered 50%+)
@@ -314,6 +360,11 @@ function calculateBadges(profile, priceData, priceMap) {
   if (profile.hasPaperHanded && profile.balance >= 10000) {
     // They sold but still hold 10k+
     badges.modifiers.push({ name: 'Comeback Kid', emoji: '🏆', reason: 'Sold but came back stronger' });
+  }
+
+  // 🧘 Emotional Mastery - Took profits during runs, never panic sold during drops
+  if (hasEmotionalMastery(profile)) {
+    badges.modifiers.push({ name: 'Emotional Mastery', emoji: '🧘', reason: 'Took profits during runs, never panic sold' });
   }
 
   // 🧻 Paper Hands - Sold during 2+ major dips (opt-in only, calculate but don't default display)

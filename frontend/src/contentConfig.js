@@ -164,6 +164,7 @@ export const BADGE_REASONS = {
   // Modifiers
   'Whale': 'A major force in the community',
   'Diamond Grip': 'Never sold a single token',
+  'Emotional Mastery': 'Took profits during runs, never panic sold',
   'True Believer': 'Over half your stack within 45 days of your first buy',
   'Iron Will': 'Held through the May 2022 crash without flinching',
   'Builder': 'Built your position over time',
@@ -264,6 +265,13 @@ const QUOTES = {
     "When the floor fell out, your grip held.",
   ],
 
+  emotionalMastery: [
+    "You sold when it felt wrong to sell. Held when it felt wrong to hold.",
+    "Profits taken during highs. Never panic sold during lows.",
+    "The rarest discipline in crypto. You have it.",
+    "When others panicked, you stayed calm. When others got greedy, you took profits.",
+  ],
+
   trueBeliever: [
     "All in, all early, all conviction.",
     "You didn't need more time. You knew.",
@@ -309,6 +317,7 @@ export const getPersonalityQuote = (profile) => {
   const modifierChecks = [
     { name: 'Whale', quotes: QUOTES.whale },
     { name: 'Diamond Grip', quotes: QUOTES.diamondGrip },
+    { name: 'Emotional Mastery', quotes: QUOTES.emotionalMastery },
     { name: 'Iron Will', quotes: QUOTES.ironWill },
     { name: 'True Believer', quotes: QUOTES.trueBeliever },
     { name: 'Builder', quotes: QUOTES.builder },
