@@ -10,19 +10,18 @@
 
 ## Primary Badges
 
-Based on effective first buy date (resets if balance drops below 10% of peak). User can have two if they are an early adopter / founding member but their average buy date is something else
+Users receive ONE primary badge based on when they first bought.
 
-| Emoji | Name              | Requirement                                                   |
-| ----- | ----------------- | ------------------------------------------------------------- |
-| 🏆    | Early Adopter     | First 100 wallets (permanent, ignores sell rules)             |
-| 👑    | Founding Member   | First buy before Jul 29, 2021 (permanent, ignores sell rules) |
-| 🌳    | OG                | First buy before Jan 8, 2022                                  |
-| 🌿    | Veteran           | First buy before Feb 27, 2022                                 |
-| 🎢    | Adrenaline Junkie | First buy before Apr 12, 2022                                 |
-| 🌾    | Survivor          | First buy before May 8, 2022                                  |
-| 🌱    | Believer          | First buy before Aug 30th, 2022                               |
-| 🍃    | Holder            | First buy before Jan 1, 2023                                  |
-| 🆕    | New Member        | First buy after Jan 1, 2024                                   |
+| Emoji | Name              | Date Range                  |
+| ----- | ----------------- | --------------------------- |
+| 👑    | Founding Member   | Before Jul 29, 2021         |
+| 🌳    | OG                | Jul 29, 2021 – Jan 7, 2022  |
+| 🌿    | Veteran           | Jan 8, 2022 – Feb 26, 2022  |
+| 🎢    | Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
+| 🌾    | Survivor          | Apr 29, 2022 – Jun 4, 2022  |
+| 🌱    | Believer          | Jun 5, 2022 – Aug 29, 2022  |
+| 🍃    | Holder            | Aug 30, 2022 – Dec 31, 2023 |
+| 🆕    | New Member        | Jan 1, 2024 onwards         |
 
 ### Badge Date Rules
 
@@ -42,9 +41,7 @@ User earns multiple to display alongside their primary badge.
 | 🐋    | Whale          | Currently holds 1M+ GUARD                                           | ✅               |
 | 💪    | Diamond Grip   | Never sold a single token (0 sells)                                 | ✅               |
 | ⭐     | True Believer  | 50%+ of current holdings bought within 45 days of first purchase    | ✅               |
-| 🔥    | Crash Survivor | Held through 50%+ crash without selling                             | ✅               |
-| 🎰    | Timing King    | Avg buy price in bottom 25% of all-time price range                 | ✅               |
-| 🎯    | Dip Buyer      | Bought during a major dip (20%+ drop from recent high)              | ✅               |
+| 🦾    | Iron Will      | Held through the May 2022 crash without selling                     | ✅               |
 | 🏗️   | Builder        | Peak balance ≥ 5x first buy AND 12+ months between first & last buy | ✅               |
 | 📈    | Accumulator    | Made 10+ separate purchases                                         | ✅               |
 | 🔄    | Steady Stacker | Bought in 6+ different months                                       | ✅               |
@@ -58,14 +55,12 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 1. 🐋 Whale
 2. 💪 Diamond Grip
 3. ⭐ True Believer
-4. 🔥 Crash Survivor
-5. 🎰 Timing King
-6. 🎯 Dip Buyer
-7. 🏗️ Builder
-8. 📈 Accumulator
-9. 🔄 Steady Stacker
-10. 🏆 Comeback Kid
-11. 🧻 Paper Hands *(never default - opt-in only)*
+4. 🦾 Iron Will
+5. 🏗️ Builder
+6. 📈 Accumulator
+7. 🔄 Steady Stacker
+8. 🏆 Comeback Kid
+9. 🧻 Paper Hands *(never default - opt-in only)*
 
 ---
 
@@ -83,17 +78,9 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 - **Requirement**: 50%+ of current holdings bought within 45 days of first purchase
 - **Note**: Shows early conviction with meaningful size
 
-### 🔥 Crash Survivor
-- **Requirement**: Held through a 50%+ crash without selling
-- **Note**: Must have held tokens before and after a major crash event
-
-### 🎰 Timing King
-- **Requirement**: Weighted average buy price in bottom 25% of all-time price range
-- **Note**: Rewards good market timing (or luck)
-
-### 🎯 Dip Buyer
-- **Requirement**: Made at least two purchases during a major dip (20%+ drop from 7-30 day high)
-- **Note**: Bought when others were scared
+### 🦾 Iron Will
+- **Requirement**: Bought before May 9, 2022 and never sold after
+- **Note**: Held through the major crash from $17 to current levels without selling
 
 ### 🏗️ Builder
 - **Requirement**: 
@@ -127,7 +114,6 @@ Based on primary badge:
 
 | Badge | Color | Glow |
 |-------|-------|------|
-| 🏆 Early Adopter | amber-400 | gold |
 | 👑 Founding Member | amber-400 | gold |
 | 🌳 OG | cyan-400 | cyan |
 | 🌿 Veteran | teal-400 | teal |
