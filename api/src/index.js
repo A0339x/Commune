@@ -1879,52 +1879,85 @@ export default {
       // ============================================
       // GUARD PRICE HISTORY (via Dune API)
       // ============================================
-      
+
       if (path === '/api/price-history' && method === 'GET') {
         try {
-          const cacheKey = 'guard_price_history_v2';
+          const cacheKey = 'guard_price_history_v3';
           const cached = await env.SESSIONS.get(cacheKey);
-          
-          let existingData = null;
-          let lastDate = null;
-          
+
+          const today = new Date().toISOString().split('T')[0];
+
           if (cached) {
             const parsed = JSON.parse(cached);
-            existingData = parsed.data;
-            lastDate = parsed.lastDate;
-            
-            // If we have data and it's less than 24 hours old, just return it
-            const oneDayMs = 24 * 60 * 60 * 1000;
-            if (parsed.cachedAt && Date.now() - parsed.cachedAt < oneDayMs) {
+            const existingData = parsed.data;
+            const lastDate = parsed.lastDate;
+
+            // If we already have today's data, return cached
+            if (lastDate === today) {
               return jsonResponse(existingData, 200, request);
             }
+
+            // We have historical data but need today's price
+            const duneApiKey = env.DUNE_API_KEY;
+            if (!duneApiKey) {
+              return jsonResponse(existingData, 200, request);
+            }
+
+            const queryId = env.DUNE_GUARD_PRICE_QUERY_ID || '6420002';
+
+            // Get Dune's cached results (should include recent data)
+            const cachedResultsResponse = await fetch(`https://api.dune.com/api/v1/query/${queryId}/results`, {
+              headers: { 'X-Dune-API-Key': duneApiKey },
+            });
+
+            if (cachedResultsResponse.ok) {
+              const duneResults = await cachedResultsResponse.json();
+              if (duneResults.result?.rows) {
+                // Find new dates we don't have
+                const existingDates = new Set(existingData.prices.map(p => p.date));
+                const newRows = duneResults.result.rows.filter(row => !existingDates.has(row.date));
+
+                if (newRows.length > 0) {
+                  // Reprocess all data (old raw + new) together
+                  const allRows = [...(parsed.rawRows || []), ...newRows];
+                  const newPriceData = processPriceData(allRows);
+                  const newLatestDate = newPriceData.prices.length > 0
+                    ? newPriceData.prices[newPriceData.prices.length - 1].date
+                    : lastDate;
+
+                  // Update cache with merged data
+                  await env.SESSIONS.put(cacheKey, JSON.stringify({
+                    data: newPriceData,
+                    lastDate: newLatestDate,
+                    cachedAt: Date.now(),
+                    rowCount: newPriceData.prices.length,
+                    rawRows: allRows,
+                  }));
+
+                  console.log(`Added ${newRows.length} new price entries`);
+                  return jsonResponse(newPriceData, 200, request);
+                }
+              }
+            }
+
+            // No new data available, return existing
+            return jsonResponse(existingData, 200, request);
           }
-          
-          // Fetch from Dune API
+
+          // No cache exists - fetch full history from Dune
           const duneApiKey = env.DUNE_API_KEY;
           if (!duneApiKey) {
-            // Return cached data if available, even without API key
-            if (existingData) {
-              return jsonResponse(existingData, 200, request);
-            }
             return errorResponse('Dune API key not configured', 500, request);
           }
-          
+
           const queryId = env.DUNE_GUARD_PRICE_QUERY_ID || '6420002';
-          
-          // If we have existing data, try to get just the latest results
-          // Dune caches query results, so we can often just fetch cached results
-          // without re-executing the full query
-          
-          // First try to get cached results from the last execution
-          const cachedResultsResponse = await fetch(`https://api.dune.com/api/v1/query/${queryId}/results`, {
-            headers: {
-              'X-Dune-API-Key': duneApiKey,
-            },
-          });
-          
+
+          // First try cached results from Dune
           let results = null;
-          
+          const cachedResultsResponse = await fetch(`https://api.dune.com/api/v1/query/${queryId}/results`, {
+            headers: { 'X-Dune-API-Key': duneApiKey },
+          });
+
           if (cachedResultsResponse.ok) {
             const cachedResults = await cachedResultsResponse.json();
             if (cachedResults.result?.rows) {
@@ -1932,11 +1965,11 @@ export default {
               console.log('Using Dune cached results, rows:', results.length);
             }
           }
-          
-          // If no cached results or they're stale, execute fresh query
+
+          // If no cached results, execute fresh query
           if (!results) {
             console.log('Executing fresh Dune query...');
-            
+
             const executeResponse = await fetch(`https://api.dune.com/api/v1/query/${queryId}/execute`, {
               method: 'POST',
               headers: {
@@ -1944,36 +1977,30 @@ export default {
                 'Content-Type': 'application/json',
               },
             });
-            
+
             if (!executeResponse.ok) {
               console.error('Dune execute error:', await executeResponse.text());
-              if (existingData) {
-                return jsonResponse(existingData, 200, request);
-              }
               return errorResponse('Failed to execute Dune query', 500, request);
             }
-            
+
             const { execution_id } = await executeResponse.json();
-            
-            // Poll for results (Dune queries can take a few seconds)
+
+            // Poll for results
             let attempts = 0;
-            
             while (attempts < 30) {
               await new Promise(r => setTimeout(r, 2000));
-              
+
               const statusResponse = await fetch(`https://api.dune.com/api/v1/execution/${execution_id}/results`, {
-                headers: {
-                  'X-Dune-API-Key': duneApiKey,
-                },
+                headers: { 'X-Dune-API-Key': duneApiKey },
               });
-              
+
               if (!statusResponse.ok) {
                 attempts++;
                 continue;
               }
-              
+
               const statusData = await statusResponse.json();
-              
+
               if (statusData.state === 'QUERY_STATE_COMPLETED') {
                 results = statusData.result?.rows || [];
                 break;
@@ -1981,36 +2008,32 @@ export default {
                 console.error('Dune query failed:', statusData);
                 break;
               }
-              
+
               attempts++;
             }
           }
-          
+
           if (!results || results.length === 0) {
-            if (existingData) {
-              return jsonResponse(existingData, 200, request);
-            }
             return errorResponse('Dune query returned no results', 500, request);
           }
-          
-          // Process results
+
+          // Process and cache permanently
           const priceData = processPriceData(results);
-          
-          // Get the latest date in the data
-          const latestDate = priceData.prices.length > 0 
-            ? priceData.prices[priceData.prices.length - 1].date 
+          const latestDate = priceData.prices.length > 0
+            ? priceData.prices[priceData.prices.length - 1].date
             : null;
-          
-          // Cache permanently (no expiration)
+
           await env.SESSIONS.put(cacheKey, JSON.stringify({
             data: priceData,
             lastDate: latestDate,
             cachedAt: Date.now(),
             rowCount: results.length,
+            rawRows: results,
           }));
-          
+
+          console.log('Cached full price history:', results.length, 'rows');
           return jsonResponse(priceData, 200, request);
-          
+
         } catch (error) {
           console.error('Price history error:', error);
           return errorResponse('Failed to fetch price history', 500, request);
@@ -2028,7 +2051,7 @@ export default {
         }
         
         // Clear the cache to force a refresh on next request
-        await env.SESSIONS.delete('guard_price_history_v2');
+        await env.SESSIONS.delete('guard_price_history_v3');
         return jsonResponse({ success: true, message: 'Price history cache cleared' }, 200, request);
       }
       
@@ -2051,7 +2074,7 @@ export default {
           const { transfers } = JSON.parse(transfersCache);
           
           // Get price history
-          const priceHistoryCache = await env.SESSIONS.get('guard_price_history_v2');
+          const priceHistoryCache = await env.SESSIONS.get('guard_price_history_v3');
           if (!priceHistoryCache) {
             return jsonResponse({ stats: null, message: 'Price history not available' }, 200, request);
           }
