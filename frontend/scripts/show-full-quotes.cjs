@@ -1,13 +1,18 @@
 /**
- * CONTENT CONFIG - Dynamic content for Wrapped presentation
- *
- * This file contains all text, quotes, and conditional logic for scenes.
- * presentationConfig.js handles HOW things look (timing, colors, typography)
- * contentConfig.js handles WHAT content appears (text, quotes, conditions)
+ * Show full personalized quotes using the actual contentConfig.js logic
+ * Run with: node frontend/scripts/show-full-quotes.cjs
  */
 
+const fs = require('fs');
+const path = require('path');
+
+// Load holder profiles
+const profilesPath = path.join(__dirname, '..', 'holder-profiles.json');
+const data = JSON.parse(fs.readFileSync(profilesPath, 'utf8'));
+const profiles = data.profiles;
+
 // =============================================================================
-// PRICE EVENT WINDOWS (for personalization)
+// EXACT COPY FROM contentConfig.js
 // =============================================================================
 
 const PANIC_WINDOWS = {
@@ -23,13 +28,6 @@ const BUYING_MILESTONES = {
   decline: { start: new Date('2022-11-01'), end: new Date('2024-12-31'), label: 'through the long decline' },
 };
 
-// =============================================================================
-// HELPER FUNCTIONS FOR QUOTE PERSONALIZATION
-// =============================================================================
-
-/**
- * Check if a wallet sold during a specific panic window
- */
 function soldDuringWindow(sells, window) {
   if (!sells || sells.length === 0) return false;
   return sells.some(sell => {
@@ -38,9 +36,6 @@ function soldDuringWindow(sells, window) {
   });
 }
 
-/**
- * Check if a wallet bought during a specific milestone period
- */
 function boughtDuringMilestone(buys, milestone) {
   if (!buys || buys.length === 0) return false;
   return buys.some(buy => {
@@ -49,9 +44,6 @@ function boughtDuringMilestone(buys, milestone) {
   });
 }
 
-/**
- * Get which panic windows a wallet sold during
- */
 function getSellWindows(sells) {
   const windows = [];
   if (soldDuringWindow(sells, PANIC_WINDOWS.feb)) windows.push('feb');
@@ -61,10 +53,7 @@ function getSellWindows(sells) {
   return windows;
 }
 
-/**
- * Get which milestones a wallet bought through
- */
-function getBuyingMilestones(buys) {
+function getBuyingMilestonesArr(buys) {
   const milestones = [];
   if (boughtDuringMilestone(buys, BUYING_MILESTONES.crash)) milestones.push('crash');
   if (boughtDuringMilestone(buys, BUYING_MILESTONES.uncertainty)) milestones.push('uncertainty');
@@ -72,36 +61,24 @@ function getBuyingMilestones(buys) {
   return milestones;
 }
 
-/**
- * Calculate consecutive month buying streaks
- */
 function getConsecutiveMonthStreak(buys) {
   if (!buys || buys.length === 0) return 0;
-
-  // Get unique months (YYYY-MM format)
   const months = new Set();
   buys.forEach(buy => {
     const date = new Date(buy.date);
     months.add(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`);
   });
-
-  // Sort months
   const sortedMonths = Array.from(months).sort();
   if (sortedMonths.length === 0) return 0;
-
   let maxStreak = 1;
   let currentStreak = 1;
-
   for (let i = 1; i < sortedMonths.length; i++) {
     const [prevYear, prevMonth] = sortedMonths[i - 1].split('-').map(Number);
     const [currYear, currMonth] = sortedMonths[i].split('-').map(Number);
-
-    // Check if consecutive
     const prevDate = new Date(prevYear, prevMonth - 1);
     const currDate = new Date(currYear, currMonth - 1);
     const monthDiff = (currDate.getFullYear() - prevDate.getFullYear()) * 12 +
                       (currDate.getMonth() - prevDate.getMonth());
-
     if (monthDiff === 1) {
       currentStreak++;
       maxStreak = Math.max(maxStreak, currentStreak);
@@ -109,59 +86,22 @@ function getConsecutiveMonthStreak(buys) {
       currentStreak = 1;
     }
   }
-
   return maxStreak;
 }
 
-/**
- * Format milestone text for quotes - full sentence version
- */
 function formatMilestoneText(milestones, streak) {
   if (milestones.length === 0) return '';
-
   const parts = [];
   if (milestones.includes('crash')) parts.push('through the crash');
   if (milestones.includes('uncertainty')) parts.push('through the quiet months');
   if (milestones.includes('decline')) parts.push('through the long decline');
-
-  let text = 'you kept building your position ' + parts.join(', ');
-
-  // Add streak if significant (3+ months)
+  let text = 'You kept building your position ' + parts.join(', ');
   if (streak >= 3) {
     text += ` — ${streak} months in a row`;
   }
-
   return text + '.';
 }
 
-/**
- * Format milestone text - compact inline version (for smooth integration)
- * Returns just the milestones and streak without "you kept building..."
- */
-function formatMilestoneInline(milestones, streak) {
-  if (milestones.length === 0 && streak < 3) return '';
-
-  const parts = [];
-  if (milestones.includes('crash')) parts.push('through the crash');
-  if (milestones.includes('uncertainty')) parts.push('through the quiet months');
-  if (milestones.includes('decline')) parts.push('through the long decline');
-
-  let text = parts.join(', ');
-
-  if (streak >= 3) {
-    if (text) {
-      text += ` — ${streak} months in a row`;
-    } else {
-      text = `${streak} months in a row`;
-    }
-  }
-
-  return text;
-}
-
-/**
- * Format streak as inline text
- */
 function formatStreakInline(streak) {
   if (streak >= 3) {
     return `, adding to it for ${streak} months in a row`;
@@ -169,28 +109,21 @@ function formatStreakInline(streak) {
   return '';
 }
 
-/**
- * Get the badge combination key for quote lookup
- */
 function getBadgeCombinationKey(profile) {
   const primary = profile.primaryBadge?.name || '';
   const modifiers = (profile.modifiers || [])
     .map(m => m.name)
-    .filter(name => name !== 'Paper Hands') // Exclude opt-in badge
+    .filter(name => name !== 'Paper Hands')
     .sort();
-
   return `${primary}|${modifiers.join('+')}`;
 }
 
-/**
- * Check if profile has a specific modifier
- */
 function hasModifier(profile, modifierName) {
   return (profile.modifiers || []).some(m => m.name === modifierName);
 }
 
 // =============================================================================
-// QUOTE TEMPLATES BY BADGE COMBINATION
+// QUOTE TEMPLATES - EXACT COPY FROM contentConfig.js (updated)
 // =============================================================================
 
 const QUOTE_TEMPLATES = {
@@ -248,7 +181,7 @@ const QUOTE_TEMPLATES = {
 
       // Build progressive sell language based on pattern
       let dropsPart = 'Then the drops came and they tested us. ';
-      let useNonetheless = false; // Track if we end with "but who can blame you?"
+      let useNonetheless = false;
 
       if (soldFeb && soldApr && soldMay) {
         dropsPart += `February scared us — and you sold some. April got most of us again — and that one rattled you too. May terrified us — and you didn't manage to hold on either. Who can blame you? The fear was real.`;
@@ -672,7 +605,7 @@ const QUOTE_TEMPLATES = {
   // #22 - Founding Member + Accumulator + Builder + Comeback Kid + Steady Stacker (3 users)
   'Founding Member|Accumulator+Builder+Comeback Kid+Steady Stacker': {
     generate: (profile, ctx) => {
-      // Build smooth drop text: "February 2022 got you as did May and October"
+      // Build smooth drop text: "February 2022 got you, as did May and October"
       const drops = [];
       if (ctx.sellWindows.includes('feb')) drops.push('February 2022');
       if (ctx.sellWindows.includes('apr')) drops.push('April');
@@ -717,10 +650,7 @@ const QUOTE_TEMPLATES = {
   },
 };
 
-// =============================================================================
-// FALLBACK QUOTES BY PRIMARY BADGE
-// =============================================================================
-
+// Fallback quotes
 const FALLBACK_QUOTES = {
   'Founding Member': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
@@ -728,22 +658,18 @@ const FALLBACK_QUOTES = {
     if (hasDiamondGrip) {
       return `You were here before anyone. Day one. And you've never sold — not once. Through every crash, every quiet month, every moment of doubt. That's what it looks like to believe in something and just hold. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
     }
-
     const hasComeback = hasModifier(profile, 'Comeback Kid');
     if (hasComeback) {
       return `You were here before there was a community. Day one. You watched it all — the excitement, the crashes, the quiet months. You sold some along the way — even genesis holders felt that fear. But you kept coming back and building your position${streakText}. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
     }
-
     return `You were here before there was a community. Day one. You've seen it all — every high, every crash, every quiet month. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
   },
-
   'OG': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
     const streakText = ctx.streak >= 3 ? `, ${ctx.streak} months in a row` : '';
     if (hasDiamondGrip) {
       return `You were here before most people knew GUARD existed. You watched it grow, felt the excitement — and you never sold. Not once. Through February's scare, through May's crash, through the long decline. That's what it looks like to believe in something and just hold. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
     }
-
     const hasComeback = hasModifier(profile, 'Comeback Kid');
     if (hasComeback) {
       let dropPart = '';
@@ -753,25 +679,20 @@ const FALLBACK_QUOTES = {
       }
       return `You were here before most people knew GUARD existed. You watched it grow, felt the excitement when the price started climbing. ${dropPart} But you kept coming back and building your position${streakText}. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
     }
-
     return `You were here before most people knew GUARD existed. You saw something others didn't — not yet. That early conviction says something about you. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
   },
-
   'Veteran': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
     const streakText = ctx.streak >= 3 ? `, ${ctx.streak} months in a row` : '';
     if (hasDiamondGrip) {
       return `You've been here since early 2022 — that's a long time in crypto. You watched the price climb, watched it crash, watched the long decline. And you never sold. Not once. That's what it looks like to believe in something and just hold. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
     }
-
     const hasComeback = hasModifier(profile, 'Comeback Kid');
     if (hasComeback) {
       return `You've been here since early 2022 — that's a long time in crypto. You've seen every test: February's first scare, April's drop, May's crash. You sold some along the way — the fear was real. But you kept coming back and building your position${streakText}. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
     }
-
     return `You've been here since early 2022 — that's a long time in crypto. You've seen the ups and downs, the crashes and the quiet months. Still here. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`;
   },
-
   'Adrenaline Junkie': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
     const streakText = ctx.streak >= 3 ? `, ${ctx.streak} months in a row` : '';
@@ -810,575 +731,285 @@ const FALLBACK_QUOTES = {
 
     return `You bought in while the price was flying — watching your money multiply felt incredible. ${dropsPart}${fearText} ${transitionText}, still building your position${streakText}. We're glad you're still here. Welcome!`;
   },
-
   'Survivor': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
     const streakText = ctx.streak >= 3 ? `, ${ctx.streak} months in a row` : '';
     if (hasDiamondGrip) {
       return `You bought during the crash — watched your money disappear almost immediately. That's brutal. That's one of the hardest lessons in crypto. And you never sold. Not once. Just held through all of it. That's a different kind of patience. We're glad you're still here. Welcome back!`;
     }
-
     return `You bought into the fomo and watched your money disappear almost immediately. That's brutal. That's one of the hardest lessons in crypto — and almost everyone goes through it at some point. But you're still here, still building your position${streakText}. We're glad you're still here. Welcome back!`;
   },
-
   'Believer': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
     const streakText = ctx.streak >= 3 ? `, ${ctx.streak} months in a row` : '';
     if (hasDiamondGrip) {
       return `You bought mid-2022, right after the crash. The charts looked ugly but you believed anyway. And you never sold — not once. Just quiet conviction through the long decline. That's a different kind of patience. We're glad you're still here. Welcome back!`;
     }
-
     return `You bought mid-2022, right after the crash. The charts looked ugly but you believed anyway — that takes guts. You kept building your position${streakText}. We're glad you're still here. Welcome back!`;
   },
-
   'Holder': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
     const streakText = ctx.streak >= 3 ? `, ${ctx.streak} months in a row` : '';
     if (hasDiamondGrip) {
       return `You showed up after the storm, and you never sold. Not once. Just quiet conviction through the long decline. That's a mature way to play this — buy something you believe in, hold, and focus on other things. We're glad you're still here. Welcome back!`;
     }
-
     return `You showed up after the storm. Missed the euphoria, missed the crash. But you lived through the long decline — month after month of the chart going nowhere or down. Still here, still building${streakText}. We're glad you're still here. Welcome back!`;
   },
-
   'New Member': (profile, ctx) => {
     const hasDiamondGrip = hasModifier(profile, 'Diamond Grip');
     if (hasDiamondGrip) {
       return `New wallet or new to GUARD — either way, welcome. You showed up and you haven't sold a single token. Fresh start. No scars from the crashes. Welcome to the family. We're glad you're here.`;
     }
-
     const hasComeback = hasModifier(profile, 'Comeback Kid');
     if (hasComeback) {
       return `New wallet or new to GUARD — either way, welcome. If you lived through everything before, you know all we've been up to. If you're just finding us, you joined during a lull. The price didn't move the way you hoped, and you sold some. But you came back. We're glad you're here. Welcome to the community!`;
     }
-
     return `New wallet or new to GUARD — either way, welcome. If you lived through everything before, you know all we've been up to. If you're just finding us, you're part of the family now. We're glad you're here.`;
   },
 };
 
-// =============================================================================
-// MAIN QUOTE GENERATION FUNCTION
-// =============================================================================
-
-/**
- * Generate a personalized quote for a wallet profile
- * @param {Object} profile - The wallet profile from holder-profiles.json
- * @returns {string} The personalized quote
- */
-export function generatePersonalizedQuote(profile) {
-  // Build context object with all the personalization data
+function generatePersonalizedQuote(profile) {
   const sells = profile.sells || [];
   const buys = profile.buys || [];
-
   const sellWindows = getSellWindows(sells);
-  const milestones = getBuyingMilestones(buys);
+  const milestones = getBuyingMilestonesArr(buys);
   const streak = getConsecutiveMonthStreak(buys);
   const milestoneText = formatMilestoneText(milestones, streak);
-  const milestoneInline = formatMilestoneInline(milestones, streak);
   const streakInline = formatStreakInline(streak);
+  const ctx = { sellWindows, milestones, streak, milestoneText, streakInline };
 
-  const ctx = {
-    sellWindows,
-    milestones,
-    streak,
-    milestoneText,
-    milestoneInline,
-    streakInline,
-  };
-
-  // Try to find exact match quote template
   const combinationKey = getBadgeCombinationKey(profile);
   const template = QUOTE_TEMPLATES[combinationKey];
-
   if (template) {
-    return template.generate(profile, ctx);
+    return { quote: template.generate(profile, ctx), type: 'TEMPLATE', key: combinationKey };
   }
 
-  // Fall back to primary badge quote
   const primaryBadge = profile.primaryBadge?.name || 'New Member';
   const fallbackFn = FALLBACK_QUOTES[primaryBadge];
-
   if (fallbackFn) {
-    return fallbackFn(profile, ctx);
+    return { quote: fallbackFn(profile, ctx), type: 'FALLBACK', key: combinationKey };
   }
 
-  // Ultimate fallback
-  return `You're part of the GUARD community. Through the ups and downs, you're still here. We're glad you're here.`;
+  return { quote: `You're part of the GUARD community. Through the ups and downs, you're still here. We're glad you're here.`, type: 'ULTIMATE_FALLBACK', key: combinationKey };
 }
 
 // =============================================================================
-// SCENE TITLES & SUBTITLES
+// ORIGINAL GROUP QUOTES FROM QUOTE-DRAFTS.md
 // =============================================================================
 
-export const SCENE_TITLES = {
-  // Scene 0: Opening
-  scene0: {
-    getTitle: (profile) => {
-      if (profile.primaryBadge?.name === 'Founding Member') return 'Legend Status';
-      if (profile.primaryBadge?.name === 'OG') return 'OG Territory';
-      return 'Your GUARD Journey';
-    },
-    getSubtitle: (profile) => {
-      if (profile.primaryBadge?.name === 'Founding Member') return 'You were there before it all began';
-      if (profile.primaryBadge?.name === 'OG') return 'You saw something others missed';
-      return "Here's your story in the community";
-    },
-  },
+const ORIGINAL_GROUP_QUOTES = {
+  'New Member|Diamond Grip+True Believer': `You showed up in 2024, put half your bag in within the first 45 days, and haven't sold a single token through the uncertainty and long decline when everyone else went quiet. Fresh start. No scars from the crashes. Welcome to the family. We're glad you're here`,
 
-  // Scene 1: First purchase date
-  scene1: {
-    getTitle: (profile) => {
-      if (profile.primaryBadge?.name === 'Founding Member') return 'Day One';
-      if (profile.primaryBadge?.name === 'OG') return 'You were early';
-      if (profile.primaryBadge?.name === 'Veteran') return 'Before the storm';
-      return 'Your journey began...';
-    },
-    getDurationText: (duration) => `That's ${duration} of holding strong`,
-  },
+  'Adrenaline Junkie|Accumulator+Builder+Comeback Kid+Steady Stacker': `You bought in while the price was flying — watching your money multiply felt incredible. Then May 2022 hit. 50% gone overnight. The panic was real, [insert if the specific wallet sold / if they held here]. But you also kept buying. [Mention how long the specific wallet kept building their position for, and use the milestones I mentioned to you instead of dates for when they bought (Through the crash, the quiet months and the long decline afterwards). If they went on a multiple month streak mention it here too)] We're glad you're still here. Welcome!`,
 
-  // Scene 2: Accumulator
-  scene2: {
-    getTitle: (profile) => {
-      const buys = profile.totalBuys || 0;
-      if (buys === 1) return 'One decision. That was all it took.';
-      if (buys >= 100) return 'At this point, it\'s muscle memory';
-      if (buys >= 50) return 'You kept coming back... and back... and back';
-      if (buys >= 10) return 'You kept coming back...';
-      return 'You made your moves...';
-    },
-    getBiggestBuyLabel: () => 'Your biggest single buy',
-    getPurchaseLabel: (count) => count === 1 ? 'purchase' : 'separate purchases',
-  },
+  'Veteran|Accumulator+Builder+Comeback Kid+Steady Stacker': `You've been here since early 2022 — that's a long time in crypto. February was your first scare — a lot of us got spooked and sold [Insert if the specific wallet sold / if they held here (Ex. And so did you, but who wouldn't \\ But you held strong!)]. Then April's drop came, another test [Insert if the specific wallet sold / if they held here]. Then May happened — 50% overnight. That one got almost everyone to sell something [Insert if the specific wallet sold / if they held here]. It was hard not to. But [Mention how long the specific wallet kept building their position for, and use the milestones I mentioned to you instead of dates for when they bought (Through the crash, the quiet months and the long decline afterwards, you kept building your position). If they went on a multiple month streak mention it here too)] That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back, it's really nice to see you here`,
 
-  // Scene 3: Timing
-  scene3: {
-    getTitle: () => "Let's talk timing...",
-    getBestLabel: () => 'Best Timing',
-    getWorstLabel: () => 'Worst Timing',
-    getMultiplierText: (multiplier) => ({
-      prefix: "That's a ",
-      multiplier: `${multiplier}x`,
-      suffix: " difference!",
-      comment: "Hey, we've all been there",
-    }),
-  },
+  'OG|Accumulator+Builder+Comeback Kid+Steady Stacker': `You were here before most people knew GUARD existed. You watched it grow, felt the excitement when the price started climbing. February 2022 was your first scare — [Insert if the specific wallet sold / if they held here]. Then April 2022's drop tested us again — [insert if the specific wallet sold / if they held here]. Then May 2022 took 50% overnight — [insert if the specific wallet sold / if they held here]. But you chose to keep building your position after. [Mention how long the specific wallet kept building their position for, and use the milestones I mentioned to you instead of dates for when they bought (Through the crash, the quiet months and the long decline afterwards). If they went on a multiple month streak mention it here too)]. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back, it's really nice to see you here`,
 
-  // Scene 4: Paper Hands (conditional)
-  scene4: {
-    shouldShow: (profile) => profile.hasPaperHanded,
-    getTitle: (profile) => {
-      const sells = profile.totalSells || 0;
-      if (sells >= 10) return 'About those sells... we need to talk';
-      if (sells >= 3) return 'About those sells...';
-      return 'About that one time...';
-    },
-    getRedemptionText: () => 'But hey, you came back stronger',
-    getMultipleSellsText: (count) => `...and ${count} more time${count > 1 ? 's' : ''}`,
-  },
+  'OG|Accumulator+Builder+Comeback Kid+Steady Stacker+True Believer': `You were one of the early OGs — here before most, and you went heavy. Half your stack in the first 45 days. You earned those daydreams when the price started climbing. Then May 2022 crashed and those dreams disappeared overnight. Almost all of us sold something — the fear was real [insert if the specific wallet sold / if they held for Feb, April, and May drops]. But you never stopped building your position. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`,
 
-  // Scene 5: Style
-  scene5: {
-    getTitle: () => 'Your buying style',
-    getStreakLabel: () => 'Longest buying streak',
-    getStreakSuffix: () => 'in a row',
-    getDayPreferenceText: (day, time) =>
-      `You're a ${day} ${time?.replace('_', ' ') || 'buyer'}`,
-  },
+  'Veteran|Accumulator+Builder+Comeback Kid+Steady Stacker+True Believer': `Early 2022, you went all in fast — half your position in the first 45 days. You believed in the project. Then the tests came: February's drop spooked most of us into selling [insert if the specific wallet sold / if they held]. April tested us again [insert if the specific wallet sold / if they held]. Then May 2022 got everyone — 50% overnight, and every single person sold something. The fear was real each time. But you chose to keep building your position. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`,
 
-  // Scene 6: Badges
-  scene6: {
-    getTitle: () => "You've earned your place",
-  },
+  'Holder|Accumulator+Builder+Comeback Kid+Steady Stacker': `You showed up after the storm. Missed the euphoria, missed the crash. But you lived through the long decline — month after month of the chart going down, and you chose to keep building your position anyway. Sold some along the way, but you kept at it. That's a different kind of patience. We're glad you're still here. Welcome back!`,
 
-  // Scene 7: Username
-  scene7: {
-    getTitle: () => 'Your recognition gives you a special presence in chat',
-    getHint: () => 'Hover over your name to reveal your achievements',
-  },
+  'Veteran|Accumulator+Comeback Kid+Steady Stacker+True Believer': `You went heavy early in 2022 — real conviction in the project. When the drops came, you sold some. February scared us [insert if the specific wallet sold / if they held], April got most of us again [insert if the specific wallet sold / if they held], May terrified us [insert if the specific wallet sold / if they held]. The fear was real. But every single one of you came back and kept stacking, month after month. Steady. Consistent. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`,
 
-  // Scene 8: Summary
-  scene8: {
-    getTitle: () => 'Your GUARD Journey',
-    getSubtitle: () => "Here's your story in the community",
-  },
+  'Founding Member|Accumulator+Comeback Kid+Steady Stacker+True Believer': `You were here before there was a community. Day one. Went heavy fast. You watched your investment grow — that excitement of seeing your money multiply was incredible. Then February 2022 was your first real scare — most of us sold something [insert if the specific wallet sold / if they held]. April tested us again [insert if the specific wallet sold / if they held]. Then May 2022 came — 50% overnight. That one got almost everyone to sell [insert if the specific wallet sold / if they held]. But you kept coming back, choosing to build your position for the future. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`,
+
+  'Founding Member|Accumulator+Builder+Comeback Kid+Steady Stacker+True Believer': `You're a day one holder who went all in from the start. You watched your money grow — that rush of seeing your investment multiply was incredible. Then you've seen every crash, every quiet month. The February 2022 scare got most of us to sell [insert if the specific wallet sold / if they held]. April tested us again [insert if the specific wallet sold / if they held]. May 2022's crash got even more [insert if the specific wallet sold / if they held]. You sold some along the way — even genesis holders felt that fear. But you spent years building your position. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back, it's really nice to see you here`,
+
+  'Adrenaline Junkie|Accumulator+Builder+Comeback Kid+Steady Stacker+True Believer': `You bought while the price was soaring — that feeling of watching your money grow was incredible. You went heavy, believing it would keep going. Then May 2022 crashed and reality hit hard. Every single one of us sold something — the fear was real. Then October came and tested us again. But you chose to keep building your position through all of it. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. The price kept going down or sideways. Is the project dead? Is it still doing something? Those questions were always there, but you kept building your position nonetheless. That's a different kind of patience. We're glad you're still here. Welcome. It's wonderful to see you here`,
+
+  'Survivor|Accumulator+Builder+Comeback Kid+Steady Stacker': `You bought into the fomo and watched your money disappear almost immediately. That's brutal. That's one of the hardest lessons in crypto — and almost everyone goes through it at some point. You sold some — who wouldn't [insert if the specific wallet sold during May crash / if they held]? But you also chose to keep building your position. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. The price kept going down or sideways. Is the project dead? Is it still doing something? Those questions were always there, yet after everything you went through, the fact that you're still here building your position is incredible. That's a different kind of patience. We're glad you're still here. Welcome back!`,
+
+  'OG|Accumulator+Comeback Kid+Steady Stacker+True Believer': `You're an OG who went heavy from the start. You watched GUARD grow, felt the excitement when the price was climbing. February 2022 scared a lot of us into selling [insert if the specific wallet sold / if they held]. April tested us again [insert if the specific wallet sold / if they held]. May 2022 scared even more [insert if the specific wallet sold / if they held]. You sold some — the fear was real. But you never stopped stacking. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. The price kept going down or sideways. Is the project dead? Is it still doing something? Those questions were always there, but you kept building your position nonetheless. That's a different kind of patience. The community scattered for a while during that time, but we're really glad you're still here. Welcome back, it's really nice to see you here`,
+
+  'Adrenaline Junkie|Accumulator+Comeback Kid+True Believer': `You bought in while the price was flying — everything felt possible. You went heavy in those first 45 days, riding the wave. Then May 2022 came and it all crashed down. The excitement turned to panic overnight. Every one of us sold something. But you chose to keep building your position. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. That's a different kind of patience. We're glad you're still here. Welcome. It's wonderful to see you here`,
+
+  'Founding Member|Diamond Grip+Iron Will+True Believer': `You were here before anyone. Went heavy immediately. You watched the price climb — and you never sold. Not once. Then May 2022 happened — 50% overnight. Everyone around you was panicking, selling, cutting losses. And you just held. Through the crash, through the uncertainty, through the long decline. Never sold once. Four years. That's what it looks like to buy something you believe in, hold, and focus on other things. The community scattered for a while during that time, but we're really glad you're still here. Welcome back.`,
+
+  'Adrenaline Junkie|Accumulator+Comeback Kid+Steady Stacker+True Believer': `You bought while the price was soaring — that rush of watching your money grow. You went heavy in those first 45 days. Then it crashed and those dreams evaporated. Every one of us sold something when May 2022 hit — and again when October dropped. The fear was real each time. But every single one of you came back and kept stacking month after month. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. The price kept going down or sideways. Is the project dead? Is it still doing something? Those questions were always there, yet after everything you went through, the fact that you're still here building your position is incredible. That's a different kind of patience. Welcome back, we're glad you're still here, and it's wonderful to see you here now`,
+
+  'Survivor|Accumulator+Builder+Comeback Kid': `You bought into the fomo and watched your money disappear almost immediately. That's one of the hardest lessons in crypto — and almost everyone goes through it at some point. You sold some, trying to save what was left. But you came back and chose to build up your position anyway. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. After everything you went through, the fact that you're still here building your position is incredible. That's a different kind of patience. We're really glad you're still here, and it's wonderful to see you here now`,
+
+  'Holder|Diamond Grip+True Believer': `You showed up after the chaos, went heavy fast, and never sold. No drama. No panic sells. Just quiet conviction through the long decline. That's a mature way to play this — buy something you believe in, hold, and focus on other things. We're glad you're still here. Welcome back!`,
+
+  'New Member|Comeback Kid+True Believer': `New wallet or new to GUARD — either way, welcome. If you lived through everything before, you know all we've been up to. If you're just finding us, you joined during a lull, not knowing what came before, but nonetheless, you went heavy fast. But watching the price go sideways or down after you buy? That's rough. A few days or weeks of that and you sold some. Totally normal — we've all been there. But you came back, and chose to grab some more GUARD for the future. We're glad you're here. Welcome to the community!`,
+
+  'New Member|Accumulator+Comeback Kid+True Believer': `New wallet or new to GUARD — either way, welcome. If you lived through everything before, you know all we've been up to. If you're just finding us, you joined during a lull, not knowing what came before, but nonetheless, you went heavy fast. The price didn't move the way you hoped, and you sold some — that's a hard feeling, watching your money sit there or go down. But you came back and chose to keep building your position throughout multiple purchases. That takes something. We're glad you're here. Welcome to the community!`,
+
+  'Holder|Accumulator+Builder+Comeback Kid+Steady Stacker+True Believer': `You showed up, went heavy fast, and built your position through the long decline. [Insert which milestones they bought through: the crash (May-June 2022), the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. The price kept going down or sideways. Is the project dead? Is it still doing something? Those questions were always there, yet after everything you went through, the fact that you've built your position throughout a long period of time is incredible. We're glad you're still here, and it's great to see you here now`,
+
+  'Founding Member|Accumulator+Builder+Comeback Kid+Steady Stacker': `You're a Founding Member. You've been here since before there was a 'here.' You watched GUARD climb — that feeling of watching your investment grow was incredible. And all of you were smart enough to take some profits along the way. Then came the drops: February 2022, April, May's crash, October's despair, the long decline. You sold some during the scary times too [insert which of those 4 they sold in] — but you kept building your position through all of it. You bought for [insert number of months in a row]. The community scattered for a while during that time, but we're really glad you're still here. Welcome back, it's really nice to see you here`,
+
+  'Holder|Comeback Kid+True Believer': `You joined during the long decline — late 2022, early 2023. The chart wasn't pretty, but you went heavy anyway. Then around April 2023, after months of watching the price go nowhere, you sold some. That's a hard grind — no euphoria, no excitement, just a slow bleed. But you came back, We're glad you're here. Welcome to the community!`,
+
+  'Believer|Accumulator+Comeback Kid+Steady Stacker+True Believer': `You bought mid-2022, right after the crash. The charts looked ugly but you went heavy anyway — that takes guts. Then it kept falling. You sold some — watching your money disappear tests anyone. But you kept stacking month after month. [Insert which milestones they bought through: the uncertainty (June-October 2022), the long decline (October 2022+). Only mention the ones they actually bought during. If they went on a consecutive month streak, mention it here too]. The price kept going down or sideways. Is the project dead? Is it still doing something? Those questions were always there, yet after everything you went through, the fact that you've built your position throughout a long period of time is incredible. We're glad you're still here. Welcome back!`,
+
+  'Veteran|Diamond Grip+Iron Will+True Believer': `You've been here since early 2022 — that's a long time in crypto. You went all in. You watched the price climb through April — everyone around you panicking and selling during the drops. And you just held. Then May came — 50% crash overnight. Everyone was selling. You didn't. Through the uncertainty, through October's despair, through the long decline. Never sold once. That's what it looks like to buy something you believe in, hold, and focus on other things. The community scattered for a while during that time, but we're really glad you're still here. Welcome back, it's really nice to see you here`,
 };
 
 // =============================================================================
-// BUYING STYLE DEFINITIONS
+// SHOW ALL 25 TEMPLATE QUOTES WITH REAL EXAMPLES
 // =============================================================================
 
-export const BUYING_STYLES = {
-  dca_master: {
-    emoji: '📈',
-    label: 'DCA Master',
-    desc: 'Dollar cost averaging is your superpower',
-  },
-  steady_stacker: {
-    emoji: '🔄',
-    label: 'Steady Stacker',
-    desc: 'Slow and steady wins the race',
-  },
-  occasional: {
-    emoji: '🎯',
-    label: 'Strategic Sniper',
-    desc: 'Quality over quantity',
-  },
-  all_in: {
-    emoji: '💥',
-    label: 'All-In Player',
-    desc: 'When you move, you move big',
-  },
-  default: {
-    emoji: '🛡️',
-    label: 'GUARD Holder',
-    desc: 'Part of the community',
-  },
-};
+console.log('\n' + '='.repeat(100));
+console.log('FULL PERSONALIZED QUOTES - ALL 25 TEMPLATES');
+console.log('='.repeat(100));
 
-export const getBuyingStyle = (profile) => {
-  const buys = profile.totalBuys || 0;
-  const months = profile.uniqueBuyMonths || 0;
+const templateKeys = Object.keys(QUOTE_TEMPLATES);
 
-  if (buys >= 10 && months >= 6) return BUYING_STYLES.dca_master;
-  if (buys >= 5 && months >= 3) return BUYING_STYLES.steady_stacker;
-  if (buys >= 2 && buys < 5) return BUYING_STYLES.occasional;
-  if (buys === 1) return BUYING_STYLES.all_in;
-  return BUYING_STYLES.default;
-};
+// Check for wallet selection flags
+const useAlternate = process.argv.includes('--alternate');
+const useThird = process.argv.includes('--third');
+const useFourth = process.argv.includes('--fourth');
+const useFifth = process.argv.includes('--fifth');
+const useSixth = process.argv.includes('--sixth');
 
-// =============================================================================
-// BADGE REASON TEXT (for Scene 6)
-// =============================================================================
+templateKeys.forEach((key, index) => {
+  // Find profiles that match this template
+  const matchingProfiles = profiles.filter(p => getBadgeCombinationKey(p) === key);
+  // Use sixth/fifth/fourth/third/second match based on flags, otherwise first
+  let profile;
+  if (useSixth && matchingProfiles.length > 5) {
+    profile = matchingProfiles[5];
+  } else if (useFifth && matchingProfiles.length > 4) {
+    profile = matchingProfiles[4];
+  } else if (useFourth && matchingProfiles.length > 3) {
+    profile = matchingProfiles[3];
+  } else if (useThird && matchingProfiles.length > 2) {
+    profile = matchingProfiles[2];
+  } else if (useAlternate && matchingProfiles.length > 1) {
+    profile = matchingProfiles[1];
+  } else {
+    profile = matchingProfiles[0];
+  }
 
-export const BADGE_REASONS = {
-  // Primary badges
-  'Founding Member': 'Here from the very beginning',
-  'OG': 'One of the originals',
-  'Veteran': 'Held through the early days',
-  'Adrenaline Junkie': 'Bought into the rollercoaster',
-  'Survivor': 'Made it through the crash',
-  'Believer': 'Believed when others doubted',
-  'Holder': 'Quietly holding the line',
-  'New Member': 'Welcome to the family',
+  if (!profile) {
+    console.log(`\n#${index + 1} - ${key}`);
+    console.log('NO MATCHING PROFILE FOUND');
+    return;
+  }
 
-  // Modifiers
-  'Whale': 'A major force in the community',
-  'Diamond Grip': 'Never sold a single token',
-  'Emotional Mastery': 'Took profits during runs, never panic sold',
-  'True Believer': 'Over half your stack within 45 days of your first buy',
-  'Iron Will': 'Held through the May 2022 crash without flinching',
-  'Builder': 'Built your position over time',
-  'Accumulator': 'Consistently adding to the stack',
-  'Steady Stacker': 'Regular as clockwork',
-  'Comeback Kid': 'Sold, learned, came back stronger',
-  'Paper Hands': 'We all make mistakes',
-};
+  const result = generatePersonalizedQuote(profile);
+  const sells = profile.sells || [];
+  const buys = profile.buys || [];
+  const sellWindows = getSellWindows(sells);
+  const milestones = getBuyingMilestonesArr(buys);
+  const streak = getConsecutiveMonthStreak(buys);
 
-export const getBadgeReason = (badge) => {
-  return BADGE_REASONS[badge.name] || badge.reason || 'Part of the journey';
-};
+  console.log(`\n${'─'.repeat(100)}`);
+  console.log(`#${index + 1} - ${key}`);
+  console.log(`${'─'.repeat(100)}`);
+  console.log(`Wallet: ${profile.address}`);
+  console.log(`Sold during: ${sellWindows.length > 0 ? sellWindows.join(', ') : 'never'}`);
+  console.log(`Bought through: ${milestones.length > 0 ? milestones.join(', ') : 'none'}`);
+  console.log(`Streak: ${streak} months`);
+  console.log(`\n📜 PERSONALIZED QUOTE:\n`);
 
-// =============================================================================
-// PERSONALITY QUOTES
-// =============================================================================
-
-const QUOTES = {
-  // By primary badge
-  foundingMember: [
-    "Before there was a community, there was you.",
-    "You didn't follow. You led.",
-    "Genesis block energy.",
-    "There are holders. Then there are founders.",
-    "The first believers. The founding guardians.",
-  ],
-
-  og: [
-    "You saw something others didn't. Not yet.",
-    "Early isn't just timing. It's a mindset.",
-    "Deep roots grow strong trees.",
-    "When others were skeptical, you were stacking.",
-    "Before the hype, there was you.",
-  ],
-
-  veteran: [
-    "You've seen the ups and downs. Still here.",
-    "Battle-tested and still standing.",
-    "The early days forged you.",
-    "Not everyone survives the beginning. You did.",
-  ],
-
-  adrenalineJunkie: [
-    "You bought into chaos. That takes guts.",
-    "Some see volatility. You saw opportunity.",
-    "The rollercoaster was the point.",
-    "Wild ride? You bought a ticket.",
-  ],
-
-  survivor: [
-    "You made it through the storm.",
-    "The crash tested everyone. You passed.",
-    "Survival isn't luck. It's conviction.",
-    "When others ran, you stayed.",
-  ],
-
-  believer: [
-    "You believed when believing wasn't easy.",
-    "Faith in the vision, despite the noise.",
-    "Some need proof. You were the proof.",
-    "Quiet conviction speaks loudest.",
-  ],
-
-  holder: [
-    "Steady hands. Quiet strength.",
-    "Sometimes the best move is no move.",
-    "Holding is a statement.",
-    "The patient ones inherit the gains.",
-  ],
-
-  newMember: [
-    "Welcome to the GUARD family.",
-    "Every journey starts with a first step.",
-    "New here, but already part of the story.",
-    "Your chapter is just beginning.",
-  ],
-
-  // By modifier (higher priority)
-  whale: [
-    "You don't follow trends. You set them.",
-    "Heavy is the wallet that wears the crown.",
-    "With great holdings comes great responsibility.",
-    "Top tier. The view is different up here.",
-  ],
-
-  diamondGrip: [
-    "Not once. Not ever. Diamond.",
-    "The sell button? Never heard of it.",
-    "Volatility tested you. You didn't blink.",
-    "Some call it holding. You call it believing.",
-    "Selling was never part of your vocabulary.",
-  ],
-
-  ironWill: [
-    "The crash took many. Not you.",
-    "Iron doesn't bend. Neither did you.",
-    "May 2022 was a test. You passed.",
-    "When the floor fell out, your grip held.",
-  ],
-
-  emotionalMastery: [
-    "You sold when it felt wrong to sell. Held when it felt wrong to hold.",
-    "Profits taken during highs. Never panic sold during lows.",
-    "The rarest discipline in crypto. You have it.",
-    "When others panicked, you stayed calm. When others got greedy, you took profits.",
-  ],
-
-  trueBeliever: [
-    "All in, all early, all conviction.",
-    "You didn't need more time. You knew.",
-    "50% in 45 days. That's not investing. That's believing.",
-    "When you believe, you move fast.",
-  ],
-
-  builder: [
-    "Position building is an art. You mastered it.",
-    "Brick by brick, you built an empire.",
-    "Time in the market beats timing. You proved it.",
-  ],
-
-  comebackKid: [
-    "The best comeback stories start with a setback.",
-    "You left. You learned. You returned.",
-    "Paper hands once. Diamond hands forever.",
-    "Redemption is earned, not given. You earned it.",
-  ],
-
-  accumulator: [
-    "Consistency is your superpower.",
-    "One buy at a time. That's how empires are built.",
-    "You didn't gamble. You accumulated.",
-  ],
-
-  steadyStacker: [
-    "Regular as clockwork.",
-    "DCA runs in your veins.",
-    "Discipline over emotion. Every time.",
-  ],
-};
-
-/**
- * Get a personality quote based on the holder's badges
- * Priority: Modifier achievements > Primary badge tier
- */
-export const getPersonalityQuote = (profile) => {
-  const modifiers = profile.modifiers || [];
-  const primaryBadge = profile.primaryBadge;
-
-  // Check modifiers first (higher priority)
-  const modifierChecks = [
-    { name: 'Whale', quotes: QUOTES.whale },
-    { name: 'Diamond Grip', quotes: QUOTES.diamondGrip },
-    { name: 'Emotional Mastery', quotes: QUOTES.emotionalMastery },
-    { name: 'Iron Will', quotes: QUOTES.ironWill },
-    { name: 'True Believer', quotes: QUOTES.trueBeliever },
-    { name: 'Builder', quotes: QUOTES.builder },
-    { name: 'Comeback Kid', quotes: QUOTES.comebackKid },
-    { name: 'Accumulator', quotes: QUOTES.accumulator },
-    { name: 'Steady Stacker', quotes: QUOTES.steadyStacker },
-  ];
-
-  for (const check of modifierChecks) {
-    if (modifiers.some(m => m.name === check.name)) {
-      return randomQuote(check.quotes);
+  // Word wrap the quote for readability
+  const words = result.quote.split(' ');
+  let line = '';
+  words.forEach(word => {
+    if ((line + ' ' + word).length > 95) {
+      console.log(line);
+      line = word;
+    } else {
+      line = line ? line + ' ' + word : word;
     }
-  }
+  });
+  if (line) console.log(line);
 
-  // Fall back to primary badge
-  const badgeQuoteMap = {
-    'Founding Member': QUOTES.foundingMember,
-    'OG': QUOTES.og,
-    'Veteran': QUOTES.veteran,
-    'Adrenaline Junkie': QUOTES.adrenalineJunkie,
-    'Survivor': QUOTES.survivor,
-    'Believer': QUOTES.believer,
-    'Holder': QUOTES.holder,
-    'New Member': QUOTES.newMember,
-  };
-
-  if (primaryBadge?.name && badgeQuoteMap[primaryBadge.name]) {
-    return randomQuote(badgeQuoteMap[primaryBadge.name]);
-  }
-
-  return "Welcome to the GUARD community. Your journey continues.";
-};
-
-/**
- * Pick a random quote from an array
- * Uses wallet address as seed for consistency per user
- */
-const randomQuote = (quotes, seed) => {
-  // For now, just pick randomly
-  // TODO: Could use wallet address to seed for consistent quote per user
-  const index = Math.floor(Math.random() * quotes.length);
-  return quotes[index];
-};
-
-// =============================================================================
-// SCENE SKIP LOGIC
-// =============================================================================
-
-export const SCENE_CONDITIONS = {
-  // Scene 2 (Accumulator) - Skip for single purchase holders
-  scene2: {
-    shouldShow: (profile) => (profile.totalBuys || 0) > 1,
-    skipReason: 'Single purchase holder',
-  },
-
-  // Scene 4 (Paper Hands) - Skip for diamond hands
-  scene4: {
-    shouldShow: (profile) => profile.hasPaperHanded === true,
-    skipReason: 'Never sold',
-  },
-
-  // Scene 5 (Style) - Always show
-  scene5: {
-    shouldShow: () => true,
-  },
-};
-
-// =============================================================================
-// STAT FORMATTERS
-// =============================================================================
-
-export const FORMATTERS = {
-  /**
-   * Format a number with commas
-   */
-  number: (num) => {
-    if (!num) return '0';
-    return Math.round(num).toLocaleString();
-  },
-
-  /**
-   * Format price with $ and decimal
-   */
-  price: (price) => {
-    if (!price) return '$0.00';
-    if (price < 0.01) return `$${price.toFixed(6)}`;
-    if (price < 1) return `$${price.toFixed(4)}`;
-    return `$${price.toFixed(2)}`;
-  },
-
-  /**
-   * Format a date nicely
-   */
-  date: (timestamp) => {
-    if (!timestamp) return 'Unknown';
-    const date = new Date(timestamp);
-    return date.toLocaleDateString('en-US', {
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
+  // Show original group quote
+  const originalQuote = ORIGINAL_GROUP_QUOTES[key];
+  if (originalQuote) {
+    console.log(`\n📋 ORIGINAL GROUP TEMPLATE:\n`);
+    const origWords = originalQuote.split(' ');
+    let origLine = '';
+    origWords.forEach(word => {
+      if ((origLine + ' ' + word).length > 95) {
+        console.log(origLine);
+        origLine = word;
+      } else {
+        origLine = origLine ? origLine + ' ' + word : word;
+      }
     });
-  },
+    if (origLine) console.log(origLine);
+  }
+});
 
-  /**
-   * Format duration in years, months, days
-   */
-  duration: (firstBuyTimestamp) => {
-    if (!firstBuyTimestamp) return null;
-    const days = Math.floor((Date.now() - firstBuyTimestamp) / (1000 * 60 * 60 * 24));
-    const years = Math.floor(days / 365);
-    const months = Math.floor((days % 365) / 30);
-    const remainingDays = days % 30;
+console.log('\n' + '='.repeat(100));
+console.log('END OF QUOTES');
+console.log('='.repeat(100) + '\n');
 
-    if (years > 0) {
-      return `${years} year${years > 1 ? 's' : ''}, ${months} month${months !== 1 ? 's' : ''}`;
-    } else if (months > 0) {
-      return `${months} month${months !== 1 ? 's' : ''}, ${remainingDays} day${remainingDays !== 1 ? 's' : ''}`;
+// =============================================================================
+// MARKDOWN OUTPUT MODE (for QUOTE-PREVIEW.md)
+// =============================================================================
+
+if (process.argv.includes('--markdown')) {
+  let md = `# Personalized Quote Preview
+
+All 25 quote templates with example wallets showing personalization.
+
+---
+
+`;
+
+  templateKeys.forEach((key, index) => {
+    const matchingProfiles = profiles.filter(p => getBadgeCombinationKey(p) === key);
+    let profile;
+    if (useSixth && matchingProfiles.length > 5) {
+      profile = matchingProfiles[5];
+    } else if (useFifth && matchingProfiles.length > 4) {
+      profile = matchingProfiles[4];
+    } else if (useFourth && matchingProfiles.length > 3) {
+      profile = matchingProfiles[3];
+    } else if (useThird && matchingProfiles.length > 2) {
+      profile = matchingProfiles[2];
+    } else if (useAlternate && matchingProfiles.length > 1) {
+      profile = matchingProfiles[1];
+    } else {
+      profile = matchingProfiles[0];
     }
-    return `${days} day${days !== 1 ? 's' : ''}`;
-  },
-};
+    if (!profile) return;
 
-// =============================================================================
-// EDGE CASE HANDLING
-// =============================================================================
+    const result = generatePersonalizedQuote(profile);
+    const sells = profile.sells || [];
+    const buys = profile.buys || [];
+    const sellWindows = getSellWindows(sells);
+    const milestones = getBuyingMilestonesArr(buys);
+    const streak = getConsecutiveMonthStreak(buys);
 
-export const EDGE_CASES = {
-  /**
-   * The extreme trader (0xa55f836a... with 3516 transactions)
-   */
-  isExtremeTrader: (profile) =>
-    (profile.totalBuys || 0) + (profile.totalSells || 0) > 1000,
+    const soldText = sellWindows.length > 0 ? sellWindows.join(', ') : 'never';
+    const boughtText = milestones.length > 0 ? milestones.join(', ') : 'none';
+    const panicNote = sellWindows.length === 0 && (profile.sells || []).length > 0 ? ' (in panic windows)' : '';
 
-  getExtremeTraderQuote: (profile) => {
-    const total = (profile.totalBuys || 0) + (profile.totalSells || 0);
-    return `${total.toLocaleString()} transactions. We've never seen anyone like you.`;
-  },
+    md += `## #${index + 1} - ${key.replace('|', ' | ')}
 
-  /**
-   * Single badge holders (12 people) - simpler experience
-   */
-  isSingleBadgeHolder: (profile) => {
-    const modifierCount = profile.modifiers?.length || 0;
-    return modifierCount <= 1;
-  },
+**Wallet:** \`${profile.address}\`
 
-  getSingleBadgeQuote: () => "Sometimes one badge says everything.",
-};
+| Sold During | Bought Through | Streak |
+|-------------|----------------|--------|
+| ${soldText}${panicNote} | ${boughtText} | ${streak} month${streak !== 1 ? 's' : ''} |
 
-// =============================================================================
-// EXPORT ALL
-// =============================================================================
+**Personalized Quote:**
 
-export default {
-  SCENE_TITLES,
-  BUYING_STYLES,
-  getBuyingStyle,
-  BADGE_REASONS,
-  getBadgeReason,
-  getPersonalityQuote,
-  SCENE_CONDITIONS,
-  FORMATTERS,
-  EDGE_CASES,
-};
+> ${result.quote}
+
+**Original Group Template:**
+
+> ${ORIGINAL_GROUP_QUOTES[key] || 'N/A'}
+
+---
+
+`;
+  });
+
+  md += `*Generated from 25 quote templates covering 251 of 321 holders (78%). Remaining 70 holders use fallback quotes based on their primary badge.*
+`;
+
+  const fs = require('fs');
+  const path = require('path');
+  fs.writeFileSync(path.join(__dirname, '..', '..', 'QUOTE-PREVIEW.md'), md);
+  console.log('Written to QUOTE-PREVIEW.md');
+}
