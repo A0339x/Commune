@@ -1,0 +1,47 @@
+Bad examples:
+
+Before: You're a Founding Member. You've been here since before there was a 'here.' You watched GUARD
+     climb — that feeling of watching your investment grow was incredible. And all of you were smart
+     enough to take some profits along the way. Then came the drops: February 2022, April, May's
+     crash, October's despair, the long decline. You sold some during February 2022, April, May's
+     crash, October's despair — but you kept building your position through all of it. You bought
+     for 7 months in a row. The community scattered for a while during that time, but we're really
+     glad you're still here. Welcome back, it's really nice to see you here
+
+Why it's bad: It adds the information without adding additional, and sometimes repetitive information. 
+
+
+After: "You're a Founding Member. You've been here since before there was a 'here.' You watched GUARD climb — that feeling of watching your investment grow was incredible. And all of you were smart enough to take some profits along the way. Then came the drops: February 2022 got you as did May and October — but you kept building your position through all of it. You bought for 7 months in a row. The community scattered for a while during that time, but we're really glad you're still here. Welcome back, it's really nice to see you here"
+
+Why I like this modification: It's a lot smoother. We injected the personalization into the quote flawlessly
+
+Before: You showed up, went heavy fast, and built your position through the long decline. You kept
+     building your position through the long decline — 4 months in a row. The price kept going down
+     or sideways. Is the project dead? Is it still doing something? Those questions were always
+     there, yet after everything you went through, the fact that you've built your position
+     throughout a long period of time is incredible. We're glad you're still here, and it's great to
+     see you here now.
+
+Why I don't like this: The personaliaztion created a scenario where sentences were redundant. They already read that they built their position throughout the long declnie. We don't have to say it again just to inject the personaliaziton
+
+After: You showed up, went heavy fast, and built your position through the long decline, adding to it for 4 months in a row. The price kept going down
+     or sideways. Is the project dead? Is it still doing something? Those questions were always
+     there, yet after everything you went through, the fact that you've built your position
+     throughout a long period of time is incredible. We're glad you're still here, and it's great to
+     see you here now.
+
+Why I like this: Here we injected the personalization in a very smooth way. We didn't add any extra information, we didn't create any duplicate text. We simply added it to the quotes to have the context needed and we moved on. 
+
+
+Great examples:
+You bought while the price was soaring — that rush of watching your money grow. You went heavy
+     in those first 45 days. Then it crashed and those dreams evaporated. Every one of us sold
+     something when May 2022 hit — and again when October dropped. The fear was real each time. But
+     every single one of you came back and kept stacking month after month. You kept building your
+     position through the crash, through the quiet months, through the long decline — 9 months in a
+     row. The price kept going down or sideways. Is the project dead? Is it still doing something?
+     Those questions were always there, yet after everything you went through, the fact that you're
+     still here building your position is incredible. That's a different kind of patience. Welcome
+     back, we're glad you're still here, and it's wonderful to see you here now.
+
+I like this becauase the transition was smooth. It simply added in the context required without adding additional, and sometimes repetitive wording. 

@@ -85,10 +85,11 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 - **Note**: Held through the major crash from $17 to current levels without selling
 
 ### 🏗️ Builder
-- **Requirement**: 
+- **Requirement**:
   - Peak balance ≥ 5x first purchase amount
   - 12+ months between first and last buy
-- **Note**: Rewards long-term position building
+- **Description**: "Grew your position 5x over a year+"
+- **Note**: Emphasizes magnitude of growth and long-term commitment — building something significant
 
 ### 📈 Accumulator
 - **Requirement**: 10+ separate purchase transactions
@@ -96,7 +97,8 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 
 ### 🔄 Steady Stacker
 - **Requirement**: Made purchases in 6+ different calendar months
-- **Note**: Regular DCA behavior
+- **Description**: "Bought consistently, month after month"
+- **Note**: Emphasizes habit and regularity — discipline and routine
 
 ### 🏆 Comeback Kid
 - **Requirement**:
