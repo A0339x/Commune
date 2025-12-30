@@ -7567,36 +7567,39 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               {address.slice(0, 6)}...{address.slice(-4)}
             </p>
 
-            {/* Badge icons on hover */}
-            <div className={`mt-3 flex justify-center gap-2 flex-wrap transition-all duration-300 ${
-              showBadgeTooltip ? 'opacity-100 max-h-20' : 'opacity-0 max-h-0 overflow-hidden'
-            }`}>
-              {allBadges.map((badge, i) => (
-                <span
-                  key={i}
-                  className="text-2xl cursor-pointer hover:scale-125 transition-transform duration-200"
-                  onMouseEnter={() => setHoveredBadge(badge)}
-                  onMouseLeave={() => setHoveredBadge(null)}
-                >
-                  {badge.emoji}
-                </span>
-              ))}
-            </div>
-
-            {/* Badge description tooltip */}
-            {hoveredBadge && (
-              <div className="mt-2 px-3 py-2 bg-black/80 border border-white/20 rounded-lg text-sm animate-fadeIn">
-                <span className="text-amber-400 font-medium">{hoveredBadge.name}</span>
-                <p className="text-white/70 text-xs mt-1">{hoveredBadge.reason || hoveredBadge.description}</p>
+            {/* Badge section - fixed height to prevent layout shift */}
+            <div className="mt-3 h-16 flex flex-col items-center justify-start">
+              {/* Badge icons on hover */}
+              <div className={`flex justify-center gap-2 flex-wrap transition-opacity duration-300 ${
+                showBadgeTooltip ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}>
+                {allBadges.map((badge, i) => (
+                  <span
+                    key={i}
+                    className="text-2xl cursor-pointer hover:scale-125 transition-transform duration-200"
+                    onMouseEnter={() => setHoveredBadge(badge)}
+                    onMouseLeave={() => setHoveredBadge(null)}
+                  >
+                    {badge.emoji}
+                  </span>
+                ))}
               </div>
-            )}
 
-            {/* Hint text - only show when not showing badges */}
-            <p className={`text-white/30 text-xs mt-2 transition-opacity duration-300 ${
-              showBadgeTooltip ? 'opacity-0' : 'opacity-100'
-            }`}>
-              Hover to see your achievements
-            </p>
+              {/* Badge description tooltip - positioned absolutely within the fixed space */}
+              <div className={`mt-1 px-3 py-1 bg-black/80 border border-white/20 rounded-lg text-sm transition-opacity duration-200 ${
+                hoveredBadge ? 'opacity-100' : 'opacity-0'
+              }`}>
+                <span className="text-amber-400 font-medium">{hoveredBadge?.name || ''}</span>
+                {hoveredBadge?.reason && <p className="text-white/70 text-xs">{hoveredBadge.reason}</p>}
+              </div>
+
+              {/* Hint text - only show when not showing badges */}
+              <p className={`absolute text-white/30 text-xs transition-opacity duration-300 ${
+                showBadgeTooltip ? 'opacity-0' : 'opacity-100'
+              }`}>
+                Hover to see your achievements
+              </p>
+            </div>
           </div>
           
           {/* Enter Button - with glow effect */}
