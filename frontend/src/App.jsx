@@ -7326,27 +7326,27 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className={`flex flex-col items-center justify-center w-full transition-opacity ${TRANSITIONS.fadeVerySlow} ${TRANSITIONS.easing} ${
             subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
-            <div className="max-w-2xl mx-auto px-6">
+            <div className="max-w-3xl mx-auto px-8">
               {/* Large decorative quote mark */}
-              <div className="flex justify-center mb-6">
-                <span className="text-6xl text-amber-500/30 font-serif leading-none">"</span>
+              <div className="flex justify-center mb-8">
+                <span className="text-5xl text-amber-500/20 font-serif leading-none">"</span>
               </div>
 
-              {/* Quote text */}
-              <p className="text-xl md:text-2xl text-white/90 leading-relaxed text-center font-light italic">
+              {/* Quote text - more breathing room */}
+              <p className="text-lg md:text-xl text-white/85 text-center font-light italic" style={{ lineHeight: '2' }}>
                 {personalizedQuote || getHolderPersonality()}
               </p>
 
               {/* Subtle accent line */}
-              <div className="flex justify-center mt-8 mb-8">
-                <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+              <div className="flex justify-center mt-10 mb-10">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-amber-500/40 to-transparent"></div>
               </div>
 
               {/* Next button - minimal style */}
               <div className="flex justify-center">
                 <button
                   onClick={() => setQuoteReady(true)}
-                  className="group flex items-center gap-2 px-6 py-3 text-amber-400/80 hover:text-amber-400 font-medium transition-all duration-300"
+                  className="group flex items-center gap-2 px-6 py-3 text-amber-400/70 hover:text-amber-400 font-medium transition-all duration-300"
                 >
                   <span>Continue</span>
                   <svg
