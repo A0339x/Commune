@@ -6558,6 +6558,12 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     const fetchPriceStats = async () => {
       try {
         const walletToFetch = address;
+
+        // First, call reputation endpoint to ensure transfers are cached
+        // This is needed because user-price-stats depends on cached transfer data
+        await fetch(`${API_URL}/api/reputation?wallet=${walletToFetch}`);
+
+        // Now fetch price stats (transfers should be cached)
         const response = await fetch(`${API_URL}/api/user-price-stats?wallet=${walletToFetch}`);
         if (response.ok) {
           const data = await response.json();
