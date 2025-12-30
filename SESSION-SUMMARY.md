@@ -606,6 +606,60 @@ Added a developer mode that allows testing the Wrapped experience with any walle
 **Files Modified:**
 - `frontend/src/App.jsx` - Dev mode state, bypass logic, UI
 
+### 35. Fix Dev Mode Session Check
+
+Fixed dev mode bypassing session verification - the useEffect was resetting `isVerified` state.
+
+**Fix:** Added `isDevMode` check at start of session useEffect to skip session validation entirely in dev mode.
+
+### 36. Fix Badge Display to Use holder-profiles.json
+
+The Wrapped presentation was showing incorrect badges because it used API data instead of pre-computed holder-profiles.json.
+
+**Fix:**
+- Load `walletProfile` from holder-profiles.json
+- Build `allBadges` from `walletProfile.primaryBadge` and `walletProfile.modifiers`
+- Skip opt-in badges (Paper Hands) by default
+- Fallback to API data only if wallet not in holder-profiles.json
+
+### 37. Update API Badge System to Match BADGE-SPEC.md
+
+The API had completely outdated badge definitions. Updated to match current spec.
+
+**Primary Badges (based on first buy date):**
+| Emoji | Name | Date Range |
+|-------|------|------------|
+| 👑 | Founding Member | Before Jul 29, 2021 |
+| 🌳 | OG | Jul 29, 2021 – Jan 7, 2022 |
+| 🌿 | Veteran | Jan 8, 2022 – Feb 26, 2022 |
+| 🎢 | Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
+| 🌾 | Survivor | Apr 29, 2022 – Jun 4, 2022 |
+| 🌱 | Believer | Jun 5, 2022 – Aug 29, 2022 |
+| 🍃 | Holder | Aug 30, 2022 – Dec 31, 2023 |
+| 🆕 | New Member | Jan 1, 2024 onwards |
+
+**Modifiers added:**
+- 🐋 Whale (1M+ GUARD)
+- 💪 Diamond Grip (never sold)
+- ⭐ True Believer (50%+ in first 45 days)
+- 🦾 Iron Will (held through May 2022 crash)
+- 🏗️ Builder (12+ months span)
+- 📈 Accumulator (10+ purchases)
+- 🔄 Steady Stacker (6+ months)
+- 🏆 Comeback Kid (sold but came back)
+
+**Removed:** Diamond Hands as primary badge (it's now Diamond Grip modifier)
+
+**Files Modified:**
+- `api/src/index.js` - Complete badge system overhaul
+- API deployed to Cloudflare
+
+### Current State
+- Quote system integrated into Scene 6 with card styling and Next button
+- Dev mode working for testing any wallet
+- Badge display uses holder-profiles.json for accuracy
+- API updated to match BADGE-SPEC.md
+
 ### Next Steps
-- Deploy to production
-- Consider adding quote to final summary screen (Scene 8) as well
+- Test full flow with various wallets
+- Consider adding quote to final summary screen (Scene 8)

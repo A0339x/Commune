@@ -388,6 +388,12 @@ TENOR_API_KEY        # GIF API for chat
 ### Frontend Flow
 1. **Token Gate:** Connect wallet → Verify GUARD balance → Sign message → Access community
 2. **Wrapped Presentation:** 9 scenes with timed transitions, conditional rendering based on wallet data
+3. **Dev Mode:** Click "🔧 Dev Mode" on landing page → Enter any wallet address → Bypass all auth → Test Wrapped experience
+
+### Data Sources
+- **Wrapped Presentation:** Uses `holder-profiles.json` for badges and quotes (pre-computed, accurate)
+- **Chat/Dashboard:** Uses `/api/reputation` endpoint for real-time badge data
+- Both now use the same badge definitions from BADGE-SPEC.md
 
 ### API Storage Strategy
 - **Durable Object storage:** Instant consistency for active chat
