@@ -30,6 +30,8 @@ import {
   getUsernameColor,
   getTransitionClasses,
 } from './presentationConfig';
+import { generatePersonalizedQuote } from './contentConfig';
+import holderProfiles from '../holder-profiles.json';
 
 // ============================================
 // QUERY CLIENT
@@ -899,8 +901,10 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
 // ============================================
 // LANDING PAGE
 // ============================================
-const LandingPage = () => {
+const LandingPage = ({ onDevLogin }) => {
   const [showLearnMore, setShowLearnMore] = useState(false);
+  const [showDevMode, setShowDevMode] = useState(false);
+  const [devWalletInput, setDevWalletInput] = useState('');
   
   return (
     <div className="min-h-screen bg-[#0a0a0f] text-white overflow-hidden relative">
@@ -981,7 +985,45 @@ const LandingPage = () => {
               Learn more
             </Button>
           </div>
-          
+
+          {/* Dev Mode Button */}
+          {onDevLogin && (
+            <div className="mt-6 animate-fade-in-up" style={{ animationDelay: '0.35s' }}>
+              {!showDevMode ? (
+                <button
+                  onClick={() => setShowDevMode(true)}
+                  className="text-white/30 hover:text-white/50 text-xs transition-colors"
+                >
+                  🔧 Dev Mode
+                </button>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={devWalletInput}
+                      onChange={(e) => setDevWalletInput(e.target.value)}
+                      placeholder="Enter wallet address (0x...)"
+                      className="px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-sm text-white placeholder-white/30 focus:outline-none focus:border-amber-500/50 w-80"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (devWalletInput.startsWith('0x') && devWalletInput.length === 42) {
+                          onDevLogin(devWalletInput);
+                        }
+                      }}
+                      disabled={!devWalletInput.startsWith('0x') || devWalletInput.length !== 42}
+                    >
+                      Login
+                    </Button>
+                  </div>
+                  <p className="text-white/30 text-xs">Enter any wallet address to test the Wrapped experience</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Token Requirement */}
           <div className="mt-16 animate-fade-in-up" style={{ animationDelay: '0.4s' }}>
             <Card className="inline-flex items-center gap-6 px-8 py-5">
@@ -6050,23 +6092,29 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
 // AUTH FLOW WRAPPER
 // ============================================
 const AuthenticatedApp = () => {
-  const { address, isConnected } = useAccount();
+  const { address: connectedAddress, isConnected: walletConnected } = useAccount();
   const [isVerified, setIsVerified] = useState(false);
   const [sessionToken, setSessionToken] = useState(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [lastCheckedAddress, setLastCheckedAddress] = useState(null);
+
+  // Dev mode - allows testing with any wallet address
+  const [devWallet, setDevWallet] = useState(null);
+  const isDevMode = !!devWallet;
+  const address = devWallet || connectedAddress;
+  const isConnected = isDevMode || walletConnected;
   
-  // Read GUARD token balance
+  // Read GUARD token balance (skip in dev mode)
   const { data: balance, isLoading: balanceLoading } = useReadContract({
     address: TOKEN_CONFIG.address,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: [address],
-    enabled: isConnected && !!address,
+    enabled: !isDevMode && isConnected && !!address,
   });
-  
-  const formattedBalance = formatTokenBalance(balance, TOKEN_CONFIG.decimals);
-  const hasEnoughTokens = hasRequiredTokens(balance, TOKEN_CONFIG.decimals);
+
+  const formattedBalance = isDevMode ? '∞ (Dev Mode)' : formatTokenBalance(balance, TOKEN_CONFIG.decimals);
+  const hasEnoughTokens = isDevMode || hasRequiredTokens(balance, TOKEN_CONFIG.decimals);
   
   // Check for existing session or handle wallet change
   useEffect(() => {
@@ -6145,7 +6193,12 @@ const AuthenticatedApp = () => {
   
   // Not connected - show landing page
   if (!isConnected) {
-    return <LandingPage />;
+    return <LandingPage onDevLogin={(wallet) => {
+      setDevWallet(wallet);
+      setIsVerified(true); // Skip signature in dev mode
+      setSessionToken('dev-mode-token');
+      setCheckingSession(false);
+    }} />;
   }
   
   // Checking for existing session
@@ -6160,8 +6213,8 @@ const AuthenticatedApp = () => {
     );
   }
   
-  // Loading balance
-  if (balanceLoading) {
+  // Loading balance (skip in dev mode)
+  if (!isDevMode && balanceLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0f] text-white flex items-center justify-center">
         <div className="text-center">
@@ -6486,14 +6539,14 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   const [currentBadgeIndex, setCurrentBadgeIndex] = useState(0);
   const [priceStats, setPriceStats] = useState(null);
   const [currentMilestoneIndex, setCurrentMilestoneIndex] = useState(0);
+  const [quoteReady, setQuoteReady] = useState(false); // User clicked Next on quote
+  const [personalizedQuote, setPersonalizedQuote] = useState(null); // The generated quote
   
   // Fetch price stats on mount
-  // TODO: Remove hardcoded wallet after testing - currently shows stats for a power user
-  const TEST_WALLET = '0xCF635Aa2C062FB6b7F943e157232bBBCBC8436d3'; // Remove this line after testing
   useEffect(() => {
     const fetchPriceStats = async () => {
       try {
-        const walletToFetch = TEST_WALLET || address; // Change back to just 'address' after testing
+        const walletToFetch = address;
         const response = await fetch(`${API_URL}/api/user-price-stats?wallet=${walletToFetch}`);
         if (response.ok) {
           const data = await response.json();
@@ -6505,7 +6558,18 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     };
     fetchPriceStats();
   }, [address]);
-  
+
+  // Load personalized quote from holder profiles
+  useEffect(() => {
+    const profile = holderProfiles.profiles.find(
+      p => p.address.toLowerCase() === address.toLowerCase()
+    );
+    if (profile) {
+      const quote = generatePersonalizedQuote(profile);
+      setPersonalizedQuote(quote);
+    }
+  }, [address]);
+
   // Build badges array
   const allBadges = [];
   if (guardData.isEarlyAdopter) {
@@ -6729,20 +6793,32 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       // Show personality quote (everything else is now hidden)
       setSubStage(6);
-      await delay(t.quoteDisplay);
-      
+      // Wait for user to click Next button (quoteReady state)
+      // This is handled by the quoteReady useEffect below
+    };
+
+    badgeSequence();
+  }, [scene, allBadges.length]);
+
+  // Handle quote Next button click - advance to next scene
+  useEffect(() => {
+    if (!quoteReady || scene !== 6 || subStage !== 6) return;
+
+    const advanceScene = async () => {
+      const t = SCENE_TIMING.scene6_badges;
       // Fade out entire scene
       setSubStage(5);
       await delay(t.fadeOut);
-      
+
       // Move to username color scene
       setScene(7);
       setSubStage(0);
+      setQuoteReady(false); // Reset for next time
     };
-    
-    badgeSequence();
-  }, [scene, allBadges.length]);
-  
+
+    advanceScene();
+  }, [quoteReady, scene, subStage]);
+
   // Scene 7: Username color reveal
   useEffect(() => {
     if (scene !== 7) return;
@@ -7141,13 +7217,25 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             )}
           </div>
           
-          {/* Personality quote - wide hero style */}
+          {/* Personalized story quote - card style with Next button */}
           <div className={`flex flex-col items-center justify-center w-full transition-opacity ${TRANSITIONS.fadeVerySlow} ${TRANSITIONS.easing} ${
             subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
-            <p className={TYPOGRAPHY.personalityQuote}>
-              "{getHolderPersonality()}"
-            </p>
+            <div className={`${CARDS.quoteCard} ${CARDS.quoteCardGlow}`}>
+              <div className={TYPOGRAPHY.storyQuoteContainer}>
+                <p className={TYPOGRAPHY.storyQuote}>
+                  {personalizedQuote || getHolderPersonality()}
+                </p>
+              </div>
+              <div className="mt-8 flex justify-center">
+                <button
+                  onClick={() => setQuoteReady(true)}
+                  className="px-8 py-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 hover:border-amber-500/60 rounded-lg text-amber-400 font-medium transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/20"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

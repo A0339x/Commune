@@ -521,8 +521,91 @@ Added wallet selection flags through --ninth:
 - Smooth streak integration
 - Badge-appropriate endings
 
+---
+
+## Session 6 - Dec 29, 2025
+
+### 32. Quote Integration into Wrapped Presentation - COMPLETE ✅
+
+**Integrated personalized quotes into Scene 6 of the Wrapped presentation.**
+
+**Changes Made:**
+
+1. **Added imports to App.jsx:**
+   - `import { generatePersonalizedQuote } from './contentConfig';`
+   - `import holderProfiles from '../holder-profiles.json';`
+
+2. **Added state variables:**
+   - `const [quoteReady, setQuoteReady] = useState(false);` - tracks when user clicks Next
+   - `const [personalizedQuote, setPersonalizedQuote] = useState(null);` - the generated quote
+
+3. **Added quote loading useEffect:**
+   - Looks up wallet profile in holder-profiles.json
+   - Calls `generatePersonalizedQuote(profile)` to generate the quote
+   - Stores result in `personalizedQuote` state
+
+4. **Updated Scene 6 quote section:**
+   - Replaced simple text with styled quote card
+   - Uses `CARDS.quoteCard` and `CARDS.quoteCardGlow` for styling
+   - Uses `TYPOGRAPHY.storyQuote` and `TYPOGRAPHY.storyQuoteContainer` for text
+   - Added "Next" button for user-controlled pacing (amber styling matches theme)
+   - Falls back to `getHolderPersonality()` if no personalized quote available
+
+5. **Modified Scene 6 timing:**
+   - Removed auto-advance after `t.quoteDisplay` (was 5000ms)
+   - Added new useEffect that watches `quoteReady` state
+   - When user clicks "Next", fades out scene and advances to Scene 7
+   - User now controls when they're ready to continue after reading the quote
+
+6. **Added quote card styles to presentationConfig.js:**
+   ```javascript
+   storyQuote: 'text-lg md:text-xl text-white/90 leading-relaxed',
+   storyQuoteContainer: 'max-w-2xl mx-auto text-center px-6',
+   quoteCard: 'bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-8 md:p-10',
+   quoteCardGlow: 'shadow-xl shadow-amber-500/5',
+   ```
+
+**User Experience:**
+- After badge sequence completes, quote card fades in
+- Quote displays the personalized story generated from `generatePersonalizedQuote()`
+- User reads at their own pace
+- User clicks "Next" button when ready
+- Scene fades out and transitions to username color reveal (Scene 7)
+
+**Files Modified:**
+- `frontend/src/App.jsx` - Quote integration, state, timing changes
+- `frontend/src/presentationConfig.js` - Quote card styling
+
+### 33. Removed Hardcoded Test Wallet
+
+Removed the `TEST_WALLET` constant that was forcing the presentation to always show one specific wallet's data. Now the presentation uses the actual connected wallet address.
+
+**Changes:**
+- Removed `const TEST_WALLET = '0xCF635Aa2C062FB6b7F943e157232bBBCBC8436d3'`
+- Price stats now fetch for the actual `address`
+- Quote generation now uses the actual `address`
+
+### 34. Added Dev Mode for Testing Any Wallet
+
+Added a developer mode that allows testing the Wrapped experience with any wallet address without needing to own that wallet.
+
+**How it works:**
+1. Click the subtle "🔧 Dev Mode" link below the Connect Wallet button
+2. Enter any wallet address (must be 0x + 40 hex characters)
+3. Click Login
+4. Bypasses wallet connection, balance check, and signature verification
+5. Goes directly to RecognitionLoader with that wallet's data
+
+**Implementation:**
+- Added `devWallet` state to `AuthenticatedApp` that overrides `connectedAddress`
+- Added `isDevMode` flag that bypasses balance loading and token checks
+- Added `onDevLogin` prop to `LandingPage` component
+- Added dev mode UI with input field and login button
+- Dev mode shows "∞ (Dev Mode)" for token balance
+
+**Files Modified:**
+- `frontend/src/App.jsx` - Dev mode state, bypass logic, UI
+
 ### Next Steps
-- Integrate `generatePersonalizedQuote()` into App.jsx Wrapped presentation
-- Decide on quote scene placement (new Scene 9 or integrate into existing)
-- Load wallet profile data for quote generation
-- Deploy frontend changes
+- Deploy to production
+- Consider adding quote to final summary screen (Scene 8) as well

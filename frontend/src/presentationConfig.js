@@ -130,8 +130,12 @@ export const TYPOGRAPHY = {
   badgeName: 'text-2xl font-bold tracking-wide',
   badgeReason: 'text-lg text-white/50 whitespace-nowrap',
   
-  // Personality quote
+  // Personality quote (short one-liner)
   personalityQuote: 'text-2xl md:text-3xl text-white/90 italic max-w-2xl leading-relaxed text-center px-8',
+
+  // Story quote (long personalized paragraph)
+  storyQuote: 'text-lg md:text-xl text-white/90 leading-relaxed',
+  storyQuoteContainer: 'max-w-2xl mx-auto text-center px-6',
   
   // Username
   username: 'text-4xl font-bold',
@@ -235,6 +239,10 @@ export const CARDS = {
   // Style badge pill
   stylePill: 'inline-flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2',
   stylePillHover: 'hover:bg-white/10 hover:border-orange-500/30 hover:-translate-y-1 hover:shadow-lg hover:shadow-orange-500/10',
+
+  // Story quote card
+  quoteCard: 'bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 rounded-2xl p-8 md:p-10',
+  quoteCardGlow: 'shadow-xl shadow-amber-500/5',
 };
 
 // =============================================================================
