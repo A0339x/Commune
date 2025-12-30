@@ -7361,18 +7361,19 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           }`}>
             {/* Username with inline color transition */}
             {(() => {
-              // Get RGB color based on primary badge
+              // Get RGB color based on primary badge NAME (not emoji - emojis have Unicode issues)
               const getBadgeRGB = () => {
-                const emoji = guardData?.primaryBadge?.emoji;
-                switch (emoji) {
-                  case '👑': return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.7)' }; // amber
-                  case '👴': return { color: 'rgb(34, 211, 238)', shadow: 'rgba(34, 211, 238, 0.5)' }; // cyan
-                  case '💂': return { color: 'rgb(45, 212, 191)', shadow: 'rgba(45, 212, 191, 0.4)' }; // teal
-                  case '🎢': return { color: 'rgb(251, 146, 60)', shadow: 'rgba(251, 146, 60, 0.5)' }; // orange
-                  case '🎖️': return { color: 'rgb(52, 211, 153)', shadow: 'rgba(52, 211, 153, 0.5)' }; // emerald
-                  case '🌱': return { color: 'rgb(74, 222, 128)', shadow: 'rgba(74, 222, 128, 0.4)' }; // green
-                  case '🍃': return { color: 'rgb(163, 230, 53)', shadow: 'rgba(163, 230, 53, 0.4)' }; // lime
-                  default: return { color: 'rgb(255, 255, 255)', shadow: 'none' }; // white
+                const name = guardData?.primaryBadge?.name;
+                switch (name) {
+                  case 'Founding Member': return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.7)' }; // amber
+                  case 'OG': return { color: 'rgb(34, 211, 238)', shadow: 'rgba(34, 211, 238, 0.5)' }; // cyan
+                  case 'Veteran': return { color: 'rgb(45, 212, 191)', shadow: 'rgba(45, 212, 191, 0.4)' }; // teal
+                  case 'Adrenaline Junkie': return { color: 'rgb(251, 146, 60)', shadow: 'rgba(251, 146, 60, 0.5)' }; // orange
+                  case 'Survivor': return { color: 'rgb(52, 211, 153)', shadow: 'rgba(52, 211, 153, 0.5)' }; // emerald
+                  case 'Believer': return { color: 'rgb(74, 222, 128)', shadow: 'rgba(74, 222, 128, 0.4)' }; // green
+                  case 'Holder': return { color: 'rgb(163, 230, 53)', shadow: 'rgba(163, 230, 53, 0.4)' }; // lime
+                  case 'New Member': return { color: 'rgb(255, 255, 255)', shadow: 'none' }; // white (shouldn't happen - scene skipped)
+                  default: return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.5)' }; // fallback to amber
                 }
               };
               const badgeColor = getBadgeRGB();
