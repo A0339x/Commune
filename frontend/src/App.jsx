@@ -6565,41 +6565,74 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
     fetchPriceStats();
   }, [address]);
 
+  // Load profile from holder-profiles.json for accurate badge and quote data
+  const walletProfile = holderProfiles.profiles.find(
+    p => p.address.toLowerCase() === address.toLowerCase()
+  );
+
   // Load personalized quote from holder profiles
   useEffect(() => {
-    const profile = holderProfiles.profiles.find(
-      p => p.address.toLowerCase() === address.toLowerCase()
-    );
-    if (profile) {
-      const quote = generatePersonalizedQuote(profile);
+    if (walletProfile) {
+      const quote = generatePersonalizedQuote(walletProfile);
       setPersonalizedQuote(quote);
     }
-  }, [address]);
+  }, [address, walletProfile]);
 
-  // Build badges array
+  // Build badges array from holder-profiles.json (more accurate than API)
   const allBadges = [];
-  if (guardData.isEarlyAdopter) {
-    allBadges.push({ 
-      emoji: '🏆', 
-      name: 'Early Adopter', 
-      reason: 'For being one of the first 100 GUARD holders ever'
-    });
-  }
-  if (guardData.primaryBadge) {
-    allBadges.push({ 
-      emoji: guardData.primaryBadge.emoji, 
-      name: guardData.primaryBadge.name, 
-      reason: guardData.primaryBadge.description
-    });
-  }
-  if (guardData.availableModifiers) {
-    guardData.availableModifiers.forEach(mod => {
-      allBadges.push({ 
-        emoji: mod.emoji, 
-        name: mod.name, 
-        reason: mod.description
+  if (walletProfile) {
+    // Use profile data from holder-profiles.json
+    if (walletProfile.isEarlyAdopter) {
+      allBadges.push({
+        emoji: '🏆',
+        name: 'Early Adopter',
+        reason: 'For being one of the first 100 GUARD holders ever'
       });
-    });
+    }
+    if (walletProfile.primaryBadge) {
+      allBadges.push({
+        emoji: walletProfile.primaryBadge.emoji,
+        name: walletProfile.primaryBadge.name,
+        reason: walletProfile.primaryBadge.permanent ? 'A permanent mark of your early commitment' : 'Based on when you first joined'
+      });
+    }
+    if (walletProfile.modifiers) {
+      walletProfile.modifiers.forEach(mod => {
+        // Skip opt-in badges like Paper Hands unless explicitly shown
+        if (!mod.optIn) {
+          allBadges.push({
+            emoji: mod.emoji,
+            name: mod.name,
+            reason: mod.reason
+          });
+        }
+      });
+    }
+  } else {
+    // Fallback to guardData from API if not in holder-profiles.json
+    if (guardData.isEarlyAdopter) {
+      allBadges.push({
+        emoji: '🏆',
+        name: 'Early Adopter',
+        reason: 'For being one of the first 100 GUARD holders ever'
+      });
+    }
+    if (guardData.primaryBadge) {
+      allBadges.push({
+        emoji: guardData.primaryBadge.emoji,
+        name: guardData.primaryBadge.name,
+        reason: guardData.primaryBadge.description
+      });
+    }
+    if (guardData.availableModifiers) {
+      guardData.availableModifiers.forEach(mod => {
+        allBadges.push({
+          emoji: mod.emoji,
+          name: mod.name,
+          reason: mod.description
+        });
+      });
+    }
   }
   
   const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
