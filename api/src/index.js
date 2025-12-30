@@ -2716,12 +2716,20 @@ async function handleWebSocketUpgrade(request, env) {
   const protocolHeader = request.headers.get('Sec-WebSocket-Protocol') || '';
   const protocols = protocolHeader.split(',').map(p => p.trim());
   const authProtocol = protocols.find(p => p.startsWith('auth-'));
-  const token = authProtocol ? authProtocol.replace('auth-', '') : null;
+  let token = authProtocol ? authProtocol.replace('auth-', '') : null;
 
   if (!token) {
     return new Response('Missing token', { status: 401 });
   }
-  
+
+  // Restore base64 padding (removed by frontend because '=' is invalid in subprotocol names)
+  const [payload, signature] = token.split('.');
+  if (payload) {
+    const paddingNeeded = (4 - (payload.length % 4)) % 4;
+    const paddedPayload = payload + '='.repeat(paddingNeeded);
+    token = `${paddedPayload}.${signature}`;
+  }
+
   const session = await verifySessionToken(token, env);
   if (!session) {
     return new Response('Invalid session', { status: 401 });

@@ -663,3 +663,89 @@ The API had completely outdated badge definitions. Updated to match current spec
 ### Next Steps
 - Test full flow with various wallets
 - Consider adding quote to final summary screen (Scene 8)
+
+---
+
+## Session 7 - Dec 30, 2025
+
+### 38. Security Audit v1 - 15 Vulnerabilities Fixed
+
+Conducted comprehensive security audit of wallet verification system. Fixed all 15 identified vulnerabilities:
+
+**Critical Fixes:**
+| Issue | Fix |
+|-------|-----|
+| Weak nonce generation (Math.random) | Replaced with `crypto.getRandomValues()` |
+| Hardcoded SESSION_SECRET fallback | Added validation to reject default |
+| No replay attack protection | Implemented nonce tracking in KV |
+| Hardcoded test wallet bypass | Removed entirely |
+| WebSocket token in URL query | Moved to `Sec-WebSocket-Protocol` header |
+| SSRF via /api/proxy | Added auth + IP blocklist |
+| CORS fallback bypass | Now rejects unauthorized origins |
+
+**High Priority Fixes:**
+- Changed localStorage → sessionStorage for session tokens
+- Deny WebSocket access on RPC failure (was allowing)
+- Added defense-in-depth to Durable Object admin endpoints
+
+**Other Improvements:**
+- Added `iat` (issued-at) to session tokens
+- Sanitized error messages to hide implementation details
+- Added auth to /api/balance endpoint
+- Moved WalletConnect ID to environment variable
+
+### 39. Security Audit v2 - 7 Additional Vulnerabilities Fixed
+
+Second comprehensive audit found and fixed additional issues:
+
+**Input Validation:**
+| Fix | Implementation |
+|-----|----------------|
+| Wallet address format validation | Added regex: `/^0x[a-fA-F0-9]{40}$/` |
+| Display name validation in WebSocket | Added 20 char limit + alphanumeric check |
+| Mute duration validation | Added 1 min to 7 day bounds |
+
+**Rate Limiting (per IP):**
+| Endpoint | Limit |
+|----------|-------|
+| `/api/verify` | 5 req/min |
+| `/api/reputation` | 10 req/min |
+| `/api/balance` | 20 req/min |
+| `/api/price-history` | 20 req/min |
+
+**Security Hardening:**
+- Removed WalletConnect hardcoded fallback (now requires env var)
+- Added failed auth audit logging with IP tracking
+- Deleted orphaned `services/api.js` file
+
+### 40. Environment Variables Required
+
+**Cloudflare Pages (Frontend):**
+- `VITE_WALLETCONNECT_PROJECT_ID` - WalletConnect Project ID (plaintext)
+- `NODE_VERSION` - Set to 20
+
+**Cloudflare Workers (API):**
+- `SESSION_SECRET` - HMAC signing secret (must not be default)
+- `MORALIS_API_KEY` - For transaction history
+- `DUNE_API_KEY` - For price history
+- `TENOR_API_KEY` - For GIF search
+
+### Files Modified
+- `api/src/index.js` - Rate limiting, wallet validation, failed auth logging, SIWE verification, nonce tracking
+- `api/src/ChatRoom.js` - Display name validation, admin endpoint protection
+- `frontend/src/App.jsx` - sessionStorage, WebSocket subprotocol auth
+- `frontend/src/config/web3.js` - Secure nonce generation, env var for WalletConnect
+- `frontend/.env.example` - Created with required env vars
+- `frontend/src/services/api.js` - Deleted (orphaned)
+
+### Current Security Posture
+All major security vulnerabilities addressed:
+- ✅ SIWE (EIP-4361) signature verification
+- ✅ Nonce replay attack protection
+- ✅ HMAC-SHA256 session tokens with iat/exp
+- ✅ Rate limiting on expensive endpoints
+- ✅ Input validation on all user inputs
+- ✅ SSRF protection on proxy endpoint
+- ✅ XSS protection (sessionStorage, sanitization)
+- ✅ CORS whitelist enforcement
+- ✅ Failed auth audit logging

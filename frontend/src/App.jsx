@@ -2329,7 +2329,9 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     
     console.log('Connecting to WebSocket...');
     // Pass token via subprotocol header instead of URL query string for security
-    const ws = new WebSocket(`${WS_URL}/api/ws`, [`auth-${sessionToken}`]);
+    // Remove '=' padding as it's invalid in WebSocket subprotocol names (RFC 6455)
+    const safeToken = sessionToken.replace(/=/g, '');
+    const ws = new WebSocket(`${WS_URL}/api/ws`, [`auth-${safeToken}`]);
     wsRef.current = ws;
     
     ws.onopen = () => {
