@@ -7359,12 +7359,21 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className={`transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
-            {/* Username with color transition */}
-            <p className={`${TYPOGRAPHY.username} cursor-default hover:scale-110 transition-all duration-1000 ease-in-out ${
-              subStage >= 3 ? getUsernameColor(guardData) : 'text-white'
-            }`}>
-              {address.slice(0, 6)}...{address.slice(-4)}
-            </p>
+            {/* Username with color overlay for smooth transition */}
+            <div className="relative inline-block">
+              {/* Base white text - fades out */}
+              <p className={`${TYPOGRAPHY.username} cursor-default transition-opacity duration-1000 text-white ${
+                subStage >= 3 ? 'opacity-0' : 'opacity-100'
+              }`}>
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </p>
+              {/* Colored text overlay - fades in */}
+              <p className={`${TYPOGRAPHY.username} cursor-default absolute inset-0 transition-opacity duration-1000 ${
+                subStage >= 3 ? 'opacity-100' : 'opacity-0'
+              } ${getUsernameColor(guardData)}`}>
+                {address.slice(0, 6)}...{address.slice(-4)}
+              </p>
+            </div>
           </div>
         </div>
       )}
