@@ -589,8 +589,17 @@ export class ChatRoom {
           ws.send(JSON.stringify({ type: 'pong' }));
           break;
         case 'update_display_name':
-          session.displayName = data.displayName;
-          this.sessions.set(ws, session);
+          // Validate display name (same rules as API: 20 chars max, alphanumeric + spaces/underscores/dashes)
+          const newName = data.displayName;
+          if (newName && typeof newName === 'string') {
+            const trimmed = newName.trim();
+            if (trimmed.length <= 20 && /^[a-zA-Z0-9_\- ]*$/.test(trimmed)) {
+              session.displayName = trimmed || null;
+              this.sessions.set(ws, session);
+            } else {
+              ws.send(JSON.stringify({ type: 'error', message: 'Invalid display name format' }));
+            }
+          }
           break;
       }
     } catch (error) {

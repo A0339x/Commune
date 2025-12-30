@@ -40,6 +40,12 @@ function isAdmin(wallet) {
   return CONFIG.admins.includes(wallet?.toLowerCase());
 }
 
+// Helper to validate wallet address format (Ethereum/BSC address)
+function isValidWalletAddress(wallet) {
+  if (!wallet || typeof wallet !== 'string') return false;
+  return /^0x[a-fA-F0-9]{40}$/.test(wallet);
+}
+
 // Helper to log admin actions to KV
 async function logAuditAction(env, action, adminWallet, details) {
   try {
@@ -73,6 +79,111 @@ async function logAuditAction(env, action, adminWallet, details) {
     return logEntry;
   } catch (error) {
     console.error('Failed to log audit action:', error);
+    return null;
+  }
+}
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+// Rate limit configuration per endpoint type
+const RATE_LIMITS = {
+  verify: { requests: 5, windowSeconds: 60 },      // 5 requests per minute
+  reputation: { requests: 10, windowSeconds: 60 }, // 10 requests per minute
+  balance: { requests: 20, windowSeconds: 60 },    // 20 requests per minute
+  priceHistory: { requests: 20, windowSeconds: 60 }, // 20 requests per minute
+};
+
+// Check rate limit for an IP + endpoint combination
+async function checkRateLimit(env, ip, endpoint) {
+  const config = RATE_LIMITS[endpoint];
+  if (!config) return { allowed: true };
+
+  const key = `ratelimit:${endpoint}:${ip}`;
+
+  try {
+    const data = await env.SESSIONS.get(key, 'json');
+    const now = Date.now();
+
+    if (!data) {
+      // First request - initialize
+      await env.SESSIONS.put(key, JSON.stringify({ count: 1, windowStart: now }), {
+        expirationTtl: config.windowSeconds,
+      });
+      return { allowed: true, remaining: config.requests - 1 };
+    }
+
+    const windowEnd = data.windowStart + (config.windowSeconds * 1000);
+
+    if (now > windowEnd) {
+      // Window expired - reset
+      await env.SESSIONS.put(key, JSON.stringify({ count: 1, windowStart: now }), {
+        expirationTtl: config.windowSeconds,
+      });
+      return { allowed: true, remaining: config.requests - 1 };
+    }
+
+    if (data.count >= config.requests) {
+      // Rate limited
+      const retryAfter = Math.ceil((windowEnd - now) / 1000);
+      return { allowed: false, retryAfter };
+    }
+
+    // Increment count
+    await env.SESSIONS.put(key, JSON.stringify({ count: data.count + 1, windowStart: data.windowStart }), {
+      expirationTtl: config.windowSeconds,
+    });
+    return { allowed: true, remaining: config.requests - data.count - 1 };
+  } catch (error) {
+    console.error('Rate limit check error:', error);
+    return { allowed: true }; // Fail open to avoid blocking on KV errors
+  }
+}
+
+// Get client IP from request (handles Cloudflare headers)
+function getClientIP(request) {
+  return request.headers.get('CF-Connecting-IP') ||
+         request.headers.get('X-Forwarded-For')?.split(',')[0]?.trim() ||
+         'unknown';
+}
+
+// Log failed authentication attempts for security monitoring
+async function logFailedAuth(env, wallet, ip, reason, details = null) {
+  try {
+    const logEntry = {
+      id: crypto.randomUUID(),
+      type: 'failed_auth',
+      wallet: wallet?.toLowerCase(),
+      ip,
+      reason,
+      details,
+      timestamp: Date.now(),
+    };
+
+    // Store with 30-day expiration
+    const logKey = `failed_auth:${logEntry.timestamp}:${logEntry.id}`;
+    await env.SESSIONS.put(logKey, JSON.stringify(logEntry), {
+      expirationTtl: 30 * 24 * 60 * 60,
+    });
+
+    // Update failed auth index for easy retrieval
+    const indexKey = 'failed_auth_index';
+    const existingIndex = await env.SESSIONS.get(indexKey, 'json') || [];
+    existingIndex.push({
+      key: logKey,
+      wallet: logEntry.wallet,
+      ip,
+      timestamp: logEntry.timestamp,
+    });
+
+    // Keep only last 500 entries in index
+    const trimmedIndex = existingIndex.slice(-500);
+    await env.SESSIONS.put(indexKey, JSON.stringify(trimmedIndex));
+
+    return logEntry;
+  } catch (error) {
+    console.error('Failed to log failed auth:', error);
     return null;
   }
 }
@@ -966,7 +1077,10 @@ async function handleVerify(request, env) {
       // SIWE verification (EIP-4361 standard - used by Uniswap, OpenSea, etc.)
       const siweResult = await verifySiweSignature(message, signature, wallet, env);
       if (!siweResult.valid) {
-        // Security fix: Don't leak specific error details to client
+        // Log failed auth attempt for security monitoring
+        const ip = getClientIP(request);
+        console.log(`Failed auth: wallet=${wallet}, ip=${ip}, reason=${siweResult.error}`);
+        await logFailedAuth(env, wallet, ip, 'siwe_verification_failed', siweResult.error);
         return errorResponse('Signature verification failed', 401, request);
       }
       isValidSignature = true;
@@ -976,6 +1090,10 @@ async function handleVerify(request, env) {
     }
 
     if (!isValidSignature) {
+      // Log failed auth attempt for security monitoring
+      const ip = getClientIP(request);
+      console.log(`Failed auth: wallet=${wallet}, ip=${ip}, reason=invalid_legacy_signature`);
+      await logFailedAuth(env, wallet, ip, 'legacy_verification_failed');
       return errorResponse('Invalid signature', 401, request);
     }
 
@@ -1023,6 +1141,11 @@ async function handleCheckBalance(request, env) {
 
     if (!wallet) {
       return errorResponse('Missing wallet parameter', 400, request);
+    }
+
+    // Security fix: Validate wallet address format
+    if (!isValidWalletAddress(wallet)) {
+      return errorResponse('Invalid wallet address format', 400, request);
     }
 
     // Security fix: Check if user is authenticated and asking about their own wallet
@@ -1342,11 +1465,15 @@ async function handleGetDisplayName(request, env) {
   try {
     const url = new URL(request.url);
     const wallet = url.searchParams.get('wallet');
-    
+
     if (!wallet) {
       return errorResponse('Missing wallet parameter', 400, request);
     }
-    
+
+    if (!isValidWalletAddress(wallet)) {
+      return errorResponse('Invalid wallet address format', 400, request);
+    }
+
     if (env.SESSIONS) {
       const displayName = await env.SESSIONS.get(`displayname:${wallet.toLowerCase()}`);
       return jsonResponse({ 
@@ -1462,11 +1589,23 @@ export default {
       
       // Verify wallet and create session
       if (path === '/api/verify' && method === 'POST') {
+        // Rate limit verify endpoint
+        const ip = getClientIP(request);
+        const rateLimit = await checkRateLimit(env, ip, 'verify');
+        if (!rateLimit.allowed) {
+          return errorResponse(`Rate limited. Try again in ${rateLimit.retryAfter} seconds`, 429, request);
+        }
         return handleVerify(request, env);
       }
-      
+
       // Check token balance
       if (path === '/api/balance' && method === 'GET') {
+        // Rate limit balance endpoint
+        const ip = getClientIP(request);
+        const rateLimit = await checkRateLimit(env, ip, 'balance');
+        if (!rateLimit.allowed) {
+          return errorResponse(`Rate limited. Try again in ${rateLimit.retryAfter} seconds`, 429, request);
+        }
         return handleCheckBalance(request, env);
       }
       
@@ -1648,12 +1787,25 @@ export default {
       ]);
       
       if (path === '/api/reputation' && method === 'GET') {
-        const wallet = url.searchParams.get('wallet')?.toLowerCase();
-        
-        if (!wallet) {
+        // Rate limit reputation endpoint (makes external Moralis API calls)
+        const ip = getClientIP(request);
+        const rateLimit = await checkRateLimit(env, ip, 'reputation');
+        if (!rateLimit.allowed) {
+          return errorResponse(`Rate limited. Try again in ${rateLimit.retryAfter} seconds`, 429, request);
+        }
+
+        const walletParam = url.searchParams.get('wallet');
+
+        if (!walletParam) {
           return errorResponse('Missing wallet parameter', 400, request);
         }
-        
+
+        if (!isValidWalletAddress(walletParam)) {
+          return errorResponse('Invalid wallet address format', 400, request);
+        }
+
+        const wallet = walletParam.toLowerCase();
+
         try {
           const cacheKey = `reputation:${wallet}`;
           const transfersCacheKey = `transfers:${wallet}`;
@@ -2024,11 +2176,16 @@ export default {
       
       // Get user's selected modifier preference
       if (path === '/api/reputation/modifier' && method === 'GET') {
-        const wallet = url.searchParams.get('wallet')?.toLowerCase();
-        if (!wallet) {
+        const walletParam = url.searchParams.get('wallet');
+        if (!walletParam) {
           return errorResponse('Missing wallet parameter', 400, request);
         }
-        
+
+        if (!isValidWalletAddress(walletParam)) {
+          return errorResponse('Invalid wallet address format', 400, request);
+        }
+
+        const wallet = walletParam.toLowerCase();
         const pref = await env.SESSIONS.get(`modifier_pref:${wallet}`);
         return jsonResponse({ modifier: pref || null }, 200, request);
       }
@@ -2038,6 +2195,13 @@ export default {
       // ============================================
 
       if (path === '/api/price-history' && method === 'GET') {
+        // Rate limit price history endpoint (makes external Dune API calls)
+        const ip = getClientIP(request);
+        const rateLimit = await checkRateLimit(env, ip, 'priceHistory');
+        if (!rateLimit.allowed) {
+          return errorResponse(`Rate limited. Try again in ${rateLimit.retryAfter} seconds`, 429, request);
+        }
+
         try {
           const cacheKey = 'guard_price_history_v3';
           const cached = await env.SESSIONS.get(cacheKey);
@@ -2214,11 +2378,17 @@ export default {
       
       // Get user's price stats based on their transactions
       if (path === '/api/user-price-stats' && method === 'GET') {
-        const wallet = url.searchParams.get('wallet')?.toLowerCase();
-        if (!wallet) {
+        const walletParam = url.searchParams.get('wallet');
+        if (!walletParam) {
           return errorResponse('Missing wallet parameter', 400, request);
         }
-        
+
+        if (!isValidWalletAddress(walletParam)) {
+          return errorResponse('Invalid wallet address format', 400, request);
+        }
+
+        const wallet = walletParam.toLowerCase();
+
         try {
           // Get user's transfers from cache
           const transfersCacheKey = `transfers:${wallet}`;
@@ -2708,7 +2878,18 @@ async function handleAdminMuteUser(request, env) {
     if (!wallet || !duration) {
       return errorResponse('Missing wallet or duration', 400, request);
     }
-    
+
+    // Validate wallet format
+    if (!isValidWalletAddress(wallet)) {
+      return errorResponse('Invalid wallet address format', 400, request);
+    }
+
+    // Validate duration (must be positive and max 7 days = 10080 minutes)
+    const MAX_MUTE_DURATION = 10080;
+    if (typeof duration !== 'number' || duration <= 0 || duration > MAX_MUTE_DURATION) {
+      return errorResponse(`Invalid duration. Must be between 1 and ${MAX_MUTE_DURATION} minutes`, 400, request);
+    }
+
     const muteData = {
       mutedBy: session.wallet,
       mutedAt: Date.now(),

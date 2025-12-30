@@ -32,8 +32,13 @@ export const TOKEN_CONFIG = {
 // WAGMI CONFIG
 // ============================================
 
-// WalletConnect Project ID - use env var for security, fallback for dev
-const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '0a4a7b9fe490e41d2ef562bc32e7e9be';
+// WalletConnect Project ID - must be set via environment variable
+// In development: add VITE_WALLETCONNECT_PROJECT_ID to .env
+// In production: set in Cloudflare Pages environment variables
+const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
+if (!WALLETCONNECT_PROJECT_ID) {
+  console.error('VITE_WALLETCONNECT_PROJECT_ID environment variable is required');
+}
 
 export const wagmiConfig = getDefaultConfig({
   appName: 'Commune',
