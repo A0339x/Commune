@@ -7359,21 +7359,37 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className={`transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
-            {/* Username with color overlay for smooth transition */}
-            <div className="relative inline-block">
-              {/* Base white text - fades out */}
-              <p className={`${TYPOGRAPHY.username} cursor-default transition-opacity duration-1000 text-white ${
-                subStage >= 3 ? 'opacity-0' : 'opacity-100'
-              }`}>
-                {address.slice(0, 6)}...{address.slice(-4)}
-              </p>
-              {/* Colored text overlay - fades in */}
-              <p className={`${TYPOGRAPHY.username} cursor-default absolute inset-0 transition-opacity duration-1000 ${
-                subStage >= 3 ? 'opacity-100' : 'opacity-0'
-              } ${getUsernameColor(guardData)}`}>
-                {address.slice(0, 6)}...{address.slice(-4)}
-              </p>
-            </div>
+            {/* Username with inline color transition */}
+            {(() => {
+              // Get RGB color based on primary badge
+              const getBadgeRGB = () => {
+                const emoji = guardData?.primaryBadge?.emoji;
+                switch (emoji) {
+                  case '👑': return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.7)' }; // amber
+                  case '👴': return { color: 'rgb(34, 211, 238)', shadow: 'rgba(34, 211, 238, 0.5)' }; // cyan
+                  case '💂': return { color: 'rgb(45, 212, 191)', shadow: 'rgba(45, 212, 191, 0.4)' }; // teal
+                  case '🎢': return { color: 'rgb(251, 146, 60)', shadow: 'rgba(251, 146, 60, 0.5)' }; // orange
+                  case '🎖️': return { color: 'rgb(52, 211, 153)', shadow: 'rgba(52, 211, 153, 0.5)' }; // emerald
+                  case '🌱': return { color: 'rgb(74, 222, 128)', shadow: 'rgba(74, 222, 128, 0.4)' }; // green
+                  case '🍃': return { color: 'rgb(163, 230, 53)', shadow: 'rgba(163, 230, 53, 0.4)' }; // lime
+                  default: return { color: 'rgb(255, 255, 255)', shadow: 'none' }; // white
+                }
+              };
+              const badgeColor = getBadgeRGB();
+
+              return (
+                <p
+                  className={`${TYPOGRAPHY.username} cursor-default`}
+                  style={{
+                    color: subStage >= 3 ? badgeColor.color : 'rgb(255, 255, 255)',
+                    textShadow: subStage >= 3 ? `0 0 20px ${badgeColor.shadow}` : 'none',
+                    transition: 'color 1s ease-in-out, text-shadow 1s ease-in-out'
+                  }}
+                >
+                  {address.slice(0, 6)}...{address.slice(-4)}
+                </p>
+              );
+            })()}
           </div>
         </div>
       )}
