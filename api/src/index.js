@@ -1391,15 +1391,17 @@ export default {
       // REPUTATION BADGE ENDPOINT
       // ============================================
       
-      // Badge date thresholds
+      // Badge date thresholds - matches BADGE-SPEC.md
+      // Primary badges are based on first buy date
       const BADGE_DATES = {
-        foundingMember: new Date('2021-07-29').getTime(),
-        diamondHands: new Date('2022-01-06').getTime(),
-        og: new Date('2022-04-14').getTime(),
-        veteran: new Date('2022-05-01').getTime(),
-        survivor: new Date('2022-05-08').getTime(),
-        believer: new Date('2023-01-01').getTime(),
-        holder: new Date('2024-01-01').getTime(),
+        foundingMember: new Date('2021-07-29').getTime(),    // Before Jul 29, 2021
+        og: new Date('2022-01-08').getTime(),                // Jul 29, 2021 – Jan 7, 2022
+        veteran: new Date('2022-02-27').getTime(),           // Jan 8, 2022 – Feb 26, 2022
+        adrenalineJunkie: new Date('2022-04-29').getTime(),  // Feb 27, 2022 – Apr 28, 2022
+        survivor: new Date('2022-06-05').getTime(),          // Apr 29, 2022 – Jun 4, 2022
+        believer: new Date('2022-08-30').getTime(),          // Jun 5, 2022 – Aug 29, 2022
+        holder: new Date('2024-01-01').getTime(),            // Aug 30, 2022 – Dec 31, 2023
+        newMember: new Date('2099-01-01').getTime(),         // Jan 1, 2024 onwards (catch-all)
       };
       
       // First 100 holders (Early Adopter badge) - from Dune Analytics query
@@ -1761,28 +1763,44 @@ export default {
           
           const effectiveDate = clockResetDate || firstBuy;
           
-          // Determine primary badge
+          // Determine primary badge based on first buy date (matches BADGE-SPEC.md)
           let primaryBadge = null;
           if (effectiveDate && effectiveDate < BADGE_DATES.foundingMember) {
-            primaryBadge = { emoji: '👑', name: 'Founding Member', description: 'Held GUARD since the first 2 weeks (before Jul 29, 2021)' };
-          } else if (effectiveDate && effectiveDate < BADGE_DATES.diamondHands) {
-            primaryBadge = { emoji: '💎', name: 'Diamond Hands', description: 'Held GUARD since before Jan 6, 2022' };
+            primaryBadge = { emoji: '👑', name: 'Founding Member', description: 'Joined before Jul 29, 2021', permanent: true };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.og) {
-            primaryBadge = { emoji: '🌳', name: 'OG', description: 'Held GUARD since before Apr 14, 2022' };
+            primaryBadge = { emoji: '🌳', name: 'OG', description: 'Joined Jul 29, 2021 – Jan 7, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.veteran) {
-            primaryBadge = { emoji: '🌿', name: 'Veteran', description: 'Held GUARD since before May 1, 2022' };
+            primaryBadge = { emoji: '🌿', name: 'Veteran', description: 'Joined Jan 8, 2022 – Feb 26, 2022', permanent: false };
+          } else if (effectiveDate && effectiveDate < BADGE_DATES.adrenalineJunkie) {
+            primaryBadge = { emoji: '🎢', name: 'Adrenaline Junkie', description: 'Joined Feb 27, 2022 – Apr 28, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.survivor) {
-            primaryBadge = { emoji: '🌾', name: 'Survivor', description: 'Held GUARD since before May 8, 2022' };
+            primaryBadge = { emoji: '🌾', name: 'Survivor', description: 'Joined Apr 29, 2022 – Jun 4, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.believer) {
-            primaryBadge = { emoji: '🌱', name: 'Believer', description: 'Held GUARD since before Jan 1, 2023' };
+            primaryBadge = { emoji: '🌱', name: 'Believer', description: 'Joined Jun 5, 2022 – Aug 29, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.holder) {
-            primaryBadge = { emoji: '🍃', name: 'Holder', description: 'Held GUARD since before Jan 1, 2024' };
+            primaryBadge = { emoji: '🍃', name: 'Holder', description: 'Joined Aug 30, 2022 – Dec 31, 2023', permanent: false };
+          } else {
+            primaryBadge = { emoji: '🆕', name: 'New Member', description: 'Joined Jan 1, 2024 or later', permanent: false };
           }
-          
-          // Check True Believer modifier
+
+          // Calculate modifiers (matches BADGE-SPEC.md)
+          let availableModifiers = [];
+
+          // 🐋 Whale - 1M+ GUARD
+          const ONE_MILLION = BigInt(1000000) * BigInt(10 ** 18);
+          if (balance >= ONE_MILLION) {
+            availableModifiers.push({ emoji: '🐋', name: 'Whale', description: 'Holds 1M+ GUARD' });
+          }
+
+          // 💪 Diamond Grip - Never sold
+          const hasSold = sells.length > 0;
+          if (!hasSold) {
+            availableModifiers.push({ emoji: '💪', name: 'Diamond Grip', description: 'Never sold a single token' });
+          }
+
+          // ⭐ True Believer - 50%+ bought in first 45 days
           let boughtInFirst45Days = BigInt(0);
           const fortyFiveDaysMs = 45 * 24 * 60 * 60 * 1000;
-          
           if (effectiveDate) {
             for (const buy of buys) {
               if (buy.timestamp >= effectiveDate && buy.timestamp <= effectiveDate + fortyFiveDaysMs) {
@@ -1790,19 +1808,48 @@ export default {
               }
             }
           }
-          
           const isTrueBeliever = boughtInFirst45Days >= (balance / BigInt(2));
-          const isSteadyStacker = buyMonths.size >= 6;
-          
-          let modifier = null;
-          let availableModifiers = [];
-          
           if (isTrueBeliever) {
-            availableModifiers.push({ emoji: '⭐', name: 'True Believer', description: 'Bought 50%+ of holdings within 45 days of first purchase' });
+            availableModifiers.push({ emoji: '⭐', name: 'True Believer', description: 'Bought 50%+ within first 45 days' });
           }
+
+          // 🦾 Iron Will - Held through May 2022 crash without selling
+          const mayCrashStart = new Date('2022-05-09').getTime();
+          const mayCrashEnd = new Date('2022-06-21').getTime();
+          const boughtBeforeCrash = firstBuy && firstBuy < mayCrashStart;
+          const soldDuringCrash = sells.some(s => s.timestamp >= mayCrashStart && s.timestamp <= mayCrashEnd);
+          if (boughtBeforeCrash && !soldDuringCrash) {
+            availableModifiers.push({ emoji: '🦾', name: 'Iron Will', description: 'Held through May 2022 crash' });
+          }
+
+          // 🏗️ Builder - Peak 5x first buy AND 12+ months span
+          // (Simplified check - full calculation would need price history)
+          const firstBuyDate = firstBuy ? new Date(firstBuy) : null;
+          const lastBuyDate = buys.length > 0 ? new Date(Math.max(...buys.map(b => b.timestamp))) : null;
+          if (firstBuyDate && lastBuyDate) {
+            const monthsSpan = (lastBuyDate - firstBuyDate) / (1000 * 60 * 60 * 24 * 30);
+            if (monthsSpan >= 12 && buys.length >= 5) {
+              availableModifiers.push({ emoji: '🏗️', name: 'Builder', description: 'Built position over 12+ months' });
+            }
+          }
+
+          // 📈 Accumulator - 10+ purchases
+          if (buys.length >= 10) {
+            availableModifiers.push({ emoji: '📈', name: 'Accumulator', description: `Made ${buys.length} purchases` });
+          }
+
+          // 🔄 Steady Stacker - Bought in 6+ different months
+          const isSteadyStacker = buyMonths.size >= 6;
           if (isSteadyStacker) {
-            availableModifiers.push({ emoji: '🔄', name: 'Steady Stacker', description: 'Bought GUARD in 6+ different months' });
+            availableModifiers.push({ emoji: '🔄', name: 'Steady Stacker', description: `Bought in ${buyMonths.size} different months` });
           }
+
+          // 🏆 Comeback Kid - Sold but came back
+          if (hasSold && balance > BigInt(0)) {
+            availableModifiers.push({ emoji: '🏆', name: 'Comeback Kid', description: 'Sold but came back stronger' });
+          }
+
+          let modifier = null;
           
           // Check user's modifier preference
           const modifierPrefKey = `modifier_pref:${wallet}`;
