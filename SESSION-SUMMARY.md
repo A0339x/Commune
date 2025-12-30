@@ -749,3 +749,6 @@ All major security vulnerabilities addressed:
 - ✅ XSS protection (sessionStorage, sanitization)
 - ✅ CORS whitelist enforcement
 - ✅ Failed auth audit logging
+
+### Next Steps
+- [ ] **Change Wrapped "seen" flag to localStorage** - After demo complete, switch from sessionStorage to localStorage so users only see Wrapped once ever (not once per browser session)
