@@ -197,7 +197,8 @@ const QUOTE_TEMPLATES = {
   // #1 - New Member + Diamond Grip + True Believer (43 users)
   'New Member|Diamond Grip+True Believer': {
     generate: (profile) => {
-      return `You showed up in 2024, put half your bag in within the first 45 days, and haven't sold a single token through the uncertainty and long decline when everyone else went quiet. Fresh start. No scars from the crashes. Welcome to the family. We're glad you're here.`;
+      const joinYear = new Date(profile.firstBuyDate).getFullYear();
+      return `You showed up in ${joinYear}, put half your bag in within the first 45 days, and haven't sold a single token since. Fresh start. No scars from the crashes. Welcome to the family. We're glad you're here.`;
     }
   },
 

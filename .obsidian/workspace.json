@@ -202,6 +202,8 @@
   },
   "active": "3db32377c006d9af",
   "lastOpenFiles": [
+    "frontend/scripts/wallet-full-story.cjs",
+    "frontend/scripts/wallet-stats.cjs",
     "frontend/scripts/fix-early-adopters.cjs",
     "frontend/scripts/fix-early-adopters.cjs.tmp.13592.1767060316525",
     "frontend/scripts/compare-lists.cjs",
@@ -212,8 +214,6 @@
     "frontend/node_modules/use-sidecar/dist/es5/renderProp.js",
     "frontend/node_modules/object.fromentries/shim.js",
     "frontend/node_modules/node-gyp-build/package.json",
-    "frontend/node_modules/has-proto/LICENSE",
-    "frontend/node_modules/gopd/test/index.js",
     "frontend/node_modules/gopd/README.md",
     "frontend/node_modules/gopd/CHANGELOG.md",
     "frontend/node_modules/globalthis/README.md",
