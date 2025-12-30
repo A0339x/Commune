@@ -461,6 +461,39 @@ NODE_VERSION=20                 # Node.js version for build
   - Update after each significant milestone, not just at end of session
   - This serves as a living progress tracker and handoff document
 - **Auto-update before context limit** - When context remaining drops below 10%, automatically update SESSION-SUMMARY.md with current progress so the next session can continue seamlessly
+- **Always consider security implications** - Before making any code changes, evaluate potential security impacts. Never introduce vulnerabilities. See Security Guidelines section below.
+
+---
+
+## Security Guidelines
+
+This project has undergone security audits. All modifications must preserve these security measures:
+
+### Authentication & Sessions
+- **Session tokens in sessionStorage** (not localStorage) - prevents XSS token theft persistence
+- **SIWE (EIP-4361)** for wallet authentication with nonce replay protection
+- **HMAC-SHA256 token signing** with validated SESSION_SECRET
+- **WebSocket auth via subprotocol header** (not URL params)
+
+### Input Validation
+- **Wallet addresses**: Must match `/^0x[a-fA-F0-9]{40}$/`
+- **Display names**: Max 20 chars, alphanumeric + basic punctuation only
+- **Message content**: Sanitized for XSS before display
+- **Mute durations**: Must be positive and within max bounds
+
+### API Security
+- **CORS whitelist** - only allowed origins can access API
+- **Admin endpoints** - origin verification required
+- **SSRF protection** - proxy endpoint validates URLs
+- **Error messages** - sanitized, no internal details leaked
+
+### What NOT to Do
+- Never store tokens in localStorage
+- Never put auth tokens in URL parameters
+- Never trust client-side data without validation
+- Never expose API keys in frontend code
+- Never skip input validation for "internal" functions
+- Never log sensitive data (tokens, keys, full wallet addresses)
 
 ---
 
