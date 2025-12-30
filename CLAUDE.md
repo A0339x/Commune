@@ -47,8 +47,7 @@ Commune/
 │   │   ├── App.jsx              # Main app with Wrapped presentation
 │   │   ├── presentationConfig.js # LOCKED presentation values (timing, colors, typography)
 │   │   ├── config/web3.js       # Wallet connection config
-│   │   ├── hooks/useWeb3.js     # Web3 hooks
-│   │   └── services/api.js      # API service
+│   │   └── hooks/useWeb3.js     # Web3 hooks
 │   ├── holder-profiles.json     # 321 wallet profiles with full transaction history
 │   ├── TRANSITIONS.md           # Documentation of what's locked vs editable
 │   └── package.json
@@ -357,14 +356,21 @@ The quote system is **fully built and tested**. All 321 wallets have personalize
 
 ---
 
-## Environment Variables (Cloudflare)
+## Environment Variables
 
+### API (Cloudflare Worker secrets)
 ```
-MORALIS_API_KEY      # Moralis Web3 API
-DUNE_API_KEY         # Dune Analytics API
-DUNE_GUARD_PRICE_QUERY_ID  # Dune query ID for price data
-SESSION_SECRET       # JWT signing secret
-TENOR_API_KEY        # GIF API for chat
+MORALIS_API_KEY           # Moralis Web3 API
+DUNE_API_KEY              # Dune Analytics API
+DUNE_GUARD_PRICE_QUERY_ID # Dune query ID for price data
+SESSION_SECRET            # JWT signing secret (REQUIRED - no fallback)
+TENOR_API_KEY             # GIF API for chat
+```
+
+### Frontend (Cloudflare Pages env vars)
+```
+VITE_WALLETCONNECT_PROJECT_ID  # WalletConnect Project ID (required)
+NODE_VERSION=20                 # Node.js version for build
 ```
 
 ---
@@ -403,6 +409,44 @@ TENOR_API_KEY        # GIF API for chat
 ### Key Patterns
 - **Presentation vs Content:** `presentationConfig.js` is LOCKED (timing/colors). `App.jsx` is DYNAMIC (content logic)
 - **Pre-computed data:** `holder-profiles.json` has 321 profiles pre-queried from Moralis to avoid API calls
+
+---
+
+## Security
+
+### Authentication System
+- **SIWE (EIP-4361)**: Industry-standard Sign-In with Ethereum
+- **Nonce tracking**: Server-side nonce storage prevents replay attacks (15-min TTL)
+- **HMAC-SHA256 tokens**: Session tokens signed with `SESSION_SECRET`
+- **Cryptographic nonces**: Uses `crypto.getRandomValues()` (not Math.random)
+
+### Rate Limiting (per-IP, stored in KV)
+| Endpoint | Limit |
+|----------|-------|
+| `/api/verify` | 5 req/min |
+| `/api/reputation` | 10 req/min |
+| `/api/balance` | 20 req/min |
+| `/api/price-history` | 20 req/min |
+
+### Input Validation
+- **Wallet addresses**: Regex validation `/^0x[a-fA-F0-9]{40}$/`
+- **Display names**: 20 chars max, alphanumeric + spaces/underscores/dashes
+- **Mute durations**: 1-10080 minutes (max 1 week)
+- **Message content**: XSS sanitization
+
+### WebSocket Security
+- **Token in subprotocol header**: Not URL query string (avoids logging exposure)
+- **Periodic balance revalidation**: Every 5 minutes
+- **RPC failure = deny access**: No "fail open" behavior
+
+### Audit Logging
+- Failed authentication attempts logged with IP, wallet, reason
+- 30-day retention in KV storage
+- Indexed for security review
+
+### CORS & Origin Verification
+- Whitelisted origins only (reject non-matching, no fallback)
+- Admin endpoints verify origin header
 
 ---
 
