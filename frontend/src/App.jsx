@@ -6355,6 +6355,11 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
   const [guardData, setGuardData] = useState(null);
   const [showDashboard, setShowDashboard] = useState(false);
 
+  // Load profile from holder-profiles.json for accurate data
+  const walletProfile = holderProfiles.profiles.find(
+    p => p.address.toLowerCase() === address.toLowerCase()
+  );
+
   // Check if user has already seen the wrapped experience this session
   // OR if this is a demo wallet that should skip wrapped
   useEffect(() => {
