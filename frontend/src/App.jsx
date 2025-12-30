@@ -6908,14 +6908,18 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       setSubStage(5);
       await delay(t.fadeOut);
 
-      // Move to username color scene
-      setScene(7);
+      // Skip username color scene for New Members (they get default white)
+      if (guardData?.primaryBadge?.emoji === '🆕') {
+        setScene(8); // Go directly to final summary
+      } else {
+        setScene(7); // Username color scene
+      }
       setSubStage(0);
       setQuoteReady(false); // Reset for next time
     };
 
     advanceScene();
-  }, [quoteReady, scene, subStage]);
+  }, [quoteReady, scene, subStage, guardData]);
 
   // Scene 7: Username color reveal
   useEffect(() => {

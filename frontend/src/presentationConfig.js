@@ -209,11 +209,13 @@ export const COLORS = {
   
   // Username colors by badge type
   usernameColors: {
-    earlyAdopter: 'text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.7)]',
-    whale: 'text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.7)]',
-    diamond: 'text-purple-400 drop-shadow-[0_0_18px_rgba(192,132,252,0.6)]',
-    tree: 'text-cyan-400 drop-shadow-[0_0_16px_rgba(34,211,238,0.5)]',
-    seedling: 'text-teal-400 drop-shadow-[0_0_14px_rgba(45,212,191,0.4)]',
+    foundingMember: 'text-amber-400 drop-shadow-[0_0_20px_rgba(251,191,36,0.7)]',
+    og: 'text-cyan-400 drop-shadow-[0_0_16px_rgba(34,211,238,0.5)]',
+    veteran: 'text-teal-400 drop-shadow-[0_0_14px_rgba(45,212,191,0.4)]',
+    adrenalineJunkie: 'text-orange-400 drop-shadow-[0_0_16px_rgba(251,146,60,0.5)]',
+    survivor: 'text-emerald-400 drop-shadow-[0_0_14px_rgba(52,211,153,0.5)]',
+    believer: 'text-green-400 drop-shadow-[0_0_12px_rgba(74,222,128,0.4)]',
+    holder: 'text-lime-400 drop-shadow-[0_0_10px_rgba(163,230,53,0.4)]',
     default: 'text-white',
   },
 };
@@ -277,22 +279,22 @@ export const getBadgeColors = (emoji) => {
 };
 
 /**
- * Get username color based on badges/status
+ * Get username color based on primary badge
  */
 export const getUsernameColor = (guardData) => {
-  if (guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑') {
-    return COLORS.usernameColors.earlyAdopter;
+  const emoji = guardData.primaryBadge?.emoji;
+
+  switch (emoji) {
+    case '👑': return COLORS.usernameColors.foundingMember;
+    case '👴': return COLORS.usernameColors.og;
+    case '💂': return COLORS.usernameColors.veteran;
+    case '🎢': return COLORS.usernameColors.adrenalineJunkie;
+    case '🎖️': return COLORS.usernameColors.survivor;
+    case '🌱': return COLORS.usernameColors.believer;
+    case '🍃': return COLORS.usernameColors.holder;
+    case '🆕': return COLORS.usernameColors.default;
+    default: return COLORS.usernameColors.default;
   }
-  if (guardData.primaryBadge?.emoji === '💎') {
-    return COLORS.usernameColors.diamond;
-  }
-  if (guardData.primaryBadge?.emoji === '👴') {
-    return COLORS.usernameColors.tree;
-  }
-  if (guardData.primaryBadge?.emoji === '💂') {
-    return COLORS.usernameColors.seedling;
-  }
-  return COLORS.usernameColors.default;
 };
 
 /**
