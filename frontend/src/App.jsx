@@ -6548,7 +6548,12 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   const [quoteReady, setQuoteReady] = useState(false); // User clicked Next on quote
   const [personalizedQuote, setPersonalizedQuote] = useState(null); // The generated quote
   
-  // Fetch price stats on mount
+  // Load profile from holder-profiles.json for accurate badge and quote data
+  const walletProfile = holderProfiles.profiles.find(
+    p => p.address.toLowerCase() === address.toLowerCase()
+  );
+
+  // Fetch price stats on mount, with fallback to holder-profiles.json
   useEffect(() => {
     const fetchPriceStats = async () => {
       try {
@@ -6556,19 +6561,40 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
         const response = await fetch(`${API_URL}/api/user-price-stats?wallet=${walletToFetch}`);
         if (response.ok) {
           const data = await response.json();
-          setPriceStats(data);
+          // If API returned valid data, use it
+          if (data && data.totalBuys) {
+            setPriceStats(data);
+            return;
+          }
         }
       } catch (error) {
         console.error('Failed to fetch price stats:', error);
       }
+
+      // Fallback: build priceStats from holder-profiles.json
+      if (walletProfile) {
+        const fallbackStats = {
+          totalBuys: walletProfile.totalBuys,
+          totalSells: walletProfile.totalSells,
+          currentBalance: walletProfile.balance,
+          biggestBuy: walletProfile.biggestBuy,
+          biggestSell: walletProfile.biggestSell,
+          firstBuyDate: walletProfile.firstBuyDate,
+          lastBuyDate: walletProfile.lastBuyDate,
+          // These require price data which we don't have in holder-profiles.json
+          // They'll show as unavailable, which is fine
+          bestBuy: null,
+          worstBuy: null,
+          dcaScore: null,
+          paperHandsMoments: walletProfile.totalSells > 0 ? [{ exists: true }] : [],
+          monthlyStreak: null,
+          buyingStyle: walletProfile.totalBuys >= 10 ? 'Accumulator' : 'Holder',
+        };
+        setPriceStats(fallbackStats);
+      }
     };
     fetchPriceStats();
-  }, [address]);
-
-  // Load profile from holder-profiles.json for accurate badge and quote data
-  const walletProfile = holderProfiles.profiles.find(
-    p => p.address.toLowerCase() === address.toLowerCase()
-  );
+  }, [address, walletProfile]);
 
   // Load personalized quote from holder profiles
   useEffect(() => {
