@@ -658,14 +658,21 @@ function calculateUserPriceStats(transfers, priceData, wallet) {
 
 function corsHeaders(request) {
   const origin = request.headers.get('Origin');
-  const allowedOrigin = CONFIG.cors.origins.includes(origin) ? origin : CONFIG.cors.origins[0];
-  
+  // Security fix: Only allow whitelisted origins, don't fallback to first origin
+  const allowedOrigin = CONFIG.cors.origins.includes(origin) ? origin : null;
+
   return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Origin': allowedOrigin || '',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
   };
+}
+
+// Helper to check if origin is allowed
+function isOriginAllowed(request) {
+  const origin = request.headers.get('Origin');
+  return !origin || CONFIG.cors.origins.includes(origin);
 }
 
 function jsonResponse(data, status = 200, request) {
@@ -729,11 +736,28 @@ async function getTokenBalance(walletAddress) {
 /**
  * Verify a SIWE (Sign-In with Ethereum) message and signature
  * Uses viem for cryptographic verification - industry standard
+ * Includes nonce tracking for replay attack protection
  */
-async function verifySiweSignature(messageString, signature, expectedAddress) {
+async function verifySiweSignature(messageString, signature, expectedAddress, env) {
   try {
     // Parse the SIWE message
     const siweMessage = new SiweMessage(messageString);
+
+    // Security fix: Validate nonce is present
+    if (!siweMessage.nonce || siweMessage.nonce.length < 8) {
+      console.error('Signature verification failed: missing or weak nonce');
+      return { valid: false, error: 'Invalid nonce' };
+    }
+
+    // Security fix: Check for nonce reuse (replay attack protection)
+    if (env.SESSIONS) {
+      const nonceKey = `nonce:${siweMessage.nonce}`;
+      const existingNonce = await env.SESSIONS.get(nonceKey);
+      if (existingNonce) {
+        console.error('Signature verification failed: nonce already used');
+        return { valid: false, error: 'Nonce already used' };
+      }
+    }
 
     // Verify the signature cryptographically using viem
     const isValid = await verifyMessage({
@@ -777,6 +801,12 @@ async function verifySiweSignature(messageString, signature, expectedAddress) {
       return { valid: false, error: 'Wrong chain ID' };
     }
 
+    // Security fix: Mark nonce as used (expires after 15 minutes)
+    if (env.SESSIONS) {
+      const nonceKey = `nonce:${siweMessage.nonce}`;
+      await env.SESSIONS.put(nonceKey, 'used', { expirationTtl: 15 * 60 });
+    }
+
     return {
       valid: true,
       siweMessage,
@@ -784,7 +814,7 @@ async function verifySiweSignature(messageString, signature, expectedAddress) {
     };
   } catch (error) {
     console.error('SIWE verification error:', error);
-    return { valid: false, error: error.message };
+    return { valid: false, error: 'Verification failed' };  // Security fix: Don't leak error details
   }
 }
 
@@ -812,13 +842,21 @@ async function verifyLegacySignature(message, signature, expectedAddress) {
 // ============================================
 
 async function createSessionToken(wallet, balance, env) {
-  const secret = env.SESSION_SECRET || CONFIG.session.secret;
-  const expiresAt = Date.now() + (CONFIG.session.expiryHours * 60 * 60 * 1000);
-  
+  // Security fix: Validate that SESSION_SECRET is set and not the default
+  const secret = env.SESSION_SECRET;
+  if (!secret || secret === 'CHANGE_THIS_TO_A_SECURE_SECRET_KEY') {
+    console.error('CRITICAL: SESSION_SECRET environment variable must be set');
+    throw new Error('Server configuration error');
+  }
+
+  const now = Date.now();
+  const expiresAt = now + (CONFIG.session.expiryHours * 60 * 60 * 1000);
+
   const payload = {
     wallet: wallet.toLowerCase(),
     balance,
     verified: true,
+    iat: now,  // Security fix: Add issued-at timestamp
     exp: expiresAt,
   };
   
@@ -852,21 +890,25 @@ async function createSessionToken(wallet, balance, env) {
 
 async function verifySessionToken(token, env) {
   if (!token) return null;
-  
+
   try {
     const [payloadBase64, signatureHex] = token.split('.');
     if (!payloadBase64 || !signatureHex) return null;
-    
+
     const payloadString = atob(payloadBase64);
     const payload = JSON.parse(payloadString);
-    
-    // Check expiry
-    if (payload.exp < Date.now()) {
+
+    // Security fix: Check expiry with <= instead of <
+    if (payload.exp <= Date.now()) {
       return null;
     }
-    
-    // Verify signature
-    const secret = env.SESSION_SECRET || CONFIG.session.secret;
+
+    // Verify signature - require SESSION_SECRET env var
+    const secret = env.SESSION_SECRET;
+    if (!secret || secret === 'CHANGE_THIS_TO_A_SECURE_SECRET_KEY') {
+      console.error('CRITICAL: SESSION_SECRET environment variable must be set');
+      return null;
+    }
     const encoder = new TextEncoder();
     
     const key = await crypto.subtle.importKey(
@@ -922,9 +964,10 @@ async function handleVerify(request, env) {
 
     if (siwe === true) {
       // SIWE verification (EIP-4361 standard - used by Uniswap, OpenSea, etc.)
-      const siweResult = await verifySiweSignature(message, signature, wallet);
+      const siweResult = await verifySiweSignature(message, signature, wallet, env);
       if (!siweResult.valid) {
-        return errorResponse(`Signature verification failed: ${siweResult.error}`, 401, request);
+        // Security fix: Don't leak specific error details to client
+        return errorResponse('Signature verification failed', 401, request);
       }
       isValidSignature = true;
     } else {
@@ -968,8 +1011,8 @@ async function handleVerify(request, env) {
     }, 200, request);
 
   } catch (error) {
-    console.error('Verify error:', error);
-    return errorResponse('Verification failed: ' + error.message, 500, request);
+    console.error('Verify error:', error.message, error.stack);
+    return errorResponse('Verification failed', 500, request);
   }
 }
 
@@ -977,25 +1020,43 @@ async function handleCheckBalance(request, env) {
   try {
     const url = new URL(request.url);
     const wallet = url.searchParams.get('wallet');
-    
+
     if (!wallet) {
       return errorResponse('Missing wallet parameter', 400, request);
     }
-    
+
+    // Security fix: Check if user is authenticated and asking about their own wallet
+    const authHeader = request.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
+    const session = token ? await verifySessionToken(token, env) : null;
+    const isOwnWallet = session && session.wallet.toLowerCase() === wallet.toLowerCase();
+
     const balance = await getTokenBalance(wallet);
     const hasAccess = balance >= CONFIG.token.requiredAmount;
-    
-    return jsonResponse({
-      wallet,
-      balance,
-      required: CONFIG.token.requiredAmount,
-      hasAccess,
-      symbol: CONFIG.token.symbol,
-    }, 200, request);
-    
+
+    // Security fix: Only show exact balance for authenticated users checking their own wallet
+    // For others, only show hasAccess status to prevent wallet enumeration
+    if (isOwnWallet) {
+      return jsonResponse({
+        wallet,
+        balance,
+        required: CONFIG.token.requiredAmount,
+        hasAccess,
+        symbol: CONFIG.token.symbol,
+      }, 200, request);
+    } else {
+      // Limit information disclosure for unauthenticated/other wallets
+      return jsonResponse({
+        wallet,
+        hasAccess,
+        required: CONFIG.token.requiredAmount,
+        symbol: CONFIG.token.symbol,
+      }, 200, request);
+    }
+
   } catch (error) {
     console.error('Balance check error:', error);
-    return errorResponse('Balance check failed: ' + error.message, 500, request);
+    return errorResponse('Balance check failed', 500, request);  // Security fix: Don't leak error details
   }
 }
 
@@ -1073,8 +1134,8 @@ async function handleGetMessages(request, env) {
     return jsonResponse({ messages: messagesWithNames }, 200, request);
     
   } catch (error) {
-    console.error('Get messages error:', error);
-    return errorResponse('Failed to get messages: ' + error.message, 500, request);
+    console.error('Get messages error:', error.message, error.stack);
+    return errorResponse('Failed to get messages', 500, request);
   }
 }
 
@@ -1594,35 +1655,6 @@ export default {
         }
         
         try {
-          // TEMPORARY TEST: Hardcoded badge for testing UI - REMOVE AFTER TESTING
-          if (wallet === '0x81763a34db26e383c1144be34c3fb7c56f48bff3') {
-            const availableModifiers = [
-              { emoji: '⭐', name: 'True Believer', description: 'Bought 50%+ of holdings within 45 days of first purchase' },
-              { emoji: '🔄', name: 'Steady Stacker', description: 'Bought GUARD in 6+ different months' }
-            ];
-            
-            // Check user's modifier preference
-            const modifierPrefKey = `modifier_pref:${wallet}`;
-            const savedModifierPref = await env.SESSIONS.get(modifierPrefKey);
-            
-            let modifier = availableModifiers[0]; // Default to first
-            if (savedModifierPref) {
-              const preferredMod = availableModifiers.find(m => m.emoji === savedModifierPref);
-              if (preferredMod) modifier = preferredMod;
-            }
-            
-            return jsonResponse({
-              primaryBadge: { emoji: '👑', name: 'Founding Member', description: 'Held GUARD since the first 2 weeks (before Jul 29, 2021)' },
-              modifier,
-              availableModifiers,
-              isEarlyAdopter: true,
-              effectiveDate: 1626480000000,
-              firstBuy: 1626480000000,
-              clockReset: false,
-            }, 200, request);
-          }
-          // END TEMPORARY TEST
-          
           const cacheKey = `reputation:${wallet}`;
           const transfersCacheKey = `transfers:${wallet}`;
           
@@ -2219,23 +2251,49 @@ export default {
       
       // ============================================
       // PROXY ENDPOINT FOR LINK PREVIEWS
+      // Security fix: Added authentication and SSRF protection
       // ============================================
-      
+
       if (path === '/api/proxy' && method === 'GET') {
+        // Security fix: Require authentication for proxy
+        const authHeader = request.headers.get('Authorization');
+        const token = authHeader?.replace('Bearer ', '');
+        const session = await verifySessionToken(token, env);
+
+        if (!session) {
+          return errorResponse('Authentication required', 401, request);
+        }
+
         const targetUrl = url.searchParams.get('url');
-        
+
         if (!targetUrl) {
           return errorResponse('Missing url parameter', 400, request);
         }
-        
+
         try {
           const parsed = new URL(targetUrl);
-          
+
           // Only allow http/https
           if (!['http:', 'https:'].includes(parsed.protocol)) {
             return errorResponse('Invalid protocol', 400, request);
           }
-          
+
+          // Security fix: Block SSRF attacks - prevent access to internal/private IPs
+          const blockedHosts = [
+            'localhost', '127.0.0.1', '0.0.0.0',
+            '169.254.169.254', // AWS metadata
+            'metadata.google.internal', // GCP metadata
+            '10.', '172.16.', '172.17.', '172.18.', '172.19.',
+            '172.20.', '172.21.', '172.22.', '172.23.', '172.24.',
+            '172.25.', '172.26.', '172.27.', '172.28.', '172.29.',
+            '172.30.', '172.31.', '192.168.',
+          ];
+
+          const hostname = parsed.hostname.toLowerCase();
+          if (blockedHosts.some(blocked => hostname === blocked || hostname.startsWith(blocked))) {
+            return errorResponse('Access to internal resources not allowed', 403, request);
+          }
+
           // Fetch the target URL with desktop User-Agent
           const response = await fetch(targetUrl, {
             headers: {
@@ -2321,7 +2379,8 @@ export default {
           });
           
         } catch (error) {
-          return errorResponse('Failed to fetch URL: ' + error.message, 500, request);
+          console.error('Proxy fetch error:', error.message);
+          return errorResponse('Failed to fetch URL', 500, request);
         }
       }
       
@@ -2356,15 +2415,18 @@ export default {
           try {
             data = JSON.parse(responseText);
           } catch (e) {
-            return errorResponse('BSCScan returned invalid JSON: ' + responseText.substring(0, 200), 500, request);
+            console.error('BSCScan returned invalid JSON:', responseText.substring(0, 200));
+            return errorResponse('External API error', 500, request);
           }
-          
+
           if (data.status !== '1' || !data.result) {
-            return errorResponse(`BSCScan error: ${data.message || data.result || 'Unknown error'} (status: ${data.status})`, 500, request);
+            console.error('BSCScan API error:', data.message || data.result, 'status:', data.status);
+            return errorResponse('External API error', 500, request);
           }
-          
+
           if (!Array.isArray(data.result)) {
-            return errorResponse('BSCScan returned non-array result: ' + typeof data.result, 500, request);
+            console.error('BSCScan returned non-array result:', typeof data.result);
+            return errorResponse('External API error', 500, request);
           }
           
           // Find first 100 unique recipients
@@ -2394,7 +2456,8 @@ export default {
           }, 200, request);
           
         } catch (error) {
-          return errorResponse('Failed to populate early adopters: ' + error.message, 500, request);
+          console.error('Failed to populate early adopters:', error.message, error.stack);
+          return errorResponse('Failed to populate early adopters', 500, request);
         }
       }
       
@@ -2478,10 +2541,13 @@ export default {
 // ============================================
 
 async function handleWebSocketUpgrade(request, env) {
-  // Validate session token from query params
-  const url = new URL(request.url);
-  const token = url.searchParams.get('token');
-  
+  // Security: Read token from Sec-WebSocket-Protocol header instead of URL query string
+  // This prevents token from appearing in logs, browser history, and referer headers
+  const protocolHeader = request.headers.get('Sec-WebSocket-Protocol') || '';
+  const protocols = protocolHeader.split(',').map(p => p.trim());
+  const authProtocol = protocols.find(p => p.startsWith('auth-'));
+  const token = authProtocol ? authProtocol.replace('auth-', '') : null;
+
   if (!token) {
     return new Response('Missing token', { status: 401 });
   }
@@ -2500,8 +2566,9 @@ async function handleWebSocketUpgrade(request, env) {
       return new Response('Insufficient token balance', { status: 403 });
     }
   } catch (error) {
-    // If balance check fails, allow connection (don't break on RPC issues)
+    // Security fix: Deny access on RPC failure instead of allowing
     console.error('Balance recheck failed:', error);
+    return new Response('Service temporarily unavailable', { status: 503 });
   }
   
   // Get display name
@@ -2511,11 +2578,12 @@ async function handleWebSocketUpgrade(request, env) {
   const id = env.CHATROOM.idFromName('main-chat');
   const chatRoom = env.CHATROOM.get(id);
   
-  // Forward to Durable Object with wallet info
+  // Forward to Durable Object with wallet info and protocol
   const wsUrl = new URL(request.url);
   wsUrl.searchParams.set('wallet', session.wallet);
   wsUrl.searchParams.set('displayName', displayName || '');
-  
+  wsUrl.searchParams.set('protocol', authProtocol); // Pass protocol to echo in response
+
   return chatRoom.fetch(new Request(wsUrl.toString(), request));
 }
 

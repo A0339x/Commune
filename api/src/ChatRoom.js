@@ -69,15 +69,29 @@ export class ChatRoom {
       return this.handleBroadcastDelete(request);
     }
     
+    // Admin endpoints - these are ONLY called internally from the main worker
+    // which verifies admin auth before calling. Durable Objects are not
+    // publicly accessible, they can only be reached via stub.fetch() from
+    // within the Worker code. The "http://internal/" URL prefix confirms this.
     if (url.pathname === '/admin-delete') {
+      // Verify internal origin
+      if (!request.url.startsWith('http://internal/')) {
+        return new Response('Forbidden', { status: 403 });
+      }
       return this.handleAdminDelete(request);
     }
-    
+
     if (url.pathname === '/admin-messages') {
+      if (!request.url.startsWith('http://internal/')) {
+        return new Response('Forbidden', { status: 403 });
+      }
       return this.handleAdminMessages(request);
     }
-    
+
     if (url.pathname === '/admin-delete-reply') {
+      if (!request.url.startsWith('http://internal/')) {
+        return new Response('Forbidden', { status: 403 });
+      }
       return this.handleAdminDeleteReply(request);
     }
     
@@ -449,6 +463,7 @@ export class ChatRoom {
     const url = new URL(request.url);
     const wallet = url.searchParams.get('wallet');
     const displayName = url.searchParams.get('displayName') || null;
+    const protocol = url.searchParams.get('protocol'); // Auth protocol to echo back
 
     if (!wallet) {
       return new Response('Missing wallet', { status: 400 });
@@ -456,10 +471,10 @@ export class ChatRoom {
 
     // Accept the WebSocket
     this.state.acceptWebSocket(server);
-    
+
     // Store session info with rate limiting data
-    this.sessions.set(server, { 
-      wallet, 
+    this.sessions.set(server, {
+      wallet,
       displayName,
       lastMessages: [],  // Timestamps of recent messages
       rateLimitedUntil: 0,  // Timestamp when rate limit expires
@@ -480,7 +495,12 @@ export class ChatRoom {
       count: this.sessions.size,
     }));
 
-    return new Response(null, { status: 101, webSocket: client });
+    // Return WebSocket response with protocol header (required for subprotocol handshake)
+    const headers = {};
+    if (protocol) {
+      headers['Sec-WebSocket-Protocol'] = protocol;
+    }
+    return new Response(null, { status: 101, webSocket: client, headers });
   }
 
   // Check if user is rate limited

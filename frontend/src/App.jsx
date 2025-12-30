@@ -2328,7 +2328,8 @@ const ChatRoom = ({ walletAddress, sessionToken }) => {
     }
     
     console.log('Connecting to WebSocket...');
-    const ws = new WebSocket(`${WS_URL}/api/ws?token=${sessionToken}`);
+    // Pass token via subprotocol header instead of URL query string for security
+    const ws = new WebSocket(`${WS_URL}/api/ws`, [`auth-${sessionToken}`]);
     wsRef.current = ws;
     
     ws.onopen = () => {
@@ -6139,13 +6140,13 @@ const AuthenticatedApp = () => {
       if (lastCheckedAddress && lastCheckedAddress !== address) {
         setIsVerified(false);
         setSessionToken(null);
-        localStorage.removeItem('commune_session');
+        sessionStorage.removeItem('commune_session');
       }
 
       setLastCheckedAddress(address);
 
       // Check for existing valid session
-      const storedToken = localStorage.getItem('commune_session');
+      const storedToken = sessionStorage.getItem('commune_session');
       if (storedToken) {
         try {
           const response = await fetch(`${API_URL}/api/session`, {
@@ -6163,7 +6164,7 @@ const AuthenticatedApp = () => {
           console.error('Session check failed:', error);
         }
         // Invalid session - remove it
-        localStorage.removeItem('commune_session');
+        sessionStorage.removeItem('commune_session');
       }
 
       setCheckingSession(false);
@@ -6188,7 +6189,7 @@ const AuthenticatedApp = () => {
           console.log('Session invalidated:', data.reason);
           setSessionToken(null);
           setIsVerified(false);
-          localStorage.removeItem('commune_session');
+          sessionStorage.removeItem('commune_session');
         }
       } catch (error) {
         console.error('Balance revalidation failed:', error);
@@ -6248,7 +6249,7 @@ const AuthenticatedApp = () => {
         walletAddress={address}
         onSuccess={(token) => {
           setSessionToken(token);
-          localStorage.setItem('commune_session', token);
+          sessionStorage.setItem('commune_session', token);
           setIsVerified(true);
         }}
       />

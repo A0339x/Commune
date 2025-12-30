@@ -32,9 +32,12 @@ export const TOKEN_CONFIG = {
 // WAGMI CONFIG
 // ============================================
 
+// WalletConnect Project ID - use env var for security, fallback for dev
+const WALLETCONNECT_PROJECT_ID = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || '0a4a7b9fe490e41d2ef562bc32e7e9be';
+
 export const wagmiConfig = getDefaultConfig({
   appName: 'Commune',
-  projectId: '0a4a7b9fe490e41d2ef562bc32e7e9be', // Your WalletConnect Project ID
+  projectId: WALLETCONNECT_PROJECT_ID,
   chains: [bsc],
   transports: {
     [bsc.id]: http('https://bsc-dataseed.binance.org/'),
@@ -161,9 +164,11 @@ export const hasRequiredTokens = (balance, decimals = 18) => {
 };
 
 /**
- * Generate a random nonce for signature verification
+ * Generate a cryptographically secure random nonce for signature verification
+ * Uses Web Crypto API instead of Math.random() for security
  */
 export const generateNonce = () => {
-  return Math.random().toString(36).substring(2, 15) + 
-         Math.random().toString(36).substring(2, 15);
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 };
