@@ -15,10 +15,10 @@ Users receive ONE primary badge based on when they first bought.
 | Emoji | Name              | Date Range                  |
 | ----- | ----------------- | --------------------------- |
 | 👑    | Founding Member   | Before Jul 29, 2021         |
-| 🌳    | OG                | Jul 29, 2021 – Jan 7, 2022  |
-| 🌿    | Veteran           | Jan 8, 2022 – Feb 26, 2022  |
+| 👴    | OG                | Jul 29, 2021 – Jan 7, 2022  |
+| 🎖️    | Veteran           | Jan 8, 2022 – Feb 26, 2022  |
 | 🎢    | Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
-| 🌾    | Survivor          | Apr 29, 2022 – Jun 4, 2022  |
+| ✊    | Survivor          | Apr 29, 2022 – Jun 4, 2022  |
 | 🌱    | Believer          | Jun 5, 2022 – Aug 29, 2022  |
 | 🍃    | Holder            | Aug 30, 2022 – Dec 31, 2023 |
 | 🆕    | New Member        | Jan 1, 2024 onwards         |
@@ -45,7 +45,7 @@ User earns multiple to display alongside their primary badge.
 | 🏗️   | Builder        | Peak balance ≥ 5x first buy AND 12+ months between first & last buy | ✅               |
 | 📈    | Accumulator    | Made 10+ separate purchases                                         | ✅               |
 | 🔄    | Steady Stacker | Bought in 6+ different months                                       | ✅               |
-| 🏆    | Comeback Kid   | Had paper hands moment but rebuilt position                         | ✅               |
+| 🏃    | Comeback Kid   | Had paper hands moment but rebuilt position                         | ✅               |
 | 🧘    | Emotional Mastery | Took profits during runs, never panic sold during drops          | ✅               |
 | 🧻    | Paper Hands    | Sold during 2+ major dips (20%+ drops)                              | ❌ (opt-in only) |
 
@@ -61,7 +61,7 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 6. 🏗️ Builder
 7. 📈 Accumulator
 8. 🔄 Steady Stacker
-9. 🏆 Comeback Kid
+9. 🏃 Comeback Kid
 10. 🧻 Paper Hands *(never default - opt-in only)*
 
 ---
@@ -100,7 +100,7 @@ If user qualifies for multiple and hasn't chosen, display by this priority:
 - **Description**: "Bought consistently, month after month"
 - **Note**: Emphasizes habit and regularity — discipline and routine
 
-### 🏆 Comeback Kid
+### 🏃 Comeback Kid
 - **Requirement**:
   - Had at least one "paper hands moment" (sold during dip, price recovered 50%+)
   - Rebuilt position after selling
@@ -132,10 +132,10 @@ Based on primary badge:
 | Badge | Color | Glow |
 |-------|-------|------|
 | 👑 Founding Member | amber-400 | gold |
-| 🌳 OG | cyan-400 | cyan |
-| 🌿 Veteran | teal-400 | teal |
+| 👴 OG | cyan-400 | cyan |
+| 🎖️ Veteran | teal-400 | teal |
 | 🎢 Adrenaline Junkie | orange-400 | orange |
-| 🌾 Survivor | emerald-400 | emerald |
+| ✊ Survivor | emerald-400 | emerald |
 | 🌱 Believer | green-400 | green |
 | 🍃 Holder | lime-400 | lime |
 | 🆕 New Member | white | none |

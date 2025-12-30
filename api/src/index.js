@@ -2030,13 +2030,13 @@ export default {
           if (effectiveDate && effectiveDate < BADGE_DATES.foundingMember) {
             primaryBadge = { emoji: '👑', name: 'Founding Member', description: 'Joined before Jul 29, 2021', permanent: true };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.og) {
-            primaryBadge = { emoji: '🌳', name: 'OG', description: 'Joined Jul 29, 2021 – Jan 7, 2022', permanent: false };
+            primaryBadge = { emoji: '👴', name: 'OG', description: 'Joined Jul 29, 2021 – Jan 7, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.veteran) {
-            primaryBadge = { emoji: '🌿', name: 'Veteran', description: 'Joined Jan 8, 2022 – Feb 26, 2022', permanent: false };
+            primaryBadge = { emoji: '🎖️', name: 'Veteran', description: 'Joined Jan 8, 2022 – Feb 26, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.adrenalineJunkie) {
             primaryBadge = { emoji: '🎢', name: 'Adrenaline Junkie', description: 'Joined Feb 27, 2022 – Apr 28, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.survivor) {
-            primaryBadge = { emoji: '🌾', name: 'Survivor', description: 'Joined Apr 29, 2022 – Jun 4, 2022', permanent: false };
+            primaryBadge = { emoji: '✊', name: 'Survivor', description: 'Joined Apr 29, 2022 – Jun 4, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.believer) {
             primaryBadge = { emoji: '🌱', name: 'Believer', description: 'Joined Jun 5, 2022 – Aug 29, 2022', permanent: false };
           } else if (effectiveDate && effectiveDate < BADGE_DATES.holder) {
@@ -2108,7 +2108,7 @@ export default {
 
           // 🏆 Comeback Kid - Sold but came back
           if (hasSold && balance > BigInt(0)) {
-            availableModifiers.push({ emoji: '🏆', name: 'Comeback Kid', description: 'Sold but came back stronger' });
+            availableModifiers.push({ emoji: '🏃', name: 'Comeback Kid', description: 'Sold but came back stronger' });
           }
 
           let modifier = null;

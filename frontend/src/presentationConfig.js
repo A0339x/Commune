@@ -194,8 +194,10 @@ export const COLORS = {
     '🏆': { text: 'text-amber-400', glow: 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]' },
     '👑': { text: 'text-amber-400', glow: 'drop-shadow-[0_0_40px_rgba(251,191,36,0.6)]' },
     '💎': { text: 'text-purple-400', glow: 'drop-shadow-[0_0_40px_rgba(192,132,252,0.6)]' },
-    '🌳': { text: 'text-cyan-400', glow: 'drop-shadow-[0_0_40px_rgba(34,211,238,0.6)]' },
-    '🌿': { text: 'text-teal-400', glow: 'drop-shadow-[0_0_40px_rgba(45,212,191,0.6)]' },
+    '👴': { text: 'text-cyan-400', glow: 'drop-shadow-[0_0_40px_rgba(34,211,238,0.6)]' },
+    '🎖️': { text: 'text-teal-400', glow: 'drop-shadow-[0_0_40px_rgba(45,212,191,0.6)]' },
+    '✊': { text: 'text-emerald-400', glow: 'drop-shadow-[0_0_40px_rgba(52,211,153,0.6)]' },
+    '🏃': { text: 'text-orange-400', glow: 'drop-shadow-[0_0_40px_rgba(251,146,60,0.6)]' },
     '🔒': { text: 'text-blue-400', glow: 'drop-shadow-[0_0_40px_rgba(59,130,246,0.6)]' },
     '⚡': { text: 'text-yellow-400', glow: 'drop-shadow-[0_0_40px_rgba(234,179,8,0.6)]' },
     '🗳️': { text: 'text-indigo-400', glow: 'drop-shadow-[0_0_40px_rgba(99,102,241,0.6)]' },
@@ -283,10 +285,10 @@ export const getUsernameColor = (guardData) => {
   if (guardData.primaryBadge?.emoji === '💎') {
     return COLORS.usernameColors.diamond;
   }
-  if (guardData.primaryBadge?.emoji === '🌳') {
+  if (guardData.primaryBadge?.emoji === '👴') {
     return COLORS.usernameColors.tree;
   }
-  if (guardData.primaryBadge?.emoji === '🌿') {
+  if (guardData.primaryBadge?.emoji === '🎖️') {
     return COLORS.usernameColors.seedling;
   }
   return COLORS.usernameColors.default;

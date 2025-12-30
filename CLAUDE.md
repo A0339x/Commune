@@ -84,7 +84,7 @@ Commune/
 Total profiles: 321
 
 Modifier Badge Distribution:
-  - 🏆 Comeback Kid: 244 (76.0%) - Sold but came back
+  - 🏃 Comeback Kid: 244 (76.0%) - Sold but came back
   - 📈 Accumulator: 229 (71.3%) - 10+ purchases
   - 🔄 Steady Stacker: 193 (60.1%) - Bought in 6+ months
   - ⭐ True Believer: 182 (56.7%) - 50%+ in first 45 days

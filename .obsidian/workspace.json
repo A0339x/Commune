@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "QUOTE-PREVIEW.md",
+                "file": "BADGE-EMOJIS.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "QUOTE-PREVIEW"
+              "title": "BADGE-EMOJIS"
             }
           }
         ],
@@ -93,8 +93,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300,
-    "collapsed": true
+    "width": 300
   },
   "right": {
     "id": "16484313a47508c6",
@@ -201,17 +200,20 @@
   },
   "active": "3db32377c006d9af",
   "lastOpenFiles": [
+    "CLAUDE.md.tmp.13592.1767101408424",
+    "SESSION-SUMMARY.md.tmp.13592.1767101401621",
+    "SESSION-SUMMARY.md.tmp.13592.1767101383701",
+    "SESSION-SUMMARY.md.tmp.13592.1767101382955",
+    "frontend/src/App.jsx.tmp.13592.1767101253781",
+    "frontend/src/App.jsx.tmp.13592.1767101213541",
+    "BADGE-EMOJIS.md.tmp.13592.1767101159919",
+    "BADGE-SPEC.md.tmp.13592.1767101139980",
+    "BADGE-SPEC.md.tmp.13592.1767101138909",
+    "BADGE-SPEC.md.tmp.13592.1767101138121",
+    "BADGE-SPEC.md.tmp.13592.1767101137386",
+    "QUOTE-PREVIEW.md",
+    "BADGE-EMOJIS.md",
     "warm-swimming-prism.md",
-    "frontend/node_modules/siwe/dist/siwe.d.ts",
-    "frontend/node_modules/siwe/lib/utils.ts",
-    "frontend/node_modules/siwe/lib/types.ts",
-    "frontend/node_modules/siwe/lib/siwe.ts",
-    "frontend/node_modules/siwe/lib/ethersCompat.ts",
-    "frontend/node_modules/siwe/lib/client.ts",
-    "frontend/node_modules/siwe/lib/client.test.ts",
-    "frontend/node_modules/siwe/dist/utils.js",
-    "frontend/node_modules/siwe/dist/utils.d.ts",
-    "frontend/node_modules/siwe/dist/types.js",
     "frontend/node_modules/siwe/README.md",
     "api/node_modules/miniflare/node_modules/ws/README.md",
     "api/node_modules/apg-js/dist/guide/images/tabright.gif",
@@ -241,10 +243,8 @@
     "api/node_modules/ethers/README.md",
     "api/node_modules/ethers/LICENSE.md",
     "api/node_modules/ethers/CHANGELOG.md",
-    "QUOTE-PREVIEW.md",
     "EDGE-CASES.md",
     "frontend/node_modules/gopd/README.md",
-    "frontend/node_modules/gopd/CHANGELOG.md",
-    "frontend/node_modules/globalthis/README.md"
+    "frontend/node_modules/gopd/CHANGELOG.md"
   ]
 }

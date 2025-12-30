@@ -13,10 +13,10 @@ if (!wallet) {
 // All possible badges from BADGE-SPEC.md
 const allPrimaryBadges = [
   { emoji: '👑', name: 'Founding Member', requirement: 'First buy before Jul 29, 2021' },
-  { emoji: '🌳', name: 'OG', requirement: 'First buy Jul 29, 2021 – Jan 7, 2022' },
-  { emoji: '🌿', name: 'Veteran', requirement: 'First buy Jan 8, 2022 – Feb 26, 2022' },
+  { emoji: '👴', name: 'OG', requirement: 'First buy Jul 29, 2021 – Jan 7, 2022' },
+  { emoji: '🎖️', name: 'Veteran', requirement: 'First buy Jan 8, 2022 – Feb 26, 2022' },
   { emoji: '🎢', name: 'Adrenaline Junkie', requirement: 'First buy Feb 27, 2022 – Apr 28, 2022' },
-  { emoji: '🌾', name: 'Survivor', requirement: 'First buy Apr 29, 2022 – Jun 4, 2022' },
+  { emoji: '✊', name: 'Survivor', requirement: 'First buy Apr 29, 2022 – Jun 4, 2022' },
   { emoji: '🌱', name: 'Believer', requirement: 'First buy Jun 5, 2022 – Aug 29, 2022' },
   { emoji: '🍃', name: 'Holder', requirement: 'First buy Aug 30, 2022 – Dec 31, 2023' },
   { emoji: '🆕', name: 'New Member', requirement: 'First buy Jan 1, 2024 onwards' },
@@ -30,7 +30,7 @@ const allModifiers = [
   { emoji: '🏗️', name: 'Builder', requirement: 'Peak balance ≥ 5x first buy AND 12+ months between first & last buy' },
   { emoji: '📈', name: 'Accumulator', requirement: 'Made 10+ separate purchases' },
   { emoji: '🔄', name: 'Steady Stacker', requirement: 'Bought in 6+ different months' },
-  { emoji: '🏆', name: 'Comeback Kid', requirement: 'Had paper hands moment but rebuilt position' },
+  { emoji: '🏃', name: 'Comeback Kid', requirement: 'Had paper hands moment but rebuilt position' },
   { emoji: '🧘', name: 'Emotional Mastery', requirement: 'Took profits during runs, never panic sold during drops' },
   { emoji: '🧻', name: 'Paper Hands', requirement: 'Sold during 2+ major dips (opt-in only)' },
 ];

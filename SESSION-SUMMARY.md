@@ -14,10 +14,10 @@
 | Badge | Date Range |
 |-------|------------|
 | 👑 Founding Member | Before Jul 29, 2021 |
-| 🌳 OG | Jul 29, 2021 – Jan 7, 2022 |
-| 🌿 Veteran | Jan 8, 2022 – Feb 26, 2022 |
+| 👴 OG | Jul 29, 2021 – Jan 7, 2022 |
+| 🎖️ Veteran | Jan 8, 2022 – Feb 26, 2022 |
 | 🎢 Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
-| 🌾 Survivor | Apr 29, 2022 – Jun 4, 2022 |
+| ✊ Survivor | Apr 29, 2022 – Jun 4, 2022 |
 | 🌱 Believer | Jun 5, 2022 – Aug 29, 2022 |
 | 🍃 Holder | Aug 30, 2022 – Dec 31, 2023 |
 | 🆕 New Member | Jan 1, 2024 onwards |
@@ -32,7 +32,7 @@
 | 🏗️ Builder | 177 | Peak 5x first buy, 12+ months span |
 | 📈 Accumulator | 229 | 10+ purchases |
 | 🔄 Steady Stacker | 193 | Bought in 6+ different months |
-| 🏆 Comeback Kid | 244 | Sold but came back |
+| 🏃 Comeback Kid | 244 | Sold but came back |
 | 🧻 Paper Hands | 195 | Opt-in only |
 
 **Removed:**
@@ -630,10 +630,10 @@ The API had completely outdated badge definitions. Updated to match current spec
 | Emoji | Name | Date Range |
 |-------|------|------------|
 | 👑 | Founding Member | Before Jul 29, 2021 |
-| 🌳 | OG | Jul 29, 2021 – Jan 7, 2022 |
-| 🌿 | Veteran | Jan 8, 2022 – Feb 26, 2022 |
+| 👴 | OG | Jul 29, 2021 – Jan 7, 2022 |
+| 🎖️ | Veteran | Jan 8, 2022 – Feb 26, 2022 |
 | 🎢 | Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
-| 🌾 | Survivor | Apr 29, 2022 – Jun 4, 2022 |
+| ✊ | Survivor | Apr 29, 2022 – Jun 4, 2022 |
 | 🌱 | Believer | Jun 5, 2022 – Aug 29, 2022 |
 | 🍃 | Holder | Aug 30, 2022 – Dec 31, 2023 |
 | 🆕 | New Member | Jan 1, 2024 onwards |
@@ -646,7 +646,7 @@ The API had completely outdated badge definitions. Updated to match current spec
 - 🏗️ Builder (12+ months span)
 - 📈 Accumulator (10+ purchases)
 - 🔄 Steady Stacker (6+ months)
-- 🏆 Comeback Kid (sold but came back)
+- 🏃 Comeback Kid (sold but came back)
 
 **Removed:** Diamond Hands as primary badge (it's now Diamond Grip modifier)
 

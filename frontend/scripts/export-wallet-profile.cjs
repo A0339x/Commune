@@ -143,7 +143,7 @@ ${modifierRows}
 | 🏗️ | Builder | 12+ months building | ${daysBetween} days between buys |
 | 📈 | Accumulator | 10+ purchases | Only ${wallet.totalBuys} purchases |
 | 🔄 | Steady Stacker | Buy in 6+ months | Bought in 1 month |
-| 🏆 | Comeback Kid | Sell then rebuild | Never sold |
+| 🏃 | Comeback Kid | Sell then rebuild | Never sold |
 | 🧘 | Emotional Mastery | Smart sells, no panic | Joined after events |
 | 🧻 | Paper Hands | Sell during 2+ dips | Never panic sold |
 
