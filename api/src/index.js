@@ -3,6 +3,9 @@
  * Handles token verification, session management, and chat
  */
 
+import { SiweMessage } from 'siwe';
+import { verifyMessage } from 'viem';
+
 // Export the ChatRoom Durable Object
 export { ChatRoom } from './ChatRoom.js';
 
@@ -720,26 +723,88 @@ async function getTokenBalance(walletAddress) {
 }
 
 // ============================================
-// SIGNATURE VERIFICATION
+// SIGNATURE VERIFICATION (SIWE - EIP-4361)
 // ============================================
 
-async function verifySignature(message, signature, expectedAddress) {
-  // Use eth_ecRecover-like verification
-  // For production, you'd use a proper library like ethers.js
-  // This is a simplified version that validates the signature format
-  
-  if (!signature || signature.length !== 132) {
+/**
+ * Verify a SIWE (Sign-In with Ethereum) message and signature
+ * Uses viem for cryptographic verification - industry standard
+ */
+async function verifySiweSignature(messageString, signature, expectedAddress) {
+  try {
+    // Parse the SIWE message
+    const siweMessage = new SiweMessage(messageString);
+
+    // Verify the signature cryptographically using viem
+    const isValid = await verifyMessage({
+      address: expectedAddress,
+      message: messageString,
+      signature: signature,
+    });
+
+    if (!isValid) {
+      console.error('Signature verification failed: invalid signature');
+      return { valid: false, error: 'Invalid signature' };
+    }
+
+    // Verify the address in the message matches the expected address
+    if (siweMessage.address.toLowerCase() !== expectedAddress.toLowerCase()) {
+      console.error('Signature verification failed: address mismatch');
+      return { valid: false, error: 'Address mismatch' };
+    }
+
+    // Check if message has expired
+    if (siweMessage.expirationTime) {
+      const expirationTime = new Date(siweMessage.expirationTime);
+      if (expirationTime < new Date()) {
+        console.error('Signature verification failed: message expired');
+        return { valid: false, error: 'Message expired' };
+      }
+    }
+
+    // Check notBefore time
+    if (siweMessage.notBefore) {
+      const notBeforeTime = new Date(siweMessage.notBefore);
+      if (notBeforeTime > new Date()) {
+        console.error('Signature verification failed: message not yet valid');
+        return { valid: false, error: 'Message not yet valid' };
+      }
+    }
+
+    // Verify chain ID matches BSC
+    if (siweMessage.chainId && siweMessage.chainId !== CONFIG.bsc.chainId) {
+      console.error('Signature verification failed: wrong chain ID');
+      return { valid: false, error: 'Wrong chain ID' };
+    }
+
+    return {
+      valid: true,
+      siweMessage,
+      address: siweMessage.address
+    };
+  } catch (error) {
+    console.error('SIWE verification error:', error);
+    return { valid: false, error: error.message };
+  }
+}
+
+/**
+ * Legacy signature verification for backwards compatibility
+ * Uses viem's verifyMessage for simple message signing
+ */
+async function verifyLegacySignature(message, signature, expectedAddress) {
+  try {
+    const isValid = await verifyMessage({
+      address: expectedAddress,
+      message: message,
+      signature: signature,
+    });
+
+    return isValid;
+  } catch (error) {
+    console.error('Legacy signature verification error:', error);
     return false;
   }
-  
-  // In a real implementation, you would:
-  // 1. Hash the message with Ethereum prefix
-  // 2. Recover the public key from the signature
-  // 3. Derive the address and compare
-  
-  // For now, we'll trust the frontend verification and just validate format
-  // The real security comes from the session token being server-generated
-  return true;
 }
 
 // ============================================
@@ -835,12 +900,12 @@ async function verifySessionToken(token, env) {
 
 async function handleVerify(request, env) {
   try {
-    const { wallet, signature, message } = await request.json();
-    
+    const { wallet, signature, message, siwe } = await request.json();
+
     if (!wallet || !signature || !message) {
       return errorResponse('Missing wallet, signature, or message', 400, request);
     }
-    
+
     // 0. Check if user is banned
     const banData = await env.SESSIONS.get(`ban:${wallet.toLowerCase()}`, 'json');
     if (banData) {
@@ -851,16 +916,29 @@ async function handleVerify(request, env) {
         message: 'You have been banned from this community',
       }, 200, request);
     }
-    
-    // 1. Verify the signature
-    const isValidSignature = await verifySignature(message, signature, wallet);
+
+    // 1. Verify the signature using SIWE or legacy method
+    let isValidSignature = false;
+
+    if (siwe === true) {
+      // SIWE verification (EIP-4361 standard - used by Uniswap, OpenSea, etc.)
+      const siweResult = await verifySiweSignature(message, signature, wallet);
+      if (!siweResult.valid) {
+        return errorResponse(`Signature verification failed: ${siweResult.error}`, 401, request);
+      }
+      isValidSignature = true;
+    } else {
+      // Legacy verification for backwards compatibility
+      isValidSignature = await verifyLegacySignature(message, signature, wallet);
+    }
+
     if (!isValidSignature) {
       return errorResponse('Invalid signature', 401, request);
     }
-    
+
     // 2. Check token balance on BSC
     const balance = await getTokenBalance(wallet);
-    
+
     if (balance < CONFIG.token.requiredAmount) {
       return jsonResponse({
         verified: false,
@@ -869,10 +947,10 @@ async function handleVerify(request, env) {
         message: `Insufficient ${CONFIG.token.symbol} balance`,
       }, 200, request);
     }
-    
+
     // 3. Create session token
     const sessionToken = await createSessionToken(wallet, balance, env);
-    
+
     // 4. Store session in KV (optional, for tracking)
     if (env.SESSIONS) {
       await env.SESSIONS.put(
@@ -881,14 +959,14 @@ async function handleVerify(request, env) {
         { expirationTtl: CONFIG.session.expiryHours * 60 * 60 }
       );
     }
-    
+
     return jsonResponse({
       verified: true,
       balance,
       token: sessionToken,
       expiresIn: CONFIG.session.expiryHours * 60 * 60 * 1000,
     }, 200, request);
-    
+
   } catch (error) {
     console.error('Verify error:', error);
     return errorResponse('Verification failed: ' + error.message, 500, request);

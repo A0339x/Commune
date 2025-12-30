@@ -8,11 +8,11 @@ import {
 } from '@rainbow-me/rainbowkit';
 import { WagmiProvider, useAccount, useSignMessage, useReadContract } from 'wagmi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { 
-  wagmiConfig, 
-  TOKEN_CONFIG, 
-  ERC20_ABI, 
-  SIGN_MESSAGE_CONFIG,
+import {
+  wagmiConfig,
+  TOKEN_CONFIG,
+  ERC20_ABI,
+  SIWE_CONFIG,
   API_URL,
   truncateAddress,
   formatTokenBalance,
@@ -1234,24 +1234,27 @@ const LandingPage = ({ onDevLogin }) => {
 };
 
 // ============================================
-// SIGN MESSAGE VERIFICATION PAGE
+// SIGN MESSAGE VERIFICATION PAGE (SIWE - EIP-4361)
+// Industry standard used by Uniswap, OpenSea, and major dApps
 // ============================================
 const SignMessagePage = ({ onSuccess, tokenBalance, walletAddress }) => {
   const [nonce] = useState(generateNonce());
   const [signing, setSigning] = useState(false);
   const [error, setError] = useState(null);
-  
+
   const { signMessageAsync } = useSignMessage();
-  
+
   const handleSign = async () => {
     setSigning(true);
     setError(null);
-    
+
     try {
-      const message = SIGN_MESSAGE_CONFIG.getMessage(nonce);
+      // Create SIWE message following EIP-4361 standard
+      // This includes domain binding, expiration, chain ID, and nonce
+      const message = SIWE_CONFIG.createMessage(walletAddress, nonce);
       const signature = await signMessageAsync({ message });
-      
-      // Verify signature with the API and get session token
+
+      // Verify signature with the API using SIWE verification
       const response = await fetch(`${API_URL}/api/verify`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1259,11 +1262,12 @@ const SignMessagePage = ({ onSuccess, tokenBalance, walletAddress }) => {
           wallet: walletAddress,
           signature,
           message,
+          siwe: true, // Flag to use SIWE verification on backend
         }),
       });
-      
+
       const data = await response.json();
-      
+
       if (data.verified && data.token) {
         onSuccess(data.token);
       } else {

@@ -12,6 +12,10 @@
   "keywords": ["cloudflare", "worker", "api", "token-gating"],
   "author": "",
   "license": "ISC",
+  "dependencies": {
+    "viem": "^2.15.0",
+    "siwe": "^2.3.2"
+  },
   "devDependencies": {
     "wrangler": "^3.0.0"
   }

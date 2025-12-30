@@ -1,6 +1,7 @@
 import { http } from 'wagmi';
 import { bsc } from 'wagmi/chains';
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
+import { SiweMessage } from 'siwe';
 
 // ============================================
 // API CONFIGURATION
@@ -76,9 +77,45 @@ export const ERC20_ABI = [
 ];
 
 // ============================================
-// SIGN MESSAGE CONFIG
+// SIWE (Sign-In with Ethereum) CONFIG - EIP-4361
+// Industry standard used by Uniswap, OpenSea, and major dApps
 // ============================================
 
+export const SIWE_CONFIG = {
+  // Domain that is requesting the signing (must match actual domain)
+  domain: typeof window !== 'undefined' ? window.location.host : 'commune-6m2.pages.dev',
+
+  // URI of the current page
+  uri: typeof window !== 'undefined' ? window.location.origin : 'https://commune-6m2.pages.dev',
+
+  // Statement shown to user (human-readable)
+  statement: 'Sign in to Commune to verify you own this wallet and access the GUARD holder community. This is free and does not trigger any blockchain transaction.',
+
+  // How long the signature is valid (15 minutes)
+  expirationMinutes: 15,
+
+  // Create a SIWE message following EIP-4361 standard
+  createMessage: (address, nonce, chainId = TOKEN_CONFIG.chainId) => {
+    const now = new Date();
+    const expirationTime = new Date(now.getTime() + SIWE_CONFIG.expirationMinutes * 60 * 1000);
+
+    const siweMessage = new SiweMessage({
+      domain: SIWE_CONFIG.domain,
+      address: address,
+      statement: SIWE_CONFIG.statement,
+      uri: SIWE_CONFIG.uri,
+      version: '1',
+      chainId: chainId,
+      nonce: nonce,
+      issuedAt: now.toISOString(),
+      expirationTime: expirationTime.toISOString(),
+    });
+
+    return siweMessage.prepareMessage();
+  },
+};
+
+// Legacy config for backwards compatibility
 export const SIGN_MESSAGE_CONFIG = {
   // Message template - {nonce} will be replaced with a random value
   getMessage: (nonce) => `Welcome to Commune!
