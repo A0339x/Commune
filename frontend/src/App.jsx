@@ -7116,9 +7116,9 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <p className={`${TYPOGRAPHY.sceneTitle} mb-10 transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 1 ? 'opacity-100' : 'opacity-0'
           }`}>
-            Let's talk timing...
+            Your buy timing...
           </p>
-          
+
           <div className="flex justify-center gap-8 flex-wrap">
             {/* Best buy */}
             {priceStats?.bestBuy && (
@@ -7127,7 +7127,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               }`}>
                 <div className={`group ${COLORS.bestTiming.bg} border ${COLORS.bestTiming.border} ${CARDS.timingCard} cursor-default transition-all duration-300 ${CARDS.timingCardHover} ${COLORS.bestTiming.shadow} ${COLORS.bestTiming.hoverBorder} ${COLORS.bestTiming.hoverBg}`}>
                   <p className={`${COLORS.bestTiming.text} ${TYPOGRAPHY.timingLabel} mb-2`}>
-                    <span className="inline-block group-hover:animate-bounce">🎯</span> Best Timing
+                    <span className="inline-block group-hover:animate-bounce">🎯</span> Best Buy
                   </p>
                   <span className={`${TYPOGRAPHY.timingPrice} ${COLORS.bestTiming.text} group-hover:text-green-300 group-hover:${COLORS.bestTiming.glow} transition-all`}>{formatPrice(priceStats.bestBuy.price)}</span>
                   <p className={`${TYPOGRAPHY.cardSubtitle} mt-2 group-hover:text-white/70 transition-colors`}>{formatNiceDate(priceStats.bestBuy.date)}</p>
@@ -7135,7 +7135,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 </div>
               </div>
             )}
-            
+
             {/* Worst buy */}
             {priceStats?.worstBuy && (
               <div className={`transition-opacity ${TRANSITIONS.fadeFast} ${
@@ -7143,7 +7143,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               }`}>
                 <div className={`group ${COLORS.worstTiming.bg} border ${COLORS.worstTiming.border} ${CARDS.timingCard} cursor-default transition-all duration-300 ${CARDS.timingCardHover} ${COLORS.worstTiming.shadow} ${COLORS.worstTiming.hoverBorder} ${COLORS.worstTiming.hoverBg}`}>
                   <p className={`${COLORS.worstTiming.text} ${TYPOGRAPHY.timingLabel} mb-2`}>
-                    <span className="inline-block group-hover:animate-pulse">😅</span> Worst Timing
+                    <span className="inline-block group-hover:animate-pulse">😅</span> Worst Buy
                   </p>
                   <span className={`${TYPOGRAPHY.timingPrice} ${COLORS.worstTiming.text} group-hover:text-red-300 group-hover:${COLORS.worstTiming.glow} transition-all`}>{formatPrice(priceStats.worstBuy.price)}</span>
                   <p className={`${TYPOGRAPHY.cardSubtitle} mt-2 group-hover:text-white/70 transition-colors`}>{formatNiceDate(priceStats.worstBuy.date)}</p>
