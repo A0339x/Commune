@@ -202,6 +202,7 @@
   },
   "active": "3db32377c006d9af",
   "lastOpenFiles": [
+    "frontend/scripts/simulate-all-wallets.cjs",
     "QUOTE-PREVIEW.md",
     "WALLET-PROFILE-0x6e98...7a3d.md",
     "frontend/scripts/export-wallet-profile.cjs",
@@ -238,7 +239,6 @@
     "frontend/node_modules/is-finalizationregistry/CHANGELOG.md",
     "frontend/node_modules/is-date-object/README.md",
     "frontend/node_modules/is-date-object/CHANGELOG.md",
-    "frontend/node_modules/is-bigint/README.md",
     "frontend/node_modules/pngjs/coverage/lcov-report/sort-arrow-sprite.png",
     "frontend/node_modules/pngjs/coverage/lcov-report/favicon.png"
   ]

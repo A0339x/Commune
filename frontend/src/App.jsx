@@ -6337,16 +6337,23 @@ const BadgeWithTooltip = ({ emoji, name, description }) => {
 // ============================================
 // RECOGNITION LOADER - "GUARD WRAPPED" EXPERIENCE
 // ============================================
+// Demo wallets that skip the Wrapped presentation (go straight to chat)
+const DEMO_SKIP_WRAPPED = [
+  '0x81763A34dB26e383C1144BE34C3FB7C56F48BFF3'.toLowerCase(),
+];
+
 const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
   const [stage, setStage] = useState('loading'); // 'loading', 'transitioning', 'wrapped', 'ready'
   const [terminalLines, setTerminalLines] = useState([]);
   const [guardData, setGuardData] = useState(null);
   const [showDashboard, setShowDashboard] = useState(false);
-  
+
   // Check if user has already seen the wrapped experience this session
+  // OR if this is a demo wallet that should skip wrapped
   useEffect(() => {
     const seenKey = `guard_wrapped_seen_${address.toLowerCase()}`;
-    if (sessionStorage.getItem(seenKey)) {
+    const shouldSkip = sessionStorage.getItem(seenKey) || DEMO_SKIP_WRAPPED.includes(address.toLowerCase());
+    if (shouldSkip) {
       setShowDashboard(true);
     }
   }, [address]);
