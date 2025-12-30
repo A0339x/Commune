@@ -7326,7 +7326,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
           <div className={`flex flex-col items-center justify-center w-full transition-opacity ${TRANSITIONS.fadeVerySlow} ${TRANSITIONS.easing} ${
             subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
-            <div className="max-w-3xl mx-auto px-8">
+            <div className="w-full max-w-3xl mx-auto px-8">
               {/* Large decorative quote mark */}
               <div className="flex justify-center mb-8">
                 <span className="text-5xl text-amber-500/20 font-serif leading-none">"</span>
