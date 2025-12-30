@@ -7322,22 +7322,41 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             )}
           </div>
           
-          {/* Personalized story quote - card style with Next button */}
+          {/* Personalized story quote - modern minimalist design */}
           <div className={`flex flex-col items-center justify-center w-full transition-opacity ${TRANSITIONS.fadeVerySlow} ${TRANSITIONS.easing} ${
             subStage === 6 ? 'opacity-100' : 'opacity-0 pointer-events-none absolute'
           }`}>
-            <div className={`${CARDS.quoteCard} ${CARDS.quoteCardGlow}`}>
-              <div className={TYPOGRAPHY.storyQuoteContainer}>
-                <p className={TYPOGRAPHY.storyQuote}>
-                  {personalizedQuote || getHolderPersonality()}
-                </p>
+            <div className="max-w-2xl mx-auto px-6">
+              {/* Large decorative quote mark */}
+              <div className="flex justify-center mb-6">
+                <span className="text-6xl text-amber-500/30 font-serif leading-none">"</span>
               </div>
-              <div className="mt-8 flex justify-center">
+
+              {/* Quote text */}
+              <p className="text-xl md:text-2xl text-white/90 leading-relaxed text-center font-light italic">
+                {personalizedQuote || getHolderPersonality()}
+              </p>
+
+              {/* Subtle accent line */}
+              <div className="flex justify-center mt-8 mb-8">
+                <div className="w-16 h-px bg-gradient-to-r from-transparent via-amber-500/50 to-transparent"></div>
+              </div>
+
+              {/* Next button - minimal style */}
+              <div className="flex justify-center">
                 <button
                   onClick={() => setQuoteReady(true)}
-                  className="px-8 py-3 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 hover:border-amber-500/60 rounded-lg text-amber-400 font-medium transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-amber-500/20"
+                  className="group flex items-center gap-2 px-6 py-3 text-amber-400/80 hover:text-amber-400 font-medium transition-all duration-300"
                 >
-                  Next
+                  <span>Continue</span>
+                  <svg
+                    className="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
                 </button>
               </div>
             </div>
@@ -7355,25 +7374,23 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             Your recognition gives you a special presence in chat
           </p>
           
-          {/* Username reveal */}
+          {/* Username reveal - shows directly in badge color */}
           <div className={`transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
-            {/* Username with inline color transition */}
             {(() => {
-              // Get RGB color based on primary badge NAME (not emoji - emojis have Unicode issues)
+              // Get RGB color based on primary badge NAME
               const getBadgeRGB = () => {
                 const name = guardData?.primaryBadge?.name;
                 switch (name) {
-                  case 'Founding Member': return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.7)' }; // amber
-                  case 'OG': return { color: 'rgb(34, 211, 238)', shadow: 'rgba(34, 211, 238, 0.5)' }; // cyan
-                  case 'Veteran': return { color: 'rgb(45, 212, 191)', shadow: 'rgba(45, 212, 191, 0.4)' }; // teal
-                  case 'Adrenaline Junkie': return { color: 'rgb(251, 146, 60)', shadow: 'rgba(251, 146, 60, 0.5)' }; // orange
-                  case 'Survivor': return { color: 'rgb(52, 211, 153)', shadow: 'rgba(52, 211, 153, 0.5)' }; // emerald
-                  case 'Believer': return { color: 'rgb(74, 222, 128)', shadow: 'rgba(74, 222, 128, 0.4)' }; // green
-                  case 'Holder': return { color: 'rgb(163, 230, 53)', shadow: 'rgba(163, 230, 53, 0.4)' }; // lime
-                  case 'New Member': return { color: 'rgb(255, 255, 255)', shadow: 'none' }; // white (shouldn't happen - scene skipped)
-                  default: return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.5)' }; // fallback to amber
+                  case 'Founding Member': return { color: 'rgb(251, 191, 36)', shadow: '0 0 30px rgba(251, 191, 36, 0.6)' }; // amber
+                  case 'OG': return { color: 'rgb(34, 211, 238)', shadow: '0 0 25px rgba(34, 211, 238, 0.5)' }; // cyan
+                  case 'Veteran': return { color: 'rgb(45, 212, 191)', shadow: '0 0 20px rgba(45, 212, 191, 0.4)' }; // teal
+                  case 'Adrenaline Junkie': return { color: 'rgb(251, 146, 60)', shadow: '0 0 25px rgba(251, 146, 60, 0.5)' }; // orange
+                  case 'Survivor': return { color: 'rgb(52, 211, 153)', shadow: '0 0 20px rgba(52, 211, 153, 0.5)' }; // emerald
+                  case 'Believer': return { color: 'rgb(74, 222, 128)', shadow: '0 0 18px rgba(74, 222, 128, 0.4)' }; // green
+                  case 'Holder': return { color: 'rgb(163, 230, 53)', shadow: '0 0 15px rgba(163, 230, 53, 0.4)' }; // lime
+                  default: return { color: 'rgb(251, 191, 36)', shadow: '0 0 25px rgba(251, 191, 36, 0.5)' }; // fallback amber
                 }
               };
               const badgeColor = getBadgeRGB();
@@ -7382,9 +7399,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 <p
                   className={`${TYPOGRAPHY.username} cursor-default`}
                   style={{
-                    color: subStage >= 3 ? badgeColor.color : 'rgb(255, 255, 255)',
-                    textShadow: subStage >= 3 ? `0 0 20px ${badgeColor.shadow}` : 'none',
-                    transition: 'color 1s ease-in-out, text-shadow 1s ease-in-out'
+                    color: badgeColor.color,
+                    textShadow: badgeColor.shadow
                   }}
                 >
                   {address.slice(0, 6)}...{address.slice(-4)}
