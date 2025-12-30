@@ -6,9 +6,9 @@
 |-------|------|
 | 👑 | Founding Member |
 | 👴 | OG |
-| 🎖️ | Veteran |
+| 💂 | Veteran |
 | 🎢 | Adrenaline Junkie |
-| ✊ | Survivor |
+| 🎖️ | Survivor |
 | 🌱 | Believer |
 | 🍃 | Holder |
 | 🆕 | New Member |
@@ -36,6 +36,6 @@
 
 ## Quick Copy
 
-**Primary:** 👑 👴 🎖️ 🎢 ✊ 🌱 🍃 🆕
+**Primary:** 👑 👴 💂 🎢 🎖️ 🌱 🍃 🆕
 
 **Modifiers:** 🐋 💪 ⭐ 🦾 🏗️ 📈 🔄 🏃 🧘 🧻

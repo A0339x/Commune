@@ -36,9 +36,9 @@ const PANIC_WINDOWS = [
 const PRIMARY_BADGE_TIERS = [
   { name: 'Founding Member', emoji: '👑', before: '2021-07-29', permanent: true },
   { name: 'OG', emoji: '👴', from: '2021-07-29', before: '2022-01-08' },
-  { name: 'Veteran', emoji: '🎖️', from: '2022-01-08', before: '2022-02-27' },
+  { name: 'Veteran', emoji: '💂', from: '2022-01-08', before: '2022-02-27' },
   { name: 'Adrenaline Junkie', emoji: '🎢', from: '2022-02-27', before: '2022-04-29' },
-  { name: 'Survivor', emoji: '✊', from: '2022-04-29', before: '2022-06-05' },
+  { name: 'Survivor', emoji: '🎖️', from: '2022-04-29', before: '2022-06-05' },
   { name: 'Believer', emoji: '🌱', from: '2022-06-05', before: '2022-08-30' },
   { name: 'Holder', emoji: '🍃', from: '2022-08-30', before: '2024-01-01' },
   { name: 'New Member', emoji: '🆕', from: '2024-01-01' },

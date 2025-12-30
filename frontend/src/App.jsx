@@ -780,7 +780,7 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
     if (visible.length === 0) return null;
     
     // Priority order: Early Adopter > Founding > Diamond > OG > Veteran > Survivor > Believer > Holder > Modifiers
-    const priority = ['🏆', '👑', '💎', '👴', '🎖️', '✊', '🌱', '🍃', '⭐', '🔄'];
+    const priority = ['🏆', '👑', '💎', '👴', '💂', '🎖️', '🌱', '🍃', '⭐', '🔄'];
     for (const emoji of priority) {
       const badge = visible.find(b => b.emoji === emoji);
       if (badge) return badge;
@@ -817,14 +817,14 @@ const ReputationBadge = ({ wallet, showTooltip = true, children }) => {
       };
     }
     // Veteran = Teal
-    if (emoji === '🎖️') {
+    if (emoji === '💂') {
       return { 
         color: 'text-teal-400', 
         glow: 'drop-shadow-[0_0_4px_rgba(45,212,191,0.3)]' 
       };
     }
     // Survivor = Emerald
-    if (emoji === '✊') {
+    if (emoji === '🎖️') {
       return { 
         color: 'text-emerald-400', 
         glow: '' 
@@ -5988,7 +5988,7 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                       const visibleBadges = allBadges.filter(b => !hiddenBadges.includes(b.emoji));
                       
                       // Get highest visible badge for color preview
-                      const priority = ['🏆', '👑', '💎', '👴', '🎖️', '✊', '🌱', '🍃', '⭐', '🔄'];
+                      const priority = ['🏆', '👑', '💎', '👴', '💂', '🎖️', '🌱', '🍃', '⭐', '🔄'];
                       let highestBadge = null;
                       for (const emoji of priority) {
                         const badge = visibleBadges.find(b => b.emoji === emoji);
@@ -6004,8 +6004,8 @@ const CommunityDashboard = ({ address, tokenBalance, sessionToken }) => {
                         if (emoji === '🏆' || emoji === '👑') return { color: 'text-amber-400', glow: 'drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]' };
                         if (emoji === '💎') return { color: 'text-purple-400', glow: 'drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]' };
                         if (emoji === '👴') return { color: 'text-cyan-400', glow: 'drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]' };
-                        if (emoji === '🎖️') return { color: 'text-teal-400', glow: 'drop-shadow-[0_0_4px_rgba(45,212,191,0.3)]' };
-                        if (emoji === '✊') return { color: 'text-emerald-400', glow: '' };
+                        if (emoji === '💂') return { color: 'text-teal-400', glow: 'drop-shadow-[0_0_4px_rgba(45,212,191,0.3)]' };
+                        if (emoji === '🎖️') return { color: 'text-emerald-400', glow: '' };
                         if (emoji === '🌱') return { color: 'text-green-400', glow: '' };
                         if (emoji === '🍃') return { color: 'text-lime-400', glow: '' };
                         return { color: 'text-white', glow: '' };
@@ -6283,7 +6283,8 @@ const BadgeWithTooltip = ({ emoji, name, description }) => {
       case '👑': return { bg: 'from-amber-500/20 to-orange-500/20', border: 'border-amber-500/40', glow: 'shadow-amber-500/30', text: 'text-amber-400' };
       case '💎': return { bg: 'from-purple-500/20 to-pink-500/20', border: 'border-purple-500/40', glow: 'shadow-purple-500/30', text: 'text-purple-400' };
       case '👴': return { bg: 'from-cyan-500/20 to-teal-500/20', border: 'border-cyan-500/40', glow: 'shadow-cyan-500/30', text: 'text-cyan-400' };
-      case '🎖️': return { bg: 'from-teal-500/20 to-green-500/20', border: 'border-teal-500/40', glow: 'shadow-teal-500/30', text: 'text-teal-400' };
+      case '💂': return { bg: 'from-teal-500/20 to-green-500/20', border: 'border-teal-500/40', glow: 'shadow-teal-500/30', text: 'text-teal-400' };
+      case '🎖️': return { bg: 'from-emerald-500/20 to-green-500/20', border: 'border-emerald-500/40', glow: 'shadow-emerald-500/30', text: 'text-emerald-400' };
       case '🔒': return { bg: 'from-blue-500/20 to-indigo-500/20', border: 'border-blue-500/40', glow: 'shadow-blue-500/30', text: 'text-blue-400' };
       case '⚡': return { bg: 'from-yellow-500/20 to-orange-500/20', border: 'border-yellow-500/40', glow: 'shadow-yellow-500/30', text: 'text-yellow-400' };
       case '🗳️': return { bg: 'from-indigo-500/20 to-purple-500/20', border: 'border-indigo-500/40', glow: 'shadow-indigo-500/30', text: 'text-indigo-400' };
@@ -6479,8 +6480,11 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
     if (primaryBadge?.emoji === '👴') {
       return "Deep roots grow strong trees. You're an OG who's seen it all. 👴";
     }
+    if (primaryBadge?.emoji === '💂') {
+      return "A veteran holder with stories to tell. Your journey continues. 💂";
+    }
     if (primaryBadge?.emoji === '🎖️') {
-      return "A veteran holder with stories to tell. Your journey continues. 🎖️";
+      return "A survivor who weathered the storm. Your resilience speaks volumes. 🎖️";
     }
     if (availableModifiers?.find(m => m.emoji === '⭐')) {
       return "A true believer who went all-in early. That's conviction. ⭐";

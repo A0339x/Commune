@@ -16,9 +16,9 @@ Users receive ONE primary badge based on when they first bought.
 | ----- | ----------------- | --------------------------- |
 | 👑    | Founding Member   | Before Jul 29, 2021         |
 | 👴    | OG                | Jul 29, 2021 – Jan 7, 2022  |
-| 🎖️    | Veteran           | Jan 8, 2022 – Feb 26, 2022  |
+| 💂    | Veteran           | Jan 8, 2022 – Feb 26, 2022  |
 | 🎢    | Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
-| ✊    | Survivor          | Apr 29, 2022 – Jun 4, 2022  |
+| 🎖️    | Survivor          | Apr 29, 2022 – Jun 4, 2022  |
 | 🌱    | Believer          | Jun 5, 2022 – Aug 29, 2022  |
 | 🍃    | Holder            | Aug 30, 2022 – Dec 31, 2023 |
 | 🆕    | New Member        | Jan 1, 2024 onwards         |
@@ -133,9 +133,9 @@ Based on primary badge:
 |-------|-------|------|
 | 👑 Founding Member | amber-400 | gold |
 | 👴 OG | cyan-400 | cyan |
-| 🎖️ Veteran | teal-400 | teal |
+| 💂 Veteran | teal-400 | teal |
 | 🎢 Adrenaline Junkie | orange-400 | orange |
-| ✊ Survivor | emerald-400 | emerald |
+| 🎖️ Survivor | emerald-400 | emerald |
 | 🌱 Believer | green-400 | green |
 | 🍃 Holder | lime-400 | lime |
 | 🆕 New Member | white | none |

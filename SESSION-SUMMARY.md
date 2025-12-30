@@ -15,9 +15,9 @@
 |-------|------------|
 | 👑 Founding Member | Before Jul 29, 2021 |
 | 👴 OG | Jul 29, 2021 – Jan 7, 2022 |
-| 🎖️ Veteran | Jan 8, 2022 – Feb 26, 2022 |
+| 💂 Veteran | Jan 8, 2022 – Feb 26, 2022 |
 | 🎢 Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
-| ✊ Survivor | Apr 29, 2022 – Jun 4, 2022 |
+| 🎖️ Survivor | Apr 29, 2022 – Jun 4, 2022 |
 | 🌱 Believer | Jun 5, 2022 – Aug 29, 2022 |
 | 🍃 Holder | Aug 30, 2022 – Dec 31, 2023 |
 | 🆕 New Member | Jan 1, 2024 onwards |
@@ -631,9 +631,9 @@ The API had completely outdated badge definitions. Updated to match current spec
 |-------|------|------------|
 | 👑 | Founding Member | Before Jul 29, 2021 |
 | 👴 | OG | Jul 29, 2021 – Jan 7, 2022 |
-| 🎖️ | Veteran | Jan 8, 2022 – Feb 26, 2022 |
+| 💂 | Veteran | Jan 8, 2022 – Feb 26, 2022 |
 | 🎢 | Adrenaline Junkie | Feb 27, 2022 – Apr 28, 2022 |
-| ✊ | Survivor | Apr 29, 2022 – Jun 4, 2022 |
+| 🎖️ | Survivor | Apr 29, 2022 – Jun 4, 2022 |
 | 🌱 | Believer | Jun 5, 2022 – Aug 29, 2022 |
 | 🍃 | Holder | Aug 30, 2022 – Dec 31, 2023 |
 | 🆕 | New Member | Jan 1, 2024 onwards |

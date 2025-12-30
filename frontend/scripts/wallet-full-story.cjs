@@ -14,9 +14,9 @@ if (!wallet) {
 const allPrimaryBadges = [
   { emoji: '👑', name: 'Founding Member', requirement: 'First buy before Jul 29, 2021' },
   { emoji: '👴', name: 'OG', requirement: 'First buy Jul 29, 2021 – Jan 7, 2022' },
-  { emoji: '🎖️', name: 'Veteran', requirement: 'First buy Jan 8, 2022 – Feb 26, 2022' },
+  { emoji: '💂', name: 'Veteran', requirement: 'First buy Jan 8, 2022 – Feb 26, 2022' },
   { emoji: '🎢', name: 'Adrenaline Junkie', requirement: 'First buy Feb 27, 2022 – Apr 28, 2022' },
-  { emoji: '✊', name: 'Survivor', requirement: 'First buy Apr 29, 2022 – Jun 4, 2022' },
+  { emoji: '🎖️', name: 'Survivor', requirement: 'First buy Apr 29, 2022 – Jun 4, 2022' },
   { emoji: '🌱', name: 'Believer', requirement: 'First buy Jun 5, 2022 – Aug 29, 2022' },
   { emoji: '🍃', name: 'Holder', requirement: 'First buy Aug 30, 2022 – Dec 31, 2023' },
   { emoji: '🆕', name: 'New Member', requirement: 'First buy Jan 1, 2024 onwards' },
