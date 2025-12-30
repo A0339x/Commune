@@ -7374,7 +7374,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             Your recognition gives you a special presence in chat
           </p>
           
-          {/* Username reveal - shows directly in badge color */}
+          {/* Username reveal - fades from white to badge color */}
           <div className={`transition-opacity ${TRANSITIONS.fadeDefault} ${
             subStage >= 2 ? 'opacity-100' : 'opacity-0'
           }`}>
@@ -7383,14 +7383,14 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
               const getBadgeRGB = () => {
                 const name = guardData?.primaryBadge?.name;
                 switch (name) {
-                  case 'Founding Member': return { color: 'rgb(251, 191, 36)', shadow: '0 0 30px rgba(251, 191, 36, 0.6)' }; // amber
-                  case 'OG': return { color: 'rgb(34, 211, 238)', shadow: '0 0 25px rgba(34, 211, 238, 0.5)' }; // cyan
-                  case 'Veteran': return { color: 'rgb(45, 212, 191)', shadow: '0 0 20px rgba(45, 212, 191, 0.4)' }; // teal
-                  case 'Adrenaline Junkie': return { color: 'rgb(251, 146, 60)', shadow: '0 0 25px rgba(251, 146, 60, 0.5)' }; // orange
-                  case 'Survivor': return { color: 'rgb(52, 211, 153)', shadow: '0 0 20px rgba(52, 211, 153, 0.5)' }; // emerald
-                  case 'Believer': return { color: 'rgb(74, 222, 128)', shadow: '0 0 18px rgba(74, 222, 128, 0.4)' }; // green
-                  case 'Holder': return { color: 'rgb(163, 230, 53)', shadow: '0 0 15px rgba(163, 230, 53, 0.4)' }; // lime
-                  default: return { color: 'rgb(251, 191, 36)', shadow: '0 0 25px rgba(251, 191, 36, 0.5)' }; // fallback amber
+                  case 'Founding Member': return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.6)' }; // amber
+                  case 'OG': return { color: 'rgb(34, 211, 238)', shadow: 'rgba(34, 211, 238, 0.5)' }; // cyan
+                  case 'Veteran': return { color: 'rgb(45, 212, 191)', shadow: 'rgba(45, 212, 191, 0.4)' }; // teal
+                  case 'Adrenaline Junkie': return { color: 'rgb(251, 146, 60)', shadow: 'rgba(251, 146, 60, 0.5)' }; // orange
+                  case 'Survivor': return { color: 'rgb(52, 211, 153)', shadow: 'rgba(52, 211, 153, 0.5)' }; // emerald
+                  case 'Believer': return { color: 'rgb(74, 222, 128)', shadow: 'rgba(74, 222, 128, 0.4)' }; // green
+                  case 'Holder': return { color: 'rgb(163, 230, 53)', shadow: 'rgba(163, 230, 53, 0.4)' }; // lime
+                  default: return { color: 'rgb(251, 191, 36)', shadow: 'rgba(251, 191, 36, 0.5)' }; // fallback amber
                 }
               };
               const badgeColor = getBadgeRGB();
@@ -7399,8 +7399,9 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 <p
                   className={`${TYPOGRAPHY.username} cursor-default`}
                   style={{
-                    color: badgeColor.color,
-                    textShadow: badgeColor.shadow
+                    color: subStage >= 3 ? badgeColor.color : 'rgb(255, 255, 255)',
+                    textShadow: subStage >= 3 ? `0 0 25px ${badgeColor.shadow}` : 'none',
+                    transition: 'color 1s ease-in-out, text-shadow 1s ease-in-out'
                   }}
                 >
                   {address.slice(0, 6)}...{address.slice(-4)}
