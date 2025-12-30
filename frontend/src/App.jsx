@@ -6568,6 +6568,8 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   const [currentMilestoneIndex, setCurrentMilestoneIndex] = useState(0);
   const [quoteReady, setQuoteReady] = useState(false); // User clicked Next on quote
   const [personalizedQuote, setPersonalizedQuote] = useState(null); // The generated quote
+  const [showBadgeTooltip, setShowBadgeTooltip] = useState(false); // Show badges on username hover
+  const [hoveredBadge, setHoveredBadge] = useState(null); // Currently hovered badge for description
   
   // Load profile from holder-profiles.json for accurate badge and quote data
   const walletProfile = holderProfiles.profiles.find(
@@ -7364,17 +7366,10 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
                 {address.slice(0, 6)}...{address.slice(-4)}
               </p>
             </div>
-            
-            {/* Hint text */}
-            <p className={`${TYPOGRAPHY.usernameHint} mt-6 transition-opacity ${TRANSITIONS.fadeDefault} ${
-              subStage >= 3 ? 'opacity-100' : 'opacity-0'
-            }`}>
-              Hover over your name to reveal your achievements
-            </p>
           </div>
         </div>
       )}
-      
+
       {/* Scene 8: Final Summary */}
       {scene === 8 && (
         <div className={`space-y-6 w-full transition-all ${TRANSITIONS.fadeSlow} ${
@@ -7545,22 +7540,54 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             </div>
           </div>
           
-          {/* Username Preview */}
-          <div className="group bg-white/5 border border-white/10 rounded-xl p-4 text-center transition-all duration-300 hover:bg-white/8 hover:border-white/20 hover:-translate-y-1 hover:shadow-lg cursor-default">
-            <p className="text-white/50 text-sm mb-2 group-hover:text-white/70 transition-colors">In chat, your name will glow:</p>
-            <p className={`text-xl font-bold transition-all duration-500 group-hover:scale-110 ${
-              guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑' 
-                ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)] group-hover:drop-shadow-[0_0_16px_rgba(251,191,36,0.8)]' 
-                : guardData.primaryBadge?.emoji === '💎' 
-                  ? 'text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.5)] group-hover:drop-shadow-[0_0_14px_rgba(192,132,252,0.7)]'
+          {/* Username Preview with Badge Tooltip */}
+          <div
+            className="relative bg-white/5 border border-white/10 rounded-xl p-4 text-center transition-all duration-300 hover:bg-white/8 hover:border-white/20 cursor-default"
+            onMouseEnter={() => setShowBadgeTooltip(true)}
+            onMouseLeave={() => { setShowBadgeTooltip(false); setHoveredBadge(null); }}
+          >
+            <p className="text-white/50 text-sm mb-2">In chat, your name will glow:</p>
+            <p className={`text-xl font-bold transition-all duration-300 ${
+              guardData.isEarlyAdopter || guardData.primaryBadge?.emoji === '👑'
+                ? 'text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]'
+                : guardData.primaryBadge?.emoji === '💎'
+                  ? 'text-purple-400 drop-shadow-[0_0_6px_rgba(192,132,252,0.5)]'
                   : guardData.primaryBadge?.emoji === '🌳'
-                    ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.4)] group-hover:drop-shadow-[0_0_12px_rgba(34,211,238,0.6)]'
-                    : 'text-white group-hover:text-white/90'
+                    ? 'text-cyan-400 drop-shadow-[0_0_5px_rgba(34,211,238,0.4)]'
+                    : 'text-white'
             }`}>
               {address.slice(0, 6)}...{address.slice(-4)}
             </p>
-            <p className="text-white/30 text-xs mt-2 group-hover:text-white/50 transition-colors">
-              Hover over your name to see your achievements
+
+            {/* Badge icons on hover */}
+            <div className={`mt-3 flex justify-center gap-2 flex-wrap transition-all duration-300 ${
+              showBadgeTooltip ? 'opacity-100 max-h-20' : 'opacity-0 max-h-0 overflow-hidden'
+            }`}>
+              {allBadges.map((badge, i) => (
+                <span
+                  key={i}
+                  className="text-2xl cursor-pointer hover:scale-125 transition-transform duration-200"
+                  onMouseEnter={() => setHoveredBadge(badge)}
+                  onMouseLeave={() => setHoveredBadge(null)}
+                >
+                  {badge.emoji}
+                </span>
+              ))}
+            </div>
+
+            {/* Badge description tooltip */}
+            {hoveredBadge && (
+              <div className="mt-2 px-3 py-2 bg-black/80 border border-white/20 rounded-lg text-sm animate-fadeIn">
+                <span className="text-amber-400 font-medium">{hoveredBadge.name}</span>
+                <p className="text-white/70 text-xs mt-1">{hoveredBadge.reason || hoveredBadge.description}</p>
+              </div>
+            )}
+
+            {/* Hint text - only show when not showing badges */}
+            <p className={`text-white/30 text-xs mt-2 transition-opacity duration-300 ${
+              showBadgeTooltip ? 'opacity-0' : 'opacity-100'
+            }`}>
+              Hover to see your achievements
             </p>
           </div>
           
