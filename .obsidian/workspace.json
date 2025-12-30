@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "QUOTE-PREVIEW.md",
-                "mode": "source",
+                "file": "WALLET-PROFILE-0x6e98...7a3d.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "QUOTE-PREVIEW"
+              "title": "WALLET-PROFILE-0x6e98...7a3d"
             }
           }
         ],
@@ -202,6 +202,9 @@
   },
   "active": "3db32377c006d9af",
   "lastOpenFiles": [
+    "QUOTE-PREVIEW.md",
+    "WALLET-PROFILE-0x6e98...7a3d.md",
+    "frontend/scripts/export-wallet-profile.cjs",
     "frontend/scripts/wallet-full-story.cjs",
     "frontend/scripts/wallet-stats.cjs",
     "frontend/scripts/fix-early-adopters.cjs",
@@ -212,8 +215,6 @@
     "EDGE-CASES.md",
     "frontend/node_modules/uri-js/dist/esnext/regexps-uri.js.map",
     "frontend/node_modules/use-sidecar/dist/es5/renderProp.js",
-    "frontend/node_modules/object.fromentries/shim.js",
-    "frontend/node_modules/node-gyp-build/package.json",
     "frontend/node_modules/gopd/README.md",
     "frontend/node_modules/gopd/CHANGELOG.md",
     "frontend/node_modules/globalthis/README.md",
@@ -238,7 +239,6 @@
     "frontend/node_modules/is-date-object/README.md",
     "frontend/node_modules/is-date-object/CHANGELOG.md",
     "frontend/node_modules/is-bigint/README.md",
-    "frontend/node_modules/is-bigint/CHANGELOG.md",
     "frontend/node_modules/pngjs/coverage/lcov-report/sort-arrow-sprite.png",
     "frontend/node_modules/pngjs/coverage/lcov-report/favicon.png"
   ]

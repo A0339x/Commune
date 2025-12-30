@@ -6426,8 +6426,10 @@ const RecognitionLoader = ({ address, tokenBalance, sessionToken }) => {
   
   // Calculate holding duration
   const getHoldingDuration = () => {
-    if (!guardData?.firstBuy) return null;
-    const days = Math.floor((Date.now() - guardData.firstBuy) / (1000 * 60 * 60 * 24));
+    // Use walletProfile.firstBuyDate as fallback if guardData.firstBuy is missing
+    const firstBuyTimestamp = guardData?.firstBuy || (walletProfile?.firstBuyDate ? new Date(walletProfile.firstBuyDate).getTime() : null);
+    if (!firstBuyTimestamp) return null;
+    const days = Math.floor((Date.now() - firstBuyTimestamp) / (1000 * 60 * 60 * 24));
     const years = Math.floor(days / 365);
     const months = Math.floor((days % 365) / 30);
     const remainingDays = days % 30;
@@ -6930,8 +6932,11 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   // Date flip animation
   const startDateFlip = () => {
     const today = new Date();
-    const targetDate = new Date(guardData.firstBuy);
-    
+    // Use walletProfile.firstBuyDate as fallback if guardData.firstBuy is missing
+    const firstBuySource = guardData.firstBuy || (walletProfile?.firstBuyDate ? new Date(walletProfile.firstBuyDate).getTime() : null);
+    if (!firstBuySource) return; // Can't animate without a date
+    const targetDate = new Date(firstBuySource);
+
     setFlipDate(today);
     
     const totalDuration = 2500;
@@ -7388,7 +7393,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
             {/* Journey Timeline */}
             <div className="text-center group cursor-default">
               <p className="text-white/50 text-sm mb-1">Journey started</p>
-              <p className="text-lg font-bold text-amber-400 group-hover:text-amber-300 transition-colors duration-200">{formatDate(guardData.firstBuy)}</p>
+              <p className="text-lg font-bold text-amber-400 group-hover:text-amber-300 transition-colors duration-200">{formatDate(guardData?.firstBuy || (walletProfile?.firstBuyDate ? new Date(walletProfile.firstBuyDate).getTime() : null))}</p>
               <p className="text-white/40 text-sm mt-1">
                 <span className="text-white font-medium">{getHoldingDuration()}</span> of holding strong
               </p>
