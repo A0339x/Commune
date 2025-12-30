@@ -6116,24 +6116,30 @@ const AuthenticatedApp = () => {
   const formattedBalance = isDevMode ? '∞ (Dev Mode)' : formatTokenBalance(balance, TOKEN_CONFIG.decimals);
   const hasEnoughTokens = isDevMode || hasRequiredTokens(balance, TOKEN_CONFIG.decimals);
   
-  // Check for existing session or handle wallet change
+  // Check for existing session or handle wallet change (skip in dev mode)
   useEffect(() => {
+    // Skip session check in dev mode - already verified
+    if (isDevMode) {
+      setCheckingSession(false);
+      return;
+    }
+
     const handleSession = async () => {
       // If no address, reset everything
       if (!address) {
         setCheckingSession(false);
         return;
       }
-      
+
       // If wallet changed, clear old session
       if (lastCheckedAddress && lastCheckedAddress !== address) {
         setIsVerified(false);
         setSessionToken(null);
         localStorage.removeItem('commune_session');
       }
-      
+
       setLastCheckedAddress(address);
-      
+
       // Check for existing valid session
       const storedToken = localStorage.getItem('commune_session');
       if (storedToken) {
@@ -6142,7 +6148,7 @@ const AuthenticatedApp = () => {
             headers: { 'Authorization': `Bearer ${storedToken}` },
           });
           const data = await response.json();
-          
+
           if (data.valid && data.wallet?.toLowerCase() === address.toLowerCase()) {
             setSessionToken(storedToken);
             setIsVerified(true);
@@ -6155,12 +6161,12 @@ const AuthenticatedApp = () => {
         // Invalid session - remove it
         localStorage.removeItem('commune_session');
       }
-      
+
       setCheckingSession(false);
     };
-    
+
     handleSession();
-  }, [address]);
+  }, [address, isDevMode]);
   
   // Periodic balance recheck to kick users who sold tokens
   useEffect(() => {
