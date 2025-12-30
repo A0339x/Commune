@@ -7025,7 +7025,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
   const timingMultiplier = getTimingMultiplier();
   
   return (
-    <div className="min-h-[60vh] flex items-center justify-center">
+    <div className="min-h-[60vh] w-full flex items-center justify-center">
       
       {/* Scene 0: Title Sequence */}
       {scene === 0 && (
@@ -7268,7 +7268,7 @@ const WrappedPresentation = ({ guardData, address, formatDate, getHoldingDuratio
       
       {/* Scene 6: Badges Sequence */}
       {scene === 6 && (
-        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${LAYOUT.badgeSceneMinHeight} flex flex-col items-center justify-center ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
+        <div className={`text-center transition-opacity ${TRANSITIONS.fadeDefault} ${LAYOUT.badgeSceneMinHeight} w-full flex flex-col items-center justify-center ${subStage === 5 ? 'opacity-0' : 'opacity-100'}`}>
           
           {/* Badge sequence content - shown during stages 1-3, fades at 4 */}
           <div className={`flex flex-col items-center justify-center transition-opacity ${TRANSITIONS.fadeDefault} ${
